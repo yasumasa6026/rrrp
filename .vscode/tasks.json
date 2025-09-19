@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "install",
+			"group": "clean",
+			"problemMatcher": [],
+			"label": "npm: install",
+			"detail": "install dependencies from package"
+		},{
+      "label": "kill solid_queue",
+      "type": "shell",
+      "command": "pkill -f solid_queue",
+      "problemMatcher": [],
+      "group": "build"
+    }
+	]
+}

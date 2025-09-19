@@ -1,0 +1,9 @@
+/config/database_passwords.yml
+/.bundle
+/log/*
+/tmp/*
+/storage/*
+.byebug_history
+/config/mater.key
+/vendor/postgresql
+/.env
