@@ -73,7 +73,7 @@ gem 'active_model_serializers', '~> 0.10.14'
 
 ###gem 'ngrok-tunnel'
 
-gem 'rubyzip','~>2.3.0'
+gem 'rubyzip','~>3.1.0'
 gem 'stringio' ,'>=3.1.7'
 
 # gem 'webrick'
