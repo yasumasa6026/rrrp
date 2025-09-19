@@ -326,7 +326,7 @@ GEM
     ruby-vips (2.2.5)
       ffi (~> 1.12)
       logger
-    rubyzip (2.3.2)
+    rubyzip (3.1.0)
     securerandom (0.4.1)
     solid_queue (1.2.1)
       activejob (>= 7.1)
@@ -394,7 +394,7 @@ DEPENDENCIES
   rubocop-shopify
   rubocop-thread_safety
   ruby-lsp
-  rubyzip (~> 2.3.0)
+  rubyzip (~> 3.1.0)
   solid_queue (~> 1.2.1)
   spring (~> 4.2)
   spring-watcher-listen (~> 2.1)
