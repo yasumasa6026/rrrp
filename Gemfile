@@ -66,7 +66,7 @@ gem 'dotenv-rails'
 ## sudo apt-get install build-essential libcurl4-openssl-dev
 ## gem install ovirt-engine-sdk -v '4.3.0' --source 'https://rubygems.org/'
 ##gem 'fog'
-gem 'json', '~> 2.7'
+gem 'json', '~> 2.14'
 
 ###https://www.nopio.com/blog/upload-files-with-rails-active-storage/
 gem 'active_model_serializers', '~> 0.10.14'
