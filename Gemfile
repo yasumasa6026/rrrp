@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
-gem "railties", "~> 8.0.0"
+gem "railties", "~> 8.0.3"
 
 ruby '3.3.9'
 
