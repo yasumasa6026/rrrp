@@ -206,8 +206,5 @@ REFRESH MATERIALIZED view r_blktbs ;
 REFRESH MATERIALIZED view r_tblfields;  
 REFRESH MATERIALIZED view r_screens; 
 REFRESH MATERIALIZED view r_screenfields;
----REFRESH MATERIALIZED view r_itms ;
----REFRESH MATERIALIZED view r_opeitms; 
----REFRESH MATERIALIZED view r_nditms; 
 commit;
 

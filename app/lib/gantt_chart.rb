@@ -512,7 +512,6 @@ module GanttChart
 															and l.qty_src > 0) pare 
 												on trn.orgtblname = pare.orgtblname and trn.paretblname = pare.tblname
 																		and trn.orgtblid = pare.orgtblid and trn.paretblid = pare.tblid		
-										
 										inner join alloctbls alloc on alloc.trngantts_id = trn.id
 										inner join shelfnos s on s.id = trn.shelfnos_id_trn
 										where alloc.srctblname = '#{ngantt[:linktblname]}' and alloc.srctblid = #{ngantt[:linktblid]}
@@ -522,20 +521,20 @@ module GanttChart
 										trn.paretblname ,trn.paretblid ,
 										pare.srctblname ,pare.srctblid ,
 										(trn.parenum) ,(trn.chilnum) ,(trn.processseq_pare) ,(pare.id)  
-							union  ---  custordsがcustschsを引き当てた時
+							--union  ---  custordsがcustschsを引き当てた時
 									--- org=pare=tblの子供org=pareの時　pare:tblは1:1
-								select trn.itms_id_trn, s.locas_id_shelfno locas_id_trn,
-										trn.orgtblname,	trn.orgtblid,trn.paretblname,trn.paretblid,
-										trn.tblname ,trn.tblid,max(trn.itms_id_pare) itms_id_pare,
-										'' linktblname ,0 linktblid,
-										trn.parenum,trn.chilnum,trn.processseq_trn,
-										trn.starttime_trn,trn.duedate_trn,
-										l.qty_src,trn.id trngantts_id,max(trn.key) "key"
-									from trngantts trn
-									inner join shelfnos s on s.id = trn.shelfnos_id_trn 
-									inner join linkcusts l on l.tblname = trn.tblname and  l.tblid = trn.tblid
-										where l.srctblname = '#{ngantt[:linktblname]}' and l.srctblid = #{ngantt[:linktblid]} 
-											and l.qty_src > 0 and ( l.tblname != l.srctblname or l.tblid !=  l.srctblid)
+							--	select trn.itms_id_trn, s.locas_id_shelfno locas_id_trn,
+							--			trn.orgtblname,	trn.orgtblid,trn.paretblname,trn.paretblid,
+							--			trn.tblname ,trn.tblid,max(trn.itms_id_pare) itms_id_pare,
+							--			'' linktblname ,0 linktblid,
+							--			trn.parenum,trn.chilnum,trn.processseq_trn,
+							--			trn.starttime_trn,trn.duedate_trn,
+							--			l.qty_src,trn.id trngantts_id,max(trn.key) "key"
+							--		from trngantts trn
+							--		inner join shelfnos s on s.id = trn.shelfnos_id_trn 
+							--		inner join linkcusts l on l.tblname = trn.tblname and  l.tblid = trn.tblid
+							--			where l.srctblname = '#{ngantt[:linktblname]}' and l.srctblid = #{ngantt[:linktblid]} 
+							--				and l.qty_src > 0 and ( l.tblname != l.srctblname or l.tblid !=  l.srctblid)
 						    & 
 					end
 					n0 = {}

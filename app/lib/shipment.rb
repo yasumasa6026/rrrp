@@ -459,7 +459,7 @@ module Shipment
 					case child["consumtype"]
 					when "CON"
 						qty_sch = CtlFields.proc_cal_qty_sch(parent["qty"].to_f,
-														child["chilnum"].to_f,child["parenum"].to_f,child["packqty"].to_f,
+														child["chilnum"].to_f,child["parenum"].to_f,child["packqty"].to_f,child["consumunitqty"].to_f,
 														child["consumminqty"].to_f,child["consumchgoverqty"].to_f)
 						command_c["#{tblnamechop}_duedate"] = command_c["#{tblnamechop}_depdate"] = (parent["starttime"].to_time - 24*3600).strftime("%Y-%m-%d %H:%M:%S")   ###稼働日考慮
 					when "mold","ITool"
@@ -741,7 +741,7 @@ module Shipment
 		stkinout["qty_sch"] = stkinout["qty"] = stkinout["qty_stk"] =  stkinout["qty_real"] = 0
 		command_c["#{tblnamechop}_#{str_con_qty}"] = CtlFields.proc_cal_qty_sch(parent[str_pare_qty].to_f,
 										                              child["chilnum"].to_f,child["parenum"].to_f,child["packqty"].to_f,
-										                              child["consumminqty"].to_f,child["consumchgoverqty"].to_f)
+										                              child["consumunitqty"].to_f,child["consumminqty"].to_f,child["consumchgoverqty"].to_f)
 		command_c["#{tblnamechop}_person_id_upd"] = setParams[:person_id_upd]
 		command_c["#{tblnamechop}_created_at"] = Time.now
 		command_c["id"] = ArelCtl.proc_get_nextval("#{tblnamechop}s_seq")
@@ -793,7 +793,7 @@ module Shipment
         nd = ActiveRecord::Base.connection.select_one(ndsql)
         new_con_qty = CtlField.proc_cal_qty_sch(tbldata[str_qty].to_f,
                                  nd["chilnum"],nd["parenum"],
-                                 nd["packqty"],nd["consumminqty"],nd["consumchgoverqty"])
+                                 nd["packqty"],child["consumunitqty"].to_f,nd["consumminqty"],nd["consumchgoverqty"])
         last_lotstks << {"tblname" => conTblname,"tblid" => consume["id"],"qty_src" =>  new_con_qty - consume[str_qty].to_f,
                           "set_f" => true,"rec" => consume}
       end

@@ -870,7 +870,7 @@ class TblClass
 	def create_foreign_key_constraint tbl
 		@add_id_to_tbl[tbl].each do |field|
 				strsql = "SELECT table_name, constraint_name FROM information_schema.table_constraints
-							where table_catalog='#{ActiveRecord::Base.configurations["development"]["database"]}' 
+							where table_catalog='#{ActiveRecord::Base.connection_db_config.configuration_hash[:database]}' 
 							and table_name = '#{tbl}'  and constraint_name = '#{tbl.chop}_#{field}'
 							and constraint_type = 'FOREIGN KEY';"
 				chk = ActiveRecord::Base.connection.select_one(strsql)
@@ -886,7 +886,7 @@ class TblClass
 	def delete_foreign_key_constraint tbl
 		@delete_id_to_tbl[tbl].each do |field|
 				strsql = "SELECT table_name, constraint_name FROM information_schema.table_constraints
-							where table_catalog='#{ActiveRecord::Base.configurations["development"]["database"]}' 
+							where table_catalog='#{ActiveRecord::Base.connection_db_config.configuration_hash[:database]}' 
 							and table_name = '#{tbl}' and constraint_name = '#{tbl.chop}_#{field}'
 							AND constraint_type = 'FOREIGN KEY';	"
 				chk = ActiveRecord::Base.connection.select_one(strsql)

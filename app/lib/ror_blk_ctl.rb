@@ -291,7 +291,9 @@ module RorBlkCtl
           			end
           			setParams = ope.proc_opeParams.dup
 			  when /^prdschs$/
+					Rails.logger.debug"class:#{self},line:#{__LINE__},setParams[:gantt]:#{setParams[:gantt]}"
 				  setParams = setGantt(setParams)				###作業場所の稼働日考慮要
+					Rails.logger.debug"class:#{self},line:#{__LINE__},setParams[:gantt]:#{setParams[:gantt]}"
           setParams[:tblname] = @tblname
           setParams[:tblid] = @tbldata["id"]
           setParams[:tbldata] = @tbldata
@@ -302,23 +304,6 @@ module RorBlkCtl
             		check_shelfnos_duedate_qty(params)
             		last_lotstks = ope.proc_trngantts_update(@last_rec,@chng_flg)
           		end
-          ##setParams = ope.proc_opeParams.dup
-          # case command_c["sio_classname"]
-			    #   when /_add_|_insert_/   #mkschsで作成
-          #   # ActiveRecord::Base.connection.select_all(strsql).each do |apparatus|
-          #   #     dvs = Operation::OpeClass.new(setParams)  ###prdschs
-          #   #     dvs.proc_add_dvs_data(apparatus)
-          #   #     dvs.proc_add_erc_data(apparatus)
-          #   # end
-          #   else
-          #     if @tbldata["qty_sch"]  == 0 
-          #       ActiveRecord::Base.connection.select_all(ArelCtl.proc_apparatus_sql(@tbldata["opeitms_id"])).each do |apparatus|
-          #         dvs = Operation::OpeClass.new(setParams)  
-          #         dvs.proc_delete_dvs_data
-          #         dvs.proc_delete_erc_data
-          #       end
-          #     end
-          #   end
 			  when /^prdords$/
 				  setParams = setGantt(setParams)
           setParams[:tblname] = @tblname
@@ -845,9 +830,9 @@ module RorBlkCtl
 				gantt["processseq_trn"] = gantt["processseq_pare"]  = gantt["processseq_org"]  = opeitm["processseq"]
 				gantt["maxqty"] =  (opeitm["maxqty"]||= 999999999)
 				gantt["stktakingproc"] =  opeitm["stktakingproc"]
-				gantt["consumunitqty"] = (opeitm["consumunitqty"].to_f == 0 ? 1 : opeitm["consumunitqty"].to_f) ###消費単位
-				gantt["consumminqty"]  =  (opeitm["consumminqty"]||=0) ###最小消費数
-				gantt["consumchgoverqty"] =  (opeitm["consumchgoverqty"]||=0)  ###段取り消費数
+				gantt["consumunitqty"] = 1 ###消費単位 nditmから別途セットする。
+				gantt["consumminqty"]  = 0 ###最小消費数　 nditmから別途セットする。
+				gantt["consumchgoverqty"] = 0  ###段取り消費数　 nditmから別途セットする。
 				gantt["optfixoterm"] =  (opeitm["optfixoterm"].to_f == 0 ? 365 : opeitm["optfixoterm"].to_f)  
 				gantt["packqty"] =  (opeitm["packqty"].to_f == 0 ? 1 : opeitm["packqty"].to_f)
         gantt["duration"] =  (opeitm["duration"].to_f == 0 ? 1 : opeitm["duration"].to_f)
@@ -982,9 +967,9 @@ module RorBlkCtl
 				gantt["maxqty"] =  (opeitm["maxqty"]||= 999999999)
 				gantt["stktakingproc"] =  opeitm["stktakingproc"]
 				gantt["stktakingproc"] =  opeitm["stktakingproc"]
-				gantt["consumunitqty"] = (opeitm["consumunitqty"].to_f == 0 ? 1 : opeitm["consumunitqty"].to_f) ###消費単位
-				gantt["consumminqty"]  =  (opeitm["consumminqty"]||=0) ###最小消費数
-				gantt["consumchgoverqty"] =  (opeitm["consumchgoverqty"]||=0)  ###段取り消費数
+				gantt["consumunitqty"] = 1 ###消費単位
+				gantt["consumminqty"]  =  0 ###最小消費数
+				gantt["consumchgoverqty"] = 0  ###段取り消費数
 				gantt["optfixoterm"] =  (opeitm["optfixoterm"].to_f == 0 ? 365 : opeitm["optfixoterm"].to_f)  
 				gantt["packqty"] =  (opeitm["packqty"].to_f == 0 ? 1 : opeitm["packqty"].to_f)
         gantt["duration"] =  (opeitm["duration"].to_f == 0 ? 1 : opeitm["duration"].to_f)

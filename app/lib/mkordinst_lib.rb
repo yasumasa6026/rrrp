@@ -152,7 +152,8 @@ module MkordinstLib
       cnt += 1
       ###
       if cnt > Constants::MaxSplitCnt  
-        mkordparams[:message_code] =   "mkordinst_lib.rb line #{__LINE__}  mkord_term_split error" 
+        mkordparams[:message_code] =   "mkordinst_lib.rb line #{__LINE__}  mkord_term_split error,maxSplitCnt:#{MaxSplitCnt}
+                                        terms:#{terms}" 
         return mkordparams,@last_lotstks
       end
       ###
@@ -162,19 +163,19 @@ module MkordinstLib
     ### "itms_id_trn" + "processseq_trn" +"shelfnos_id_trn" + "prjnos_id":製造、発注単位
     ### parenum,chilnum:親員数、子員数
     ### packqty : 発注単位、製造梱包単位　packqty =
-    mlevel = 1
+    mlevel = 0
     maxqty = 1
     base_duedate = nil
     strsql = "select max(mlevel) from trngantts where mkprdpurords_id_trngantt = #{mkprdpurords_id}"
     max_mlevel = ActiveRecord::Base.connection.select_value(strsql)
     tmp_qty_handover = tmp_qty_require = 0
-    prev_chilnum = prev_parenum = prev_packqty = 1
+    prev_chilnum = prev_parenum = prev_packqty = prev_consumunitqty =1
     prev_cal_rec = {"itms_id_trn" => 0, "processseq_trn" => 0 ,"shelfnos_id_trn" => 0,"itms_id_pare" => 0, "processseq_pare" => 0,
                     "shelfnos_id_to_trn" => 0, "shelfnos_id_to_pare" => 0,"prjnos_id" => "0","optfixodate" => Time.now,
                     "qty_require" => 0,"tblname" => "dymschs"}
     qty_require = qty = qty_stk = qty_handover = @incnt = @inqty = @inamt = @outcnt = @outqty = @outamt = 0
 		### topの親を設定 
-		init_sum_ord_insert(mkprdpurords_id)  ###  mkordtmpfs  親子関係あり
+		init_sum_ord_insert(mkprdpurords_id,params)  ###  mkordtmpfs  親子関係あり
     until mlevel > max_mlevel.to_i do
       strsql = "select mkprdpurords_id_trngantt mkprdpurords_id,#{mlevel} mlevel,prjnos_id,
                         itms_id_trn,processseq_trn ,shelfnos_id_trn,shelfnos_id_to_trn,
@@ -194,12 +195,13 @@ module MkordinstLib
           @inamt = 0  ###cal_rec["amt_sch"].to_f=nil
           cal_rec["packqty"].to_f == 0 ? packqty = 1 : packqty = cal_rec["packqty"].to_f
           cal_rec["maxqty"].to_f == 0 ? maxqty = 99999999 : maxqty = cal_rec["maxqty"].to_f
+          cal_rec["consumminqty"].to_f == 0 ? consumunitqty = 1 : consumunitqty = cal_rec["consumminqty"].to_f
           cal_rec["parenum"].to_f == 0 ? parenum = 1 : parenum = cal_rec["parenum"].to_f
           cal_rec["chilnum"].to_f == 0 ? chilnum = 1 : chilnum = cal_rec["chilnum"].to_f
           if  prev_cal_rec["itm_id_trn"] == "0" or idx == 0
               tmp_qty_handover = cal_rec["qty_handover"].to_f  ###は親の数量              
-              tmp_qty_require = (tmp_qty_handover * chilnum / (parenum * packqty)).ceil  * 
-                                  packqty + cal_rec["consumchgoverqty"].to_f - 
+              tmp_qty_require = save_qty_require = (tmp_qty_handover * chilnum / (parenum * consumunitqty)).ceil  * 
+                                  consumunitqty + cal_rec["consumchgoverqty"].to_f - 
                                   cal_rec["qty"].to_f - cal_rec["qty_stk"].to_f + qty_require
               if maxqty < tmp_qty_require
                 if tmp_qty_require >=  999999999
@@ -211,9 +213,12 @@ module MkordinstLib
                 until tmp_qty_require <= 0 do
                   if maxqty < tmp_qty_require 
                     cnt += 1
-		                Rails.logger.debug " class:#{self} ,line:#{__LINE__},cal_rec:#{cal_rec}\n tmp_qty_require:#{tmp_qty_require}"
+		                Rails.logger.debug " class:#{self} ,line:#{__LINE__},warning  maxqty < tmp_qty_require \n
+                                      cal_rec:#{cal_rec}\n maxqty:#{maxqty},qty_require:#{tmp_qty_require}"
                     if cnt > Constants::MaxSplitCnt  
-                        mkordparams[:message_code] =   "mkordinst_lib.rb line #{__LINE__}  maxqty_split error" 
+                        mkordparams[:message_code] =   "mkordinst_lib.rb line #{__LINE__}  
+                                            itms_id:#{cal_rec["itms_id_trn"]}
+                                            maxqty_split:#{Constants::MaxSplitCnt} over error,maxqty:#{maxqty},qty_require:#{save_qty_require}" 
                         return mkordparams,@last_lotstks
                     end
                     cal_rec["qty_require"] =  maxqty 
@@ -234,6 +239,7 @@ module MkordinstLib
                 tmp_qty_handover = 0
               else
                 prev_cal_rec = cal_rec.dup
+                prev_consumunitqty = consumunitqty
                 prev_packqty = packqty
                 prev_parenum = parenum
                 prev_chilnum = chilnum
@@ -248,8 +254,8 @@ module MkordinstLib
                 ###qty_require   ###子部品の数量　　員数計算済
                 ###tmp_qty_handover   ###親の数量
                 ###chk_qty_require   ###子部品の数量　　員数計算済 opeitm_maxqtyを超えたかの判断用
-                tmp_qty_require =  (cal_rec["qty_handover"].to_f  * chilnum / (parenum * packqty)).ceil  * packqty + 
-                                   (tmp_qty_handover * prev_chilnum / (prev_parenum * prev_packqty)).ceil  * prev_packqty +   
+                tmp_qty_require =  (cal_rec["qty_handover"].to_f  * chilnum / (parenum * consumunitqty)).ceil  * consumunitqty + 
+                                   (tmp_qty_handover * prev_chilnum / (prev_parenum * prev_consumunitqty)).ceil  * prev_consumunitqty +   
                                      cal_rec["consumchgoverqty"].to_f + qty_require
                 if tmp_qty_require > maxqty  ###maxqtyを超えるので今までのqty_schで作成
                     if base_duedate
@@ -277,6 +283,7 @@ module MkordinstLib
                     tmp_qty_handover = cal_rec["qty_handover"].to_f
                     base_duedate = cal_rec["duedate_trn"]
                     prev_cal_rec = cal_rec.dup
+                    prev_consumunitqty = consumunitqty
                     prev_packqty = packqty
                     prev_parenum = parenum
                     prev_chilnum = chilnum
@@ -288,8 +295,8 @@ module MkordinstLib
                   if (cal_rec["chilnum"]  != prev_cal_rec["chilnum"] or  cal_rec["parenum"] != prev_cal_rec["parenum"] or ###trngantts画面で変更された場合
                       prev_cal_rec["shelfnos_id_to_trn"] != cal_rec["shelfnos_id_to_trn"] or
                       cal_rec["packqty"] != prev_cal_rec["packqty"] or cal_rec["consumchgoverqty"] != prev_cal_rec["consumchgoverqty"])  
-                          qty_require += (tmp_qty_handover * prev_chilnum /(prev_parenum * prev_packqty)).ceil  * 
-                                                                        prev_packqty+ prev_cal_rec["consumchgoverqty"].to_f 
+                          qty_require += (tmp_qty_handover * prev_chilnum /(prev_parenum * prev_consumunitqty)).ceil  * 
+                                                                        prev_consumunitqty+ prev_cal_rec["consumchgoverqty"].to_f 
                           tmp_qty_handover = cal_rec["qty_handover"].to_f
                   else
                     tmp_qty_handover += cal_rec["qty_handover"].to_f  ###は親の数量
@@ -298,8 +305,8 @@ module MkordinstLib
                   qty_stk += cal_rec["qty_stk"].to_f
                 end
             else
-              qty_require  += ((tmp_qty_handover * prev_chilnum /(prev_parenum * prev_packqty)).ceil  * 
-                              prev_packqty + prev_cal_rec["consumchgoverqty"].to_f)
+              qty_require  += ((tmp_qty_handover * prev_chilnum /(prev_parenum * prev_consumunitqty)).ceil  * 
+                              prev_consumunitqty + prev_cal_rec["consumchgoverqty"].to_f)
               qty_require -= qty
               qty_require -= qty_stk
               prev_cal_rec["qty_require"] = qty_require 
@@ -312,8 +319,8 @@ module MkordinstLib
               end
               qty = cal_rec["qty"].to_f
               qty_stk = cal_rec["qty_stk"].to_f
-              tmp_qty_require = (cal_rec["qty_handover"].to_f * chilnum / (parenum * packqty)).ceil  * 
-                                  packqty + cal_rec["consumchgoverqty"].to_f - 
+              tmp_qty_require = (cal_rec["qty_handover"].to_f * chilnum / (parenum * consumunitqty)).ceil  * 
+                                  consumunitqty + cal_rec["consumchgoverqty"].to_f - 
                                   cal_rec["qty"].to_f - cal_rec["qty_stk"].to_f + qty_require
               if maxqty < tmp_qty_require
                 cnt = 0
@@ -343,6 +350,7 @@ module MkordinstLib
                 tmp_qty_handover = 0
               else
                 prev_cal_rec = cal_rec.dup
+                prev_consumunitqty = consumunitqty
                 prev_packqty = packqty
                 prev_parenum = parenum
                 prev_chilnum = chilnum
@@ -353,8 +361,8 @@ module MkordinstLib
           end
         end
         if prev_cal_rec["itms_id_trn"] != 0 
-            prev_cal_rec["qty_require"]  = (tmp_qty_handover * prev_chilnum/(prev_parenum * prev_packqty)).ceil  * 
-                              prev_packqty + prev_cal_rec["consumchgoverqty"].to_f + qty_require
+            prev_cal_rec["qty_require"]  = (tmp_qty_handover * prev_chilnum/(prev_parenum * prev_consumunitqty)).ceil  * 
+                              prev_consumunitqty + prev_cal_rec["consumchgoverqty"].to_f + qty_require
           if maxqty <  prev_cal_rec["qty_require"]
 		        Rails.logger.debug " class:#{self} ,line:#{__LINE__}, prev_cal_rec:#{ prev_cal_rec}"
             prev_cal_rec["duedate_trn"] = base_duedate if base_duedate
@@ -388,8 +396,8 @@ module MkordinstLib
         mlevel += 1
     end
     if prev_cal_rec["itms_id_trn"] != 0 
-        prev_cal_rec["qty_require"]  = (tmp_qty_handover * prev_chilnum/(prev_parenum * prev_packqty)).ceil  * 
-                              prev_packqty + prev_cal_rec["consumchgoverqty"].to_f + qty_require
+        prev_cal_rec["qty_require"]  = (tmp_qty_handover * prev_chilnum/(prev_parenum * prev_consumunitqty)).ceil  * 
+                              prev_consumunitqty + prev_cal_rec["consumchgoverqty"].to_f + qty_require
         if maxqty <  prev_cal_rec["qty_require"]
 		      Rails.logger.debug " class:#{self} ,line:#{__LINE__}, prev_cal_rec:#{ prev_cal_rec}"
           prev_cal_rec["duedate_trn"] = base_duedate if base_duedate
@@ -501,52 +509,40 @@ module MkordinstLib
     blk.proc_create_tbldata(command_c)
     outputflg = insert_mkordtmpfs_sqlv1(cal_rec,blk.tbldata)  ###mkordtmpfsに登録
     # #
-    return if outputflg == false  ###blk.proc_create_tbldataの戻り値が文字列の場合
-    
+    if outputflg == false  ###blk.proc_create_tbldataの戻り値が文字列の場合
+      return
+    end
 		###
 		###  xxxords作成
 		###
     @outcnt += 1 
-    @outqty += command_c[symqty].to_f
     @outamt +=  cal_rec["purord_amt"].to_f   ###prdord_amtは0
 		# ###
 		symqty = tblord + "_qty"
-    ### fields_opeitm = {}
-    # ["r_prdords","r_purords"].each do |viewOrds|
-		#     field_check_sql = %Q&
-    #                     select pobject_code_sfd from r_screenfields rs 
-    #                             where pobject_code_scr  = '#{viewOrds}' 
-		# 	                          and rs.screenfield_selection = '1' and screenfield_expiredate > current_date &
-		#     fields_opeitm[viewOrds] = ActiveRecord::Base.connection.select_values(field_check_sql)	
-    # end
     ###親の消費単位にあわせ自身の作業単位に変換する。
 		command_c[symqty] =  cal_rec["qty_require"]
+    @outqty += command_c[symqty].to_f
+    if prdpurschData.nil?
+      prdpurschData = ActiveRecord::Base.connection.select_one(%Q& select * from #{cal_rec["tblname"]} where id = #{cal_rec["tblid"]}&)
+    end
 		command_c["sio_classname"] = "_add_ord_by_mkordinst"
 		command_c["sio_viewname"] = "r_#{tblord}s"
 		command_c["#{tblord}_id"] = command_c["id"] = ArelCtl.proc_get_nextval("#{tblord}s_seq")
     command_c["#{tblord}_sno"] = CtlFields.proc_field_sno("#{tblord}s",Time.now,command_c["id"])
 		command_c["#{tblord}_gno"] = "" ### 	
 		command_c["#{tblord}_prjno_id"] = cal_rec["prjnos_id"] ### 	
-		# cal_rec.each do |key,val|   
-		# 				case key
-		# 					when "id","qty_sch","price","masterprice","tax","taxrate","sno","amt_sch"  ###purordで再計算　数量、納期が変わっている
-		# 						next
-		# 					when /toduedate_trn/
-		# 						command_c["#{tblord}_toduedate"] = command_c["#{tblord}_duedate"]
-		# 					when /isudate/
-		# 						command_c["#{tblord}_#{key}"] = Time.now
-    #           when /s_id.*_trn/	 
-		# 						sym = "#{tblord}_#{key.sub("s_id","_id").sub("_trn","")}"
-		# 						command_c[sym] = val if fields_opeitm["r_#{tblord}s"].find{|fd| fd == sym}
-    #           when /s_id/	
-		# 						sym = "#{tblord}_#{key.sub("s_id","_id")}"
-		# 						command_c[sym] = val if fields_opeitm["r_#{tblord}s"].find{|fd| fd == sym}
-		# 					else	 
-		# 						sym = "#{tblord}_#{key}"
-		# 						command_c[sym] = val if fields_opeitm["r_#{tblord}s"].find{|fd| fd == sym}
-		# 				end
-		# end
-    
+    # 
+    ## 代替品　存在チェック
+    #
+    strsql = %Q&
+          select 1 from opeitms o
+                    inner join opeitms alter on o.itms_id = alter.itms_id and o.processseq = alter.processseq
+                where o.id = #{prdpurschData["opeitms_id"]} and alter.priority != o.priority 
+    &
+    alter =  ActiveRecord::Base.connection.select_one(strsql)
+    if alter
+      command_c["#{tblord}_remark"]  = "alter opeitms exists"
+    end
 		case tblord 
       when "purord"  ###購入
 					command_c,err = CtlFields.proc_judge_check_taxrate(command_c,"purord_taxrate",0,"r_purords")
@@ -1068,40 +1064,7 @@ module MkordinstLib
 	end	
 		
 
-	def init_sum_ord_insert mkprdpurords_id
-        # itms_id_save = processseq_save = 0
-        # strsql = %Q&
-        #              select trn.id,trn.duedate_trn,base.duedate_base,trn.optfixoterm, trn.itms_id_trn ,trn.processseq_trn from trngantts trn
- 	      #                 inner join (select   gantt.itms_id_trn itms_id_trn, gantt.processseq_trn processseq_trn, 
-        #                                       min(gantt.duedate_trn) duedate_base from trngantts gantt
-				# 		                        where  gantt.orgtblname = gantt.paretblname and gantt.orgtblid = gantt.paretblid  
-        #                             and gantt.tblname in ('prdschs','purschs')  ---手入力でprdschs,purschsを取り込んだ
-        #                             and gantt.mkprdpurords_id_trngantt = #{mkprdpurords_id}
-				# 		                        group by gantt.mkprdpurords_id_trngantt ,gantt.prjnos_id,
-				# 			                                gantt.itms_id_trn,gantt.processseq_trn 
-        #                             having max(mlevel) = 1) base 
-        #                           on  trn.itms_id_trn =  base.itms_id_trn and  trn.processseq_trn = base.processseq_trn
-        #                 where trn.mkprdpurords_id_trngantt = #{mkprdpurords_id}
-        #                 order by  trn.itms_id_trn ,trn.processseq_trn,trn.duedate_trn
-        #           &
-        #         optfixodate_save = Time.now.to_date
-        # ActiveRecord::Base.connection.select_all(strsql).each do |trn|
-        #     if itms_id_save == trn["itms_id_trn"] and  processseq_save == trn["processseq_trn"]
-        #       if optfixodate_save +  trn["optfixoterm"] > trn["duedate_trn"].to_date
-        #       else
-        #         optfixodate_save = trn["duedate_base"].to_date
-        #       end
-        #     else
-        #         itms_id_save = trn["itms_id_trn"] 
-        #         processseq_save = trn["processseq_trn"]
-        #         optfixodate_save = trn["duedate_base"].to_date
-        #     end
-        #     update_sql = %Q&
-        #                       update trngantts set optfixodate = cast('#{optfixodate_save}' as date)
-        #                               where id = #{trn["id"]}
-        #         &
-        #     ActiveRecord::Base.connection.update(update_sql)
-        # end
+	def init_sum_ord_insert mkprdpurords_id,setParams
         ActiveRecord::Base.connection.insert(
 		      %Q&
               insert into mkordtmpfs(id,persons_id_upd,
@@ -1121,7 +1084,7 @@ module MkordinstLib
                   optfixodate,
 								  expiredate,created_at,updated_at)
 				        select nextval('mkordtmpfs_seq'),0 persons_id_upd, 
-						      gantt.mkprdpurords_id_trngantt ,max(mlevel) mlevel,
+						      gantt.mkprdpurords_id_trngantt ,0 mlevel,
                   gantt.itms_id_trn itms_id_pare, gantt.itms_id_trn itms_id_trn,
 						      gantt.processseq_trn processseq_pare,gantt.processseq_trn processseq_trn ,
                   max(s.locas_id_shelfno) locas_id_trn,	gantt.prjnos_id ,
@@ -1134,21 +1097,18 @@ module MkordinstLib
 						      max(gantt.packqty) packqty,max(gantt.consumchgoverqty) consumchgoverqty,
                   max(gantt.consumminqty) consumminqty,max(gantt.consumunitqty) consumunitqty,
 						      1 parenum,1 chilnum,
-						      sum(gantt.qty_sch) qty_handover,sum(gantt.qty_sch) qty_require,
+						      sum(gantt.qty + gantt.qty_sch) qty_handover,sum(gantt.qty + gantt.qty_sch) qty_require,
 						      max(gantt.tblname) tblname,min(gantt.tblid) tblid,count(tblid),
                   gantt.optfixodate,
 						      '2099/12/31',current_timestamp,current_timestamp 
 						    from trngantts gantt 
 						    inner join shelfnos s on s.id = gantt.shelfnos_id_trn
-                inner join opeitms opeitm on opeitm.itms_id = gantt.itms_id_trn 
-                                          and gantt.processseq_trn = opeitm.processseq 
-                                          and gantt.shelfnos_id_trn = opeitm.shelfnos_id_opeitm
 						    where  gantt.orgtblname = gantt.paretblname and gantt.orgtblid = gantt.paretblid  
-                  and gantt.tblname in ('prdschs','purschs')  ---手入力でprdschs,purschsを取り込んだ
+                  and gantt.tblname in ('prdschs','purschs','custords','custschs')  ---手入力でprdschs,purschsを取り込んだ
                   and gantt.mkprdpurords_id_trngantt = #{mkprdpurords_id}
 						    group by gantt.mkprdpurords_id_trngantt ,gantt.prjnos_id,
 							        gantt.itms_id_trn,gantt.processseq_trn , gantt.optfixodate
-                having max(mlevel) = 1
+                having max(mlevel) = 0
 				&)
 	end	
 
@@ -1156,9 +1116,9 @@ module MkordinstLib
 	def mk_cal_rec_trngantts(sel_rec)
     ActiveRecord::Base.connection.select_all(
 		      %Q&
-              select nextval('mkordtmpfs_seq'),#{sel_rec["mlevel"]} mlevel,
-                max(gantt.tblname) tblname,max(gantt.tblid) tblid,gantt.itms_id_trn ,gantt.itms_id_pare ,
-						    gantt.processseq_trn,	gantt.processseq_pare  ,
+              select nextval('mkordtmpfs_seq'),#{sel_rec["mlevel"] + 1} mlevel,
+                max(gantt.tblname) tblname,max(gantt.tblid) tblid,gantt.itms_id_trn ,max(gantt.itms_id_pare) itms_id_pare ,
+						    gantt.processseq_trn,	max(gantt.processseq_pare) processseq_pare  ,
 						    gantt.prjnos_id ,pare.mkprdpurords_id,
 						    gantt.shelfnos_id_to_trn ,gantt.shelfnos_id_trn,
 						    gantt.shelfnos_id_pare shelfnos_id_pare,max(gantt.shelfnos_id_to_pare) shelfnos_id_to_pare,
@@ -1169,33 +1129,34 @@ module MkordinstLib
                 gantt.maxqty,gantt.packqty,gantt.consumchgoverqty,gantt.consumminqty,gantt.consumunitqty,gantt.parenum,gantt.chilnum,
 						    0 persons_id_upd, max(pare.qty_handover) qty_handover, 0 qty_require,gantt.expiredate,
                 max(gantt.paretblname) paretblname,min(gantt.paretblid) paretblid,
-                s.locas_id_shelfno locas_id_trn,itm.taxflg ,
-                sto.locas_id_shelfno locas_id_to_trn,spare.locas_id_shelfno locas_id_pare
+                s.locas_id_shelfno locas_id_trn,max(itm.taxflg) taxflg,
+                sto.locas_id_shelfno locas_id_to_trn,0 locas_id_pare
 					    from trngantts gantt
               inner join itms itm on itm.id = gantt.itms_id_trn
               inner join shelfnos s on s.id = gantt.shelfnos_id_trn
               inner join  shelfnos sto on sto.id = gantt.shelfnos_id_to_trn 
-              inner join  shelfnos spare on spare.id = gantt.shelfnos_id_pare 
 					    left join alloctbls allocsch on allocsch.trngantts_id = gantt.id and allocsch.srctblname like '%schs'
 					    left join alloctbls allocord on allocord.trngantts_id = gantt.id and allocord.srctblname like any(array['%ords','%insts','%reply%'])
 					    left join alloctbls allocstk on allocord.trngantts_id = gantt.id and allocstk.srctblname like any(array['%dlvs','%acts'])
 					    inner join (select itms_id_trn,processseq_trn,mkprdpurords_id,prjnos_id,optfixodate,sum(qty_handover) qty_handover 
                                   from mkordtmpfs
-																	group by   itms_id_trn,processseq_trn,mkprdpurords_id,prjnos_id,optfixodate)
-																	pare  on gantt.itms_id_pare = pare.itms_id_trn  and gantt.processseq_pare = pare.processseq_trn
+                                  where mkprdpurords_id = #{sel_rec["mkprdpurords_id"]} ---xxx
+                                        and prjnos_id = #{sel_rec["prjnos_id"]} and optfixodate =  '#{sel_rec["optfixodate"]}'
+                                        and itms_id_trn =  #{sel_rec["itms_id_trn"]}  and processseq_trn = #{sel_rec["processseq_trn"]}
+                                        and   mlevel = #{sel_rec["mlevel"]}
+																	group by   itms_id_trn,processseq_trn,mkprdpurords_id,prjnos_id,optfixodate
+                              )	pare  on gantt.itms_id_pare = pare.itms_id_trn  and gantt.processseq_pare = pare.processseq_trn
                      								and gantt.mkprdpurords_id_trngantt = pare.mkprdpurords_id
 				where  gantt.mkprdpurords_id_trngantt = #{sel_rec["mkprdpurords_id"]} ---xxx
-                    and pare.prjnos_id = #{sel_rec["prjnos_id"]} and pare.optfixodate =  '#{sel_rec["optfixodate"]}'
-                    and pare.itms_id_trn =  #{sel_rec["itms_id_trn"]}  and pare.processseq_trn = #{sel_rec["processseq_trn"]}
                     and (gantt.paretblname != gantt.tblname or gantt.paretblid != gantt.tblid)
                     and gantt.expiredate > current_date 
                     and gantt.tblname in ('prdschs','purschs','conschs')  --- gate custxxxsは除く
-                    and gantt.paretblname in ('prdschs','purschs','conschs')  --- gate custxxxsは除く
-        group by gantt.mkprdpurords_id_trngantt ,gantt.itms_id_trn ,gantt.itms_id_pare ,gantt.processseq_trn,	gantt.processseq_pare  ,
+                    and gantt.mlevel > #{sel_rec["mlevel"]}
+        group by gantt.mkprdpurords_id_trngantt ,gantt.itms_id_trn ,gantt.processseq_trn,	
 						    gantt.prjnos_id ,pare.mkprdpurords_id, gantt.shelfnos_id_to_trn ,gantt.shelfnos_id_trn, gantt.shelfnos_id_pare ,
                 gantt.maxqty,gantt.packqty,gantt.consumchgoverqty,gantt.consumminqty,gantt.consumunitqty,gantt.parenum,gantt.chilnum,
 						    gantt.expiredate,gantt.optfixodate,
-                s.locas_id_shelfno ,sto.locas_id_shelfno ,spare.locas_id_shelfno ,taxflg
+                s.locas_id_shelfno ,sto.locas_id_shelfno 
          order by gantt.prjnos_id ,gantt.itms_id_trn,gantt.processseq_trn,gantt.shelfnos_id_trn,gantt.shelfnos_id_to_trn,
                   gantt.optfixodate,	gantt.expiredate desc
               ----------------------------

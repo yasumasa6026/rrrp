@@ -1865,10 +1865,6 @@ module CtlFields
 	end	 
 
 	def proc_field_duedate tblnamechop,command_x,parent,nd
-        Rails.logger.debug " class:#{self} ,line:#{__LINE__},tblnamechop:#{tblnamechop},\n
-							command_x:#{command_x}\n
-							parent:#{parent}\n
-							nd:#{nd}"  
     	message = ""
 		case tblnamechop
 		  when /^pur|^prd|^dymsch|^cust/
@@ -2421,21 +2417,22 @@ module CtlFields
 	def field_qty_sch tblnamechop,command_x,parent,nd
 		qty_require = proc_cal_qty_sch(parent["qty_handover"].to_f,
 										nd["chilnum"],nd["parenum"],
-										nd["packqty"],nd["consumminqty"],nd["consumchgoverqty"])
+										nd["packqty"],nd["consumunitqty"],nd["consumminqty"],nd["consumchgoverqty"])
 		command_x["#{tblnamechop}_qty_sch"]  = qty_require
 		return command_x,qty_require
 	end	
 
-	def proc_cal_qty_sch(parent_qty,chilnum,parenum,packqty,consumminqty,consumchgoverqty)
+	def proc_cal_qty_sch(parent_qty,chilnum,parenum,packqty,consumunitqty,consumminqty,consumchgoverqty)
     	parenum == 0 ? parenum = 1.0 : parenum = parenum
     	packqty == 0 ? packqty = 1.0 : packqty = packqty
+			consumunitqty == 0 ? consumunitqty = 1.0 : consumunitqty = consumunitqty
 		qty_require = parent_qty * chilnum / parenum
 		# consumunitqty等については親に合わせて計算する。
-		qty_require = (qty_require / packqty).ceil *  packqty
+		qty_require = (qty_require / consumunitqty).ceil *  consumunitqty  
 		if consumminqty > qty_require
 			qty_require = consumminqty  ###最小消費数
 		end	
-		qty_require += consumchgoverqty   ###段取り時に余分に使用(消費)される数量
+		qty_require = ((qty_require + consumchgoverqty)/ packqty).ceil * packqty ## consumchgoverqty    ###段取り時に余分に使用(消費)される数量
 	end
 
 	def field_price_amt_tax_contractprice tblnamechop,command_x

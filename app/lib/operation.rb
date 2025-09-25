@@ -451,7 +451,7 @@ module Operation
 		  if trn["pare_qty_alloc"].to_f == 0   ###qty,qty_schの合計
 			  command_c["#{trn["tblname"].chop}_qty_sch"] = 0  ###update_prdpur_childではqty_schのみ
 		  else
-			  qty_require = CtlFields.proc_cal_qty_sch(trn["pare_qty_alloc"].to_f ,trn["chilnum"].to_f,trn["parenum"].to_f,
+			  qty_require = CtlFields.proc_cal_qty_sch(trn["pare_qty_alloc"].to_f ,trn["chilnum"].to_f,trn["parenum"].to_f,trn["packqty"],
                                                 trn["consumunitqty"].to_f,trn["consumminqty"].to_f,trn["consumchgoverqty"].to_f)
 			  if qty_require > (trn["qty"].to_f + trn["qty_stk"].to_f)
 				  command_c["#{trn["tblname"].chop}_qty_sch"]  = qty_require - (trn["qty"].to_f + trn["qty_stk"].to_f)

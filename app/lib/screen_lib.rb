@@ -1214,7 +1214,7 @@ module ScreenLib
 								gantt["qty_handover"] = 0
 								gantt["packqty"]	= 1
 								gantt["qty_sch"] = CtlFields.proc_cal_qty_sch(gantt["qty_sch_pare"].to_f,gantt["chilnum"].to_f,gantt["parenum"].to_f,
-															gantt["packqty"].to_f,gantt["consumminqty"].to_f,gantt["consumchgoverqty"].to_f)
+															gantt["packqty"].to_f,gantt["consumunitqty"],gantt["consumminqty"].to_f,gantt["consumchgoverqty"].to_f)
 								gantt["persons_id_upd"] = params[:person_id_upd]
 								last_lotstks = ArelCtl.proc_insert_trngantts(gantt,{})   ###子。孫への展開はない
 							rescue

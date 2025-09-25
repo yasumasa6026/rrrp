@@ -764,9 +764,9 @@ module ArelCtl
                            inner join  (select l2.id locas_id_to,l2.code locas_code_to,l2.name locas_name_to,s2.id shelfnos_id_to
                                           from shelfnos s2
                                           inner join locas l2  on s2.locas_id_shelfno = l2.id)xto on o.shelfnos_id_to_opeitm = xto.shelfnos_id_to
-						                            ---where  o.priority = 999　　 ---代替がある場合は、複数個発生
+						                            --- where  o.priority = 999 ---代替がある場合は、複数個発生
                   ) ope ---完成後の移動場所から親の場所に
-                   on  ope.itms_id = nditm.itms_id_nditm  and ope.processseq = nditm.processseq_nditm
+                   on  ope.itms_id = nditm.itms_id_nditm  and ope.processseq = nditm.processseq_nditm and ope.priority = nditm.priority_nditm
               where nditm.expiredate > current_date and nditm.opeitms_id = #{opeitms_id} and nditm.consumtype != 'run'
 			        order by itm.classlist_code,itm.itm_code_nditm 
         %  

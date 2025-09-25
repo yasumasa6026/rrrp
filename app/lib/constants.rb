@@ -31,6 +31,6 @@ module Constants
     Whr = 8  ###壱日の労働時間
 
     NilOpeitmsId = "99999999"  ###opeitms.idがなっかった場合の値
-    MaxSplitCnt = 10  ###最大分割数
+    MaxSplitCnt = 20  ###最大分割数
 
 end
