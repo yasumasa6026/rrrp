@@ -42,10 +42,10 @@ module Api
                       raise
 				            end
 		            end
-                foo = File.open("#{Rails.root}/vendor/postgresql/tblviewupdate#{(Time.now).strftime("%Y%m%d%H%M%S")}.sql", "w:UTF-8") # 書き込みモード
+                foo = File.open("#{Rails.root}/vendor/postgresql/create_view/tblviewupdate#{(Time.now).strftime("%Y%m%d%H%M%S")}.sql", "w:UTF-8") # 書き込みモード
                 foo.puts modifysql
                 foo.close
-                foo = File.open("#{Rails.root}/vendor/postgresql/message#{(Time.now).strftime("%Y%m%d%H%M%S")}.sql", "w:UTF-8") # 書き込みモード
+                foo = File.open("#{Rails.root}/vendor/postgresql/create_view/message#{(Time.now).strftime("%Y%m%d%H%M%S")}.sql", "w:UTF-8") # 書き込みモード
                 foo.puts message
                 foo.close
                 params[:message] = 	message 
@@ -55,10 +55,10 @@ module Api
               when 'createUniqueIndex'  ### createUniqueIndex
                 tbl =  TblField::TblClass.new
                 message,sql,status,errmsg = tbl.proc_createUniqueIndex params   ###params[:data]に画面の表示内容を含む
-                foo = File.open("#{Rails.root}/vendor/postgresql/tblviewupdate#{(Time.now).strftime("%Y%m%d%H%M%S")}.sql", "w:UTF-8") # 書き込みモード
+                foo = File.open("#{Rails.root}/vendor/postgresql/create_view/tblviewupdate#{(Time.now).strftime("%Y%m%d%H%M%S")}.sql", "w:UTF-8") # 書き込みモード
                 foo.puts sql
                 foo.close
-                foo = File.open("#{Rails.root}/vendor/postgresql/message#{(Time.now).strftime("%Y%m%d%H%M%S")}.sql", "w:UTF-8") # 書き込みモード
+                foo = File.open("#{Rails.root}/vendor/postgresql/create_view/message#{(Time.now).strftime("%Y%m%d%H%M%S")}.sql", "w:UTF-8") # 書き込みモード
                 foo.puts message
                 foo.close
                 params[:message] = 	message 

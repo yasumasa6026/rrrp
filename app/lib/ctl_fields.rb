@@ -139,7 +139,7 @@ module CtlFields
 			end	
 			paragraphs.each do |fetch|  ###viewの複数keyの入力確認
 					cnt += 1 
-					valOfField = parse_linedata[fetch]
+					valOfField = parse_linedata[fetch].to_s
 					prefix,xno,srctblnamechop = fetch.split("_") ###xxx_sno_yyyy,xxx_cno_yyy用
 					if valOfField =~ /,/				 ###入力項目に「,」が入っていた時
 						params[:err] =  "error 3  --->not input comma:#{params[:index]} "
@@ -335,10 +335,10 @@ module CtlFields
                     parseLineData[key] =  rec[field].to_s  
                   else ###項目の引継ぎ  purord_opeitm_xxx => puract_opeitm_xxx
                     	if (val == ""  or val.nil? or val.to_s == "0" ) 
-                        if (screentblnamechop =~ /cust/ and viewtblnamechop =~ /cust/ and screentblnamechop !~ /cust$/)  or
-                            (screentblnamechop =~ /pur/ and viewtblnamechop =~ /pur/)   or
-                             (screentblnamechop =~ /prd/ and viewtblnamechop =~ /prd/)  or
-                              (screentblnamechop =~ /itm/ and viewtblnamechop =~ /itm/)      
+                        if (screentblnamechop =~ /cust/ and fetchview =~ /_cust_|custrcv/ )  or
+                            (screentblnamechop =~ /pur/ and viewtblnamechop =~ /supplier/)   or
+                             (screentblnamechop =~ /prd/ and viewtblnamechop =~ /faciliti|erc/)  or
+                              (screentblnamechop =~ /opeitm|nditm/ and viewtblnamechop =~ /^itm|opeitm/)      
                           if rec["#{field.sub(/^#{screentblnamechop}/,"#{viewtblnamechop}")}"]  
                      					parseLineData[key]  = rec["#{field.sub(/^#{screentblnamechop}/,"#{viewtblnamechop}")}"]  
                               next
@@ -353,48 +353,67 @@ module CtlFields
                   end
               end
 						end
-            
-            # if field =~ /#{viewtblnamechop}/
-            #     ### r_custrcvplcsのtransports_id対応
-            #       parseLineData[key]  = rec["#{field}"]  
-            # end
-						if fetch 	=~ /_sno_/ and params[:aud] == "add" 
-							org = nil
+            #
+						### qty,qty_stkの修正 amt,cashの修正
+						#
+						org = nil
+						if fetch 	=~ /_sno_|_cno_/ and (parse_linedata["aud"] == "add" or params[:aud] =~ /add/)
 							case screentblnamechop
 							  when /prd|pur/
 								  str_srctbl_qty = "" ###次のステータスに移行していないqtyを求める。　
 								  ### qtyのセット
-								  if  (viewtblnamechop =~ /sch$/ and screentblnamechop =~ /ord$/) 
-									  if parse_linedata[(screentblnamechop+"_qty")].to_s == "0"   ###初期値でzeroがセットされていること
-										  str_srctbl_qty = "max(srctbl.qty_sch) srctbl_qty"
-									  end
-								  end
-								  if	(viewtblnamechop =~ /ord$/ and screentblnamechop =~ /inst$/) or 
-									  (viewtblnamechop =~ /ord$/ and screentblnamechop =~ /replyinput/) or
-										(viewtblnamechop =~ /inst$/ and screentblnamechop =~ /replyinput/)   
-									  if parse_linedata[(screentblnamechop+"_qty")].to_s == "0"   ###初期値でzeroがセットされていること
-										  str_srctbl_qty = "max(srctbl.qty) srctbl_qty"
-									  end
-								  end
-								  if 	(viewtblnamechop =~ /ord$/ and screentblnamechop =~ /dlv$|act$/) or 
-									    (viewtblnamechop =~ /inst$/ and screentblnamechop =~ /dlv$|act$/) or
-										  (viewtblnamechop =~ /replyinput$/ and screentblnamechop =~ /dlv$|act$/)   
+									case viewtblnamechop
+									  when /sch$/
+									  	if parse_linedata[(screentblnamechop+"_qty")].to_s == "0"   ###初期値でzeroがセットされていること
+										  	str_srctbl_qty = "sum(srctbl.qty_sch) srctbl_qty"   ###実質は一件のみ
+									  	end
+										when /ord$|inst$|replyinput/   
+									  	if parse_linedata[(screentblnamechop+"_qty")].to_s == "0"   ###初期値でzeroがセットされていること
+										  	str_srctbl_qty = "sum(srctbl.qty) srctbl_qty"
+									  	end
+								  	when /dlv$|act$/   
 									    if parse_linedata[(screentblnamechop+"_qty_stk")].to_s == "0"   ###初期値でzeroがセットされていること
-										    str_srctbl_qty = "max(srctbl.qty) srctbl_qty"
+										    str_srctbl_qty = "sum(srctbl.qty_stk) srctbl_qty"
 									    end
 								  end
 								  if str_srctbl_qty != ""
-									  strsql = %Q% select sum(link.qty_src) qty_src ,#{str_srctbl_qty}
-											from #{viewtblnamechop}s srctbl 
-											left join  linktbls link  on srctbl.id = link.srctblid	and link.srctblname = '#{viewtblnamechop}s'
+											if fetch 	=~ /_cno_/ 
+						 						if  parseLineData[(screentblnamechop+"_shelfno_id")] != ""  and  !parseLineData[(screentblnamechop+"_shelfno_id")].nil? and
+						 							screentblnamechop =~ /pur/
+						 								str_loca_code = "and shelfnos_id = #{parseLineData[(screentblnamechop+"_shelfno_id")]}"
+									  				strsql = %Q% select sum(link.qty_src) qty_src ,#{str_srctbl_qty}
+																					from #{viewtblnamechop}s srctbl 
+																		left join  linktbls link  on srctbl.id = link.srctblid	and link.srctblname = '#{viewtblnamechop}s'
 																		and (link.srctblname != link.tblname or link.srctblid != link.tblid)
-																		and link.tblid != '#{parse_linedata[(screentblnamechop+"_id")]}' 
-											where srctbl.sno = '#{parse_linedata[(screentblnamechop+"_sno_"+viewtblnamechop)]}' ---key.split("_")[1] :sno
-											group by srctbl.id
-										  %  
+																		and link.tblid != #{rec[(screentblnamechop+"_id")]} 
+																		where srctbl.sno = '#{parse_linedata[(screentblnamechop+"_sno_"+viewtblnamechop)]}' ---key.split("_")[1] :sno
+																		#{str_loca_code}
+																		group by srctbl.id
+										  						%
+														prev_strsql = %Q% select #{str_srctbl_qty}
+																	from #{viewtblnamechop}s srctbl 
+																		where srctbl.sno = '#{parse_linedata[(screentblnamechop+"_sno_"+viewtblnamechop)]}' ---key.split("_")[1] :sno
+																		#{str_loca_code}
+																		group by srctbl.id
+										  						%
+						 						end
+											else	
+									  		strsql = %Q% select sum(link.qty_src) qty_src ,#{str_srctbl_qty}
+																					from #{viewtblnamechop}s srctbl 
+																		left join  linktbls link  on srctbl.id = link.srctblid	and link.srctblname = '#{viewtblnamechop}s'
+																		and (link.srctblname != link.tblname or link.srctblid != link.tblid)
+																		and link.tblid != #{rec[(screentblnamechop+"_id")]} 
+																		where srctbl.sno = '#{parse_linedata[(screentblnamechop+"_sno_"+viewtblnamechop)]}' ---key.split("_")[1] :sno
+																		group by srctbl.id
+										  						%
+												prev_strsql = %Q% select #{str_srctbl_qty}
+																	from #{viewtblnamechop}s srctbl 
+																		where srctbl.sno = '#{parse_linedata[(screentblnamechop+"_sno_"+viewtblnamechop)]}' ---key.split("_")[1] :sno
+																		group by srctbl.id
+										  						%
+											end  
 									    org =  ActiveRecord::Base.connection.select_one(strsql)
 								  end
-								  next if str_srctbl_qty == ""
 							  when /pay|bill/
 								  str_srctbl_amt = ""
 								  if 	(viewtblnamechop =~ /ord$/ and screentblnamechop =~ /act$/) or 
@@ -408,96 +427,65 @@ module CtlFields
 											from #{viewtblnamechop}s srctbl 
 											left join  srctbllinks link  on srctbl.id = link.srctblid	and link.srctblname = '#{viewtblnamechop}s'
 																		and (link.srctblname != link.tblname or link.srctblid != link.tblid)
-											where srctbl.sno = '#{parse_linedata[(screentblnamechop+"_sno_"+viewtblnamechop)]}' ---key.split("_")[1] :sno
+											where srctbl.sno = #{parse_linedata[(screentblnamechop+"_sno_"+viewtblnamechop)]} ---key.split("_")[1] :sno
 											group by srctbl.id
 										  %  
 									  org =  ActiveRecord::Base.connection.select_one(strsql)
 								  end
 							end
-						end
-						if fetch 	=~ /_cno_/ and (parse_linedata["aud"] == "add" or params[:aud] =~ /add/)
-							org = nil					
-							str_loca_code = ""
-							str_srctbl_qty = ""
-							if  parseLineData[(screentblnamechop+"_shelfno_id")] != ""  and  !parseLineData[(screentblnamechop+"_shelfno_id")].nil? and
-								screentblnamechop =~ /pur/
-								str_loca_code = "and shelfnos_id = #{parseLineData[(screentblnamechop+"_shelfno_id")]}"
-							end
-							if  parse_linedata[(screentblnamechop+"_shelfno_id")] != ""  and  !parseLineData[(screentblnamechop+"_shelfno_id")].nil? and
-								screentblnamechop =~ /cust/
-								str_loca_code = " and locas_id_cust = #{parseLineData[(screentblnamechop+"_loca_id")]}"
-							end ###次のステータスに移行していないqtyを求める。　
-							if parseLineData[(screentblnamechop+"_qty")].to_s == "0"   ###初期値でzeroがセットされていること
-								if  (viewtblnamechop =~ /sch$/ and screentblnamechop =~ /ord$/) 
-									str_srctbl_qty = "max(srctbl.qty_sch) srctbl_qty"
+							if org	###既に状態が変化している
+								case screentblnamechop
+							  	when /prd|pur/
+								  		if org["qty_src"] >= org["srctbl_qty"] 
+									  		case screentblnamechop
+									    		when /ord$|inst$|replyinput/
+									  				params[:err] =  "error 4 1--->over qty  line:#{params[:index]} "
+										    		parseLineData[(screentblnamechop+"_qty_gridmessage")] =  "error 4 2--->over qty"
+									    		when /dlv$|act$/
+									  					params[:err] =  "error 4 1--->over qty  line:#{params[:index]} "
+										    			parseLineData[(screentblnamechop+"_qty_gridmessage")] =  "error 4 2--->over qty"
+									  		end
+											else
+									  		case screentblnamechop
+									    		when /ord$|inst$|replyinput/
+														parse_linedata[(screentblnamechop+"_qty")] = org["srctbl_qty"].to_f - org["qty_src"].to_f
+									    		when /dlv$|act$/
+														parse_linedata[(screentblnamechop+"_qty_stk")] = org["srctbl_qty"].to_f - org["qty_src"].to_f
+									  		end
+											end
+							  	when /pay|bill/
+								    	if org["amt_src"].to_f >= org["srctbl_amt"].to_f 
+									    	params[:err] =  "error 4 1--->over cash  line:#{params[:index]} "
+									    	case screentblnamechop
+									      	when /inst$/
+										      	parseLineData[(screentblnamechop+"_amt_gridmessage")] =  "error 4 3 --->over cash"
+									      	when /act$/
+										      	parseLineData[(screentblnamechop+"_cash_gridmessage")] =  "error 4 3 --->over cash"
+									    	end
+											else
+                    	end
+                end
+							else
+								params[:err] =  nil
+								prev_tbl =  ActiveRecord::Base.connection.select_one(prev_strsql)
+								case screentblnamechop
+									when /pur|prd/
+										case viewtblnamechop
+											when /schs$/	
+														parse_linedata[(screentblnamechop+"_qty")] = prev_tbl["qty_sch"]
+											when /ords$|inst$|replyinput/	
+												case screentblnamechop
+													when /inst$|replyinput/
+														parse_linedata[(screentblnamechop+"_qty")] = prev_tbl["qty"]
+													when /dlvs$|acts$/
+														parse_linedata[(screentblnamechop+"_qty_stk")] = prev_tbl["qty"]
+												end
+											when /dlv$|act$/
+														parse_linedata[(screentblnamechop+"_qty_stk")] = prev_tbl["qty_stk"]
+										end
+									when /bill|pay/
+										  parseLineData[(screentblnamechop+"_amt")] = prev_tbl["srctbl_amt"].to_f  
 								end
-								if	(viewtblnamechop =~ /ord$/ and screentblnamechop =~ /inst$/) or 
-									(viewtblnamechop =~ /ord$/ and screentblnamechop =~ /replyinput/) or
-										(viewtblnamechop =~ /inst$/ and screentblnamechop =~ /replyinput/)   
-											str_srctbl_qty = "max(srctbl.qty) srctbl_qty"
-								end
-							end
-							if parse_linedata[(screentblnamechop+"_qty_stk")].to_s == "0"   ###初期値でzeroがセットされていること
-								if 	(viewtblnamechop =~ /ord$/ and screentblnamechop =~ /dlv$|act$/) or 
-									(viewtblnamechop =~ /inst$/ and screentblnamechop =~ /dlv$|act$/) or
-										(viewtblnamechop =~ /replyinput$/ and screentblnamechop =~ /dlv$|act$/)   
-											str_srctbl_qty = "max(srctbl._stk) srctbl_qty"
-								end
-							end
-							if str_srctbl_qty != ""
-								strsql = %Q% select sum(link.qty_src) qty_src, #{str_srctbl_qty}
-											from #{viewtblnamechop}s srctbl 
-											left join linktbls link  on srctbl.id = link.srctblid	and link.srctblname = '#{viewtblnamechop}s'
-																		and (link.srctblname != link.tblname or link.srctblid != link.tblid)
-																		and link.tblid != '#{parse_linedata[(screentblnamechop+"_id")]}' 
-											where srctbl.cno = '#{parse_linedata[(screentblnamechop+"_cno_"+viewtblnamechop)]}'  #{str_loca_code}  
-											group by srctbl.id
-										% 
-								org =  ActiveRecord::Base.connection.select_one(strsql)
-							end
-							next if str_srctbl_qty == ""
-						end
-						if org	###org:ords ==> schs等
-							case screentblnamechop
-							  when /prd|pur/
-								  ###既に状態が変化しているかチェック
-								  if org["qty_src"].to_f >= org["srctbl_qty"].to_f 
-									  params[:err] =  "error 4 1--->over qty  line:#{params[:index]} "
-									  case screentblnamechop
-									    when /ord$|inst$|replyinput/
-										    parseLineData[(screentblnamechop+"_qty_gridmessage")] =  "error 4 2--->over qty"
-									    when /dlv$|act$/
-										  parseLineData[(screentblnamechop+"_qty_stk_gridmessage")] =  "error 4 3 --->over qty"
-									  end
-								  else
-									  params[:err] =  nil
-									  case screentblnamechop
-									    when /ord$|inst$|replyinput/
-										    parseLineData[(screentblnamechop+"_qty")] = org["srctbl_qty"].to_f   - org["qty_src"].to_f  
-									    when /dlv$|act$/
-										    parseLineData[(screentblnamechop+"_qty_stk")] =  org["srctbl_qty"].to_f   - org["qty_src"].to_f
-									  end
-								  end
-							  when /pay|bill/
-                  if screentblnamechop !~ /payment|bill$/
-								    if org["amt_src"].to_f >= org["srctbl_amt"].to_f 
-									    params[:err] =  "error 4 1--->over cash  line:#{params[:index]} "
-									    case screentblnamechop
-									      when /inst$/
-										      parseLineData[(screentblnamechop+"_amt_gridmessage")] =  "error 4 3 --->over cash"
-									      when /act$/
-										      parseLineData[(screentblnamechop+"_cash_gridmessage")] =  "error 4 3 --->over cash"
-									    end
-                    end
-                  end
-              end
-						else
-							params[:err] =  nil
-							case screentblnamechop
-								when /inst$/
-										  parseLineData[(screentblnamechop+"_amt")] = org["srctbl_amt"].to_f   - org["amt_src"].to_f  
-								when /act$/
-										  parseLineData[(screentblnamechop+"_cash")] =  org["srctbl_amt"].to_f   - org["amt_src"].to_f
 							end
 						end	
 						# if screentblnamechop != viewtblnamechop ### omit self table
@@ -505,30 +493,38 @@ module CtlFields
 						# 	parseLineData[field] =  rec["id"]
 						# end
 						case screentblnamechop ###masterの規定値をset
-						when /^custsch|^custord/
-							case  fetchview
-								when /custs$/
-									#
-                  ### crr_codeは必須 
-									#
-									# 	if parseLineData["crr_code"].nil? or parseLineData["crr_code"] == ""
-									# 		parseLineData["crr_code"] = rec["crr_code_bill_cust"]
-									# 		parseLineData["crr_name"] = rec["crr_name_bill_cust"]
-									# 		parseLineData["custord_crr_id"] = rec["bill_crr_id_bill_cust"]
-									# 	end
-									# 	if parseLineData["custord_contractprice"].nil? or parseLineData["custord_contractprice"] == ""
-									# 		 parseLineData["custord_contractprice"] = rec["cust_contractprice"]
-									# 	end
-								when  /opeitms$/ ### custschs,custordsのopeitms_idは出荷場所
-									if parseLineData["shelfno_code_fm"] == "" or parseLineData["shelfno_code_fm"].nil? 
-								  	 parseLineData["loca_code_shelfno_fm"] = rec["loca_code_shelfno_to_opeitm"]  ###opeitm.shelfno_code_to_opeitm 完成後の置き場所゜
-								   	parseLineData["shelfno_code_fm"] = rec["shelfno_code_to_opeitm"]  ###opeitm.shelfno_code_to_opeitm 完成後の置き場所゜
-								   	parseLineData["loca_name_shelfno_fm"] = rec["loca_name_shelfno_to_opeitm"]  ###opeitm.shelfno_code_to_opeitm 完成後の置き場所゜
-								   	parseLineData["shelfno_name_fm"] = rec["shelfno_name_to_opeitm"]  ###opeitm.shelfno_code_to_opeitm 完成後の置き場所゜
-								   	parseLineData["#{screentblnamechop}_shelfno_id_fm"] = rec["opeitm_shelfno_id_to_opeitm"].to_s  ###opeitm.shelfno_code_to_opeitm 完成後の置き場所゜
-										###custord.shelfno_code_fm 客先への出荷のための梱包場所
-									end
-              end
+							when /^custsch|^custord/
+								case  fetchview
+									when /custs$/
+										#
+                  	### crr_codeは必須 
+										#
+										# 	if parseLineData["crr_code"].nil? or parseLineData["crr_code"] == ""
+										# 		parseLineData["crr_code"] = rec["crr_code_bill_cust"]
+										# 		parseLineData["crr_name"] = rec["crr_name_bill_cust"]
+										# 		parseLineData["custord_crr_id"] = rec["bill_crr_id_bill_cust"]
+										# 	end
+										# 	if parseLineData["custord_contractprice"].nil? or parseLineData["custord_contractprice"] == ""
+										# 		 parseLineData["custord_contractprice"] = rec["cust_contractprice"]
+										# 	end
+									when  /opeitms$/ ### custschs,custordsのopeitms_idは出荷場所
+										if parseLineData["shelfno_code_fm"] == "" or parseLineData["shelfno_code_fm"].nil? 
+								  		 	parseLineData["loca_code_shelfno_fm"] = rec["loca_code_shelfno_to_opeitm"]  ###opeitm.shelfno_code_to_opeitm 完成後の置き場所゜
+								   			parseLineData["shelfno_code_fm"] = rec["shelfno_code_to_opeitm"]  ###opeitm.shelfno_code_to_opeitm 完成後の置き場所゜
+								   			parseLineData["loca_name_shelfno_fm"] = rec["loca_name_shelfno_to_opeitm"]  ###opeitm.shelfno_code_to_opeitm 完成後の置き場所゜
+								   			parseLineData["shelfno_name_fm"] = rec["shelfno_name_to_opeitm"]  ###opeitm.shelfno_code_to_opeitm 完成後の置き場所゜
+								   			parseLineData["#{screentblnamechop}_shelfno_id_fm"] = rec["opeitm_shelfno_id_to_opeitm"].to_s  ###opeitm.shelfno_code_to_opeitm 完成後の置き場所゜
+												###custord.shelfno_code_fm 客先への出荷のための梱包場所
+										end
+								end
+							when /^pursch|^purord/
+								case  fetchview
+									when  /opeitms$/ ### custschs,custordsのopeitms_idは出荷場所
+										if screentblnamechop =~ /pursch|purord/ and (parseLineData["loca_code_supplier"] == "" or parseLineData["loca_code_supplier"].nil?)
+								  	 		parseLineData["loca_code_supplier"] = rec["loca_code_shelfno_opeitm"]  ###vendor code
+								  	 		parseLineData["loca_name_supplier"] = rec["loca_name_shelfno_opeitm"]  ###vendor name
+										end
+								end
             end
 						# when /^custacthead/
 						# 	case  fetchview
@@ -1826,8 +1822,10 @@ module CtlFields
 		case  tblnamechop 
 		 		when /^pur/
 		 			command_x["itm_taxflg"] = nd["taxflg"]
-          strsql = %Q&select id from suppliers where  locas_id_supplier = #{nd["locas_id"]}&
-		 			command_x["pursch_supplier_id"] =  ActiveRecord::Base.connection.select_value(strsql)
+          strsql = %Q&select id,contractprice from suppliers where  locas_id_supplier = #{nd["locas_id"]}&
+		 			supplier =  ActiveRecord::Base.connection.select_one(strsql)
+		 			command_x["pursch_supplier_id"] =  supplier["id"]
+		 			command_x["pursch_contractprice"] =  supplier["contractprice"]
         when /^prd/
           ### prdschsにはworkplaces_idはない
 		end

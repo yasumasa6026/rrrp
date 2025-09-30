@@ -70,14 +70,14 @@ export function* ScreenSaga({ payload: {params}  }) {
               return   
             case "fetch_request":  //viewによる存在チェック内容表示
             case "check_request":   //項目毎のチェック帰りはfetchと同じ
-                    lineData = response.data.params.parse_linedata
+                    lineData = response.data.params.parse_linedata      
                      params = {...params,...response.data.params,screenFlg:response.data.params.screenFlg,
                                  screenCode:response.data.params.screenCode,err:response.data.params.err} 
                                  if(params.screenFlg==="second"){
-                                     yield put({type: SECONDFETCH_RESULT, payload:{params:params,index:parseInt(params.index),lineData:lineData,headers:response.headers }}) 
+                                     yield put({type: SECONDFETCH_RESULT, payload:{params:params,index:parseInt(params.index),lineData:lineData,headers:response.headers,message:message }}) 
                                  }else{
                                      // console.log(lineData)
-                                     yield put({type: FETCH_RESULT, payload:{params:params,index:parseInt(params.index),lineData:lineData,headers:response.headers }}) 
+                                     yield put({type: FETCH_RESULT, payload:{params:params,index:parseInt(params.index),lineData:lineData,headers:response.headers,message:message }}) 
                                  }  
                     return  
             case "delete":

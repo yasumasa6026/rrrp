@@ -100,7 +100,6 @@ const AutoCell = ({
               //           handleDataSetRequest(data,params)}
               // }
              updateData(index, lineData) 
-             console.log(` data[index] ${data[index][msg_id]},msg_id ${msg_id}`)
              handleDataSetRequest(data,params)
         }    
   
@@ -120,8 +119,8 @@ const AutoCell = ({
                 handleScreenRequest(params,data)
             }else{
                 let msg_id = "confirm_gridmessage"
-                let gridmsg_id = `${lineData["errPath"]}_gridmessage`
-                updateData(index, {[msg_id]:" error " + lineData[msg_id],[gridmsg_id]: " error " + lineData[msg_id],confirm: false})
+                let gridmsg_id = lineData["errPath"]
+                updateData(index, {[msg_id]:" error " + lineData[msg_id],[gridmsg_id]: " error " + lineData[gridmsg_id],confirm: false})
                 handleDataSetRequest(data,params)
             }
         }   
@@ -162,8 +161,6 @@ const AutoCell = ({
                      //onFocus={(e) => {setFieldsByonFocus(e)
                       //               }}
                       readOnly={setProtectFunc(id,row.values)}
-                      // readOnly={row.values.fieldcode_ftype?setProtectFunc(id,row.values.fieldcode_ftype ):
-                      //           row.values.screenfield_type?setProtectFunc(id,row.values.screenfield_type):false}
                       onBlur={(e) => setFieldsByonBlur(e)}
                       className={setClassFunc(id,data[index],className,params.aud)}
                       onKeyUp={(e) => {  
@@ -173,12 +170,7 @@ const AutoCell = ({
                                  }else{e.key === "Enter"&&toggleSubForm&&alert("can not use filer and sord when subForm using")}
                                 }
                       }
-                      //data-tooltip-offset={30}  // data-tooltip-content={`${data[index][id + '_gridmessage']||""}`}
-                      //data-tooltip-html={`<sp>${data[index][id + '_gridmessage']}</sp>`}
-                      //data-tooltip-content={`${data[index][id + '_gridmessage']}`}
-                      //data-tooltip-id={`Tooltip_#${id}_${index}`}
-                      //Sdata-tooltip-position-strategy="fixed"
-                      //data-tooltip-place="buttom"
+                    
                     onClick={()=>data[index][id + '_gridmessage']&&alert(data[index][id + '_gridmessage']) }
                     />  
                 {/*    </a>
@@ -226,7 +218,7 @@ const AutoCell = ({
           )
 
         case /CheckNonEditable/.test(className):
-            return <input value={initialValue || ""} type="checkbox" readOnly />
+            return <input value={initialValue || ""} type="checkbox" disabled='disabled' />
     
         case /checkbox/.test(className):
           let chekboxClassName = setClassFunc(id,row.values,className,params.aud)
@@ -279,40 +271,6 @@ const DefaultColumnFilter = ({
 }
 
 
-
-// const DefaultColumnFilter = ({
-//   column:{ filterValue, setFilter, preFilteredRows, id} ,
-//   dropDownList,column
-//   }) => {
-//           if(column.filter==="includes"){  
-//               return (<select
-//                   value={filterValue||""}
-//                   onChange={e => {
-//                       setFilter(e.target.value || "")
-//                   }}
-//                 >
-//                   {typeof(dropDownList[id])!=="undefined"&&JSON.parse(dropDownList[id]).map((option, i) => (
-//                     <option key={i} value={option.value}>
-//                       {option.label}
-//                     </option>
-//                   ))}
-//                 </select>)
-//           }
-//           else{return (
-//               <input
-//               value={filterValue||""}
-//               onChange={e => {  // onBlur can not use
-//               setFilter(e.target.value || "")
-//                   }
-//               }
-//               />
-//           )}
-// }
-
-
-///
-///ScreenGrid7 
-///
 
 const ScreenGrid7 = ({ 
     screenwidth, hiddenColumns,fetch_check,

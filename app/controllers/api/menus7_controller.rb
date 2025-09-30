@@ -529,7 +529,7 @@ module Api
                     render json:{:grid_columns_info=>screen.grid_columns_info,:data=>pagedata,:params=>reqparams}
                   end
 
-            when /^rejection/
+            when /^rejection/  ###不良品
                 reqparams = params.dup   ### 
                 reqparams[:pageIndex] ||= 0
                 reqparams[:pageSize] ||= 10

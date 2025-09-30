@@ -552,9 +552,11 @@ module MkordinstLib
 					supplier = ActiveRecord::Base.connection.select_one(strsql)
 					command_c["supplier_amtround"] = supplier["amtround"]			
 					command_c[symqty] = cal_rec["qty_require"]
-          ###proc_judge_check_supplierprice(parseLineData,item,index,screenCode)
 					command_c,err = CtlFields.proc_judge_check_supplierprice(command_c,"purord_price",0,"r_purords")
           command_c["purord_remark"] = "create by mkord" ###
+          if err != ""
+            command_c["purord_remark"] += ",#{err}"
+          end
           command_c["purord_supplier_id"] = cal_rec["suppliers_id"]
           cal_rec["purord_amt"] = command_c["purord_amt"] 
           cal_rec["purord_qty"] = command_c[symqty]

@@ -56,6 +56,13 @@ extend self
                 else
                   str<< %Q%number()%
                 end
+                str << %Q%.transform((value, originalValue) => {
+                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
+                                    if (typeof originalValue === 'string') {
+                                            return parseFloat(originalValue.replace(/,/g, ''))
+                                        }
+                                    return value
+                                        })% 
                 if rec["screenfield_minvalue"].to_f > 0 
                     str<< %Q%.min(#{rec["screenfield_minvalue"]})%
                 end         
@@ -64,8 +71,8 @@ extend self
                 else
                     if rec["screenfield_dataprecision"].to_i > 0
                         nsize = rec["screenfield_dataprecision"].to_i - rec["screenfield_datascale"].to_i 
-                        if nsize > 16
-                            nsize = 16
+                        if nsize > 14
+                            nsize = 14
                         end
                         maxval = (10 ** nsize) - 1
                         str<< %Q%.max(#{maxval})% 
@@ -107,7 +114,7 @@ extend self
                     max(screenfield_updated_at) screenfield_updated_at,screenfield_paragraph,
                     screenfield_dataprecision,screenfield_datascale
                     from r_screenfields
-                    where screenfield_editable !=0 and screenfield_selection != '0' and screenfield_hideflg != '1' and  
+                    where screenfield_editable != '0' and screenfield_selection != '0' and screenfield_hideflg != '1' and  
                     screenfield_expiredate > current_date
                     #{if screenCode then " and pobject_code_scr = '#{screenCode}' " else "" end }
                     group by pobject_code_sfd,screenfield_type,screenfield_indisp,screenfield_maxvalue,screenfield_edoptmaxlength,

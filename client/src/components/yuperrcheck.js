@@ -27,11 +27,14 @@ export  function yupErrCheck (schema,field,linedata) {
       return linedata
    }      
     catch(err){
-      linedata.confirm = false
-                linedata[`${field}_gridmessage`] =  err.errors?" error " + err.errors.join(","):" error yupErrCheck"
-                linedata["confirm_gridmessage"] = err.errors?" error " + err.errors.join(","):" error yupErrCheck"
-                linedata["errPath"] = field
-                return linedata
+        linedata.confirm = false
+        linedata["confirm_gridmessage"] = " error yupErrCheck"
+        err.errors.map((fd) => {
+            mfield = fd.split(" ")[0]+"_gridmessage"
+            linedata[mfield] = " error "+ fd
+            linedata["errPath"] = mfield
+        })  
+    return linedata
     }
 } 
 
