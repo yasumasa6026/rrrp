@@ -5,7 +5,7 @@ import {MENU_REQUEST,MENU_SUCCESS,MENU_FAILURE,
           SCREEN_CONFIRM7, SCREEN_CONFIRM7_SUCCESS,CONFIRMALL_SUCCESS,
           SECOND_CONFIRMALL_REQUEST,SECOND_CONFIRMALL_SUCCESS,
           SECOND_REQUEST,SECOND_SUCCESS7,SECOND_CONFIRM7,MKSHPORDS_SUCCESS,
-          SECOND_FAILURE, } from '../../actions'
+          SECOND_FAILURE,SCREEN_DATASET } from '../../actions'
 const initialValues = {
   isSubmitting:false,
   isSignUp:false,
@@ -125,6 +125,16 @@ const menureducer =  (state= initialValues , actions) =>{
                     firstView:true,
                     hostError:null,
                     message:actions.payload.message,
+      }
+
+      
+    case SCREEN_DATASET:  
+          let idx = actions.payload.params.index
+          return {...state,
+                    loading:true,
+                    firstView:true,
+                    hostError:actions.payload.data[idx].confirm_gridmessage,
+                    message:null,
       }
 
     

@@ -1119,8 +1119,12 @@ module RorBlkCtl
 			values = ""  ###insert into(....) value(xxx)のxxx
 			tblarel.each do |key,val|
 				fields << key.to_s + ","
-				skey = if reqTblName.downcase =~ /^sio|^bk/ then key.to_s.split("_",2)[1] else key.to_s end
-				ftype = Constants::Ftype[key]
+				if key.to_s =~ /^sio_/	### sio_はsio.テーブル
+					values << 	%Q&  '#{val}',&
+					next
+				end			
+				skey = if reqTblName.downcase =~ /^sio_/  then key.to_s.split("_",2)[1] else key.to_s end
+				ftype = Constants::Ftype[skey]
 			 		values << 	case ftype
 			 			when /char/  ###db type
 							case val.class.to_s
@@ -1145,7 +1149,7 @@ module RorBlkCtl
 									%Q& '#{val}',&
 								end
 							when "String"	 
-								case key.to_s
+								case skey
 			 					when "created_at","updated_at","isudate"
 			 						%Q& cast('#{val}' as timestamp),&
 								when "expiredate"
@@ -1154,16 +1158,16 @@ module RorBlkCtl
 									%Q& cast('#{val}' as timestamp),&
 								end
 							else
-							   Rails.logger.debug " line #{__LINE__} : error val.class #{val.class}: #{ftype}  key #{key} "
-							   Rails.logger.debug" line #{__LINE__} : error val.class  #{val.class}: #{ftype}  key #{key} "
+							   Rails.logger.debug " line #{__LINE__} : error val.class #{val.class}: #{ftype}  key #{skey} "
+							   Rails.logger.debug" line #{__LINE__} : error val.class  #{val.class}: #{ftype}  key #{skey} "
 							end	
 						else
-							if reqTblName.downcase =~ /^sio_|^bk_/
-								%Q&'#{val.to_s.gsub("'","''")}',&
+							if reqTblName.downcase =~ /^sio_/
+								%Q&  '#{val}',&
 							else
 								###Rails.logger.debug"line:#{__LINE__} error reqTblName:#{reqTblName},val.class:#{val.class}, ftype:#{ftype},key:#{key},tblarel:#{tblarel}"
-                raise  "line:#{__LINE__} error reqTblName:#{reqTblName},val.class:#{val.class}, ftype:#{ftype},key:#{key},tblarel:#{tblarel}"
-							end	
+                raise  "line:#{__LINE__} error reqTblName:#{reqTblName},val.class:#{val.class}, ftype:#{ftype},key:#{skey},tblarel:#{tblarel}"
+							end
 			 			end
 			end
 			case reqTblName.downcase
@@ -1221,12 +1225,8 @@ module RorBlkCtl
 				  			raise " class:#{self} ,line:#{__LINE__} ,error val.class:#{ftype} ,key:#{key} "
 			   			end	
 					else
-						if tblname.downcase =~ /^sio_|^bk_/
-							%Q& #{key} = '#{val.to_s.gsub("'","''")}',&
-						else
 							Rails.logger.debug " class:#{self} : line #{__LINE__} : error val.class #{ftype} : key #{key} : Ftype #{Constants::Ftype}"
 							raise " class:#{self} : line #{__LINE__} : tblname #{tblname} : tbldata:#{tbldata} " 
-						end	
 					end
 				else
 					raise 3.times{Rails.logger.debug" error ftype is nil ,class:#{self} ,line:#{__LINE__}, key:#{key} "}

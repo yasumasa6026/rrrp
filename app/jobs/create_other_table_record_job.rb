@@ -495,7 +495,8 @@ class CreateOtherTableRecordJob < ApplicationJob
                           gantt["tblname"] = nd["prdpur"] + "schs"
                           gantt["consumtype"] = (nd["consumtype"]||="CON")
                       end
-                      gantt["qty_handover"] = (qty_require / nd["packqty"]).ceil * nd["packqty"] 
+                      ### gantt["qty_handover"] = (qty_require / nd["packqty"]).ceil * nd["packqty"] 
+                      gantt["qty_handover"] = qty_require   
                       gantt["duedate_trn"] = command_c["#{gantt["tblname"].chop}_duedate"]
                       gantt["toduedate_trn"] = command_c["#{gantt["tblname"].chop}_toduedate"]
                       gantt["qty_require"] = qty_require
@@ -916,7 +917,8 @@ class CreateOtherTableRecordJob < ApplicationJob
                                   group by t.itms_id_trn,t.processseq_trn,t.tblname,t.tblid
                                    %
                   gate_tblname = ActiveRecord::Base.connection.select_one(strsql)
-                  strsql = %Q%select prd.*,o.itms_id,o.processseq from #{gate_tblname["tblname"]} prd
+                  strsql = %Q%select prd.*,o.itms_id,o.processseq,o.packqty,o.maxqty
+                                          from #{gate_tblname["tblname"]} prd
                                           inner join opeitms o on o.id = prd.opeitms_id
                                         where prd.id = #{gate_tblname["tblid"]} for update%
                   gate_tbldata = ActiveRecord::Base.connection.select_one(strsql)
@@ -931,6 +933,8 @@ class CreateOtherTableRecordJob < ApplicationJob
                     gantt["toduedate_trn"] = gate_tbldata["toduedate"]
                     gantt["starttime_trn"] = gate_tbldata["starttime"]
                     gantt["processseq_trn"] = gate_tbldata["processseq"]
+                    gantt["packqty"] = gate_tbldata["packqty"]
+                    gantt["maxqty"] = gate_tbldata["maxqty"]
                     gantt["qty_sch"] = gantt["qty_handover"] = gate_tbldata["qty_sch"] = 0
                     gantt["shelfnos_id_trn"] = gate_tbldata["shelfnos_id"]
                     gantt["shelfnos_id_to_trn"] = gate_tbldata["shelfnos_id_to"]

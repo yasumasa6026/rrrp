@@ -150,7 +150,7 @@ module Api
                                 else
                                     raise"#{Time.now self} line:#{__LINE__},screnCode ummatch params[screenCode]:#{params[:screenCode]},selected[screenCode]:#{selected["screenCode"]}"
                                 end
-                                strsql = %Q&select #{grid_columns_info[:select_fields]} from #{params[:screenCode]} where #{strSno}&
+                                strsql = %Q&select #{grid_columns_info[:select_fields]} from #{params[:view]} where #{strSno}&
                             else
                                 fields =  ActiveRecord::Base.connection.select_values(%Q&
                                                 select pobject_code_sfd from func_get_screenfield_grpname('#{params[:email]}','r_#{params[:screenCode].split("_")[1]}')&)
@@ -214,7 +214,7 @@ module Api
                                     Rails.logger.debug%Q&#{Time.now self} line:#{__LINE__} screnCode ummatch params[screenCode]:#{params[:screenCode]}  selected[screenCode]:#{selected["screenCode"]} &
                                     raise
                                 end
-                                strsql = %Q&select #{grid_columns_info[:select_fields]} from #{params[:screenCode]} where #{strSno}&
+                                strsql = %Q&select #{grid_columns_info[:select_fields]} from #{params[:view]} where #{strSno}&
                             else
                                 fields =  ActiveRecord::Base.connection.select_values(%Q&
                                                 select pobject_code_sfd from func_get_screenfield_grpname('#{params[:email]}','r_#{params[:screenCode].split("_")[1]}')&)

@@ -451,8 +451,8 @@ module MkordinstLib
 		symqty = tblord + "_qty"
 		symqtyCase = tblord + "_qty_case"
     ###親の消費単位にあわせ自身の作業単位に変換する。
-		command_c[symqty] =  cal_rec["qty_require"]
-		command_c[symqtyCase] =  cal_rec["qty_require"] / cal_rec["packqty"]
+		## command_c[symqty] =  cal_rec["qty_require"]
+		command_c[symqtyCase] =  command_c[symqty] = (cal_rec["qty_require"] / cal_rec["packqty"]).ceil * cal_rec["packqty"]  ###端数切り上げ
 		command_c["#{tblord}_duedate"] = cal_rec["duedate_trn"]
 		command_c["#{tblord}_starttime"] = cal_rec["starttime_trn"]
 		command_c["#{tblord}_person_id_upd"] = setParams[:person_id_upd]
@@ -532,7 +532,7 @@ module MkordinstLib
 		command_c["#{tblord}_gno"] = "" ### 	
 		command_c["#{tblord}_prjno_id"] = cal_rec["prjnos_id"] ### 	
     # 
-    ## 代替品　存在チェック
+    ## 代替品　存在チェック remarkにセット
     #
     strsql = %Q&
           select 1 from opeitms o
@@ -969,8 +969,7 @@ module MkordinstLib
 			  &)
 	end
 
-  
-	def select_schs_from_mkprdpurordv1_by_org(cal_rec)   ##alocctblのxxxschsは一件のみ
+  def select_schs_from_mkprdpurordv1_by_org(cal_rec)   ##alocctblのxxxschsは一件のみ
 		%Q&
 			select  1	from trngantts gantt #{@add_tbl_pare} --- 親の属性による選択mkord_term
 										where mkprdpurords_id_trngantt = #{cal_rec["mkprdpurords_id"]}
@@ -981,7 +980,8 @@ module MkordinstLib
 											
 			&
 	end
-	def select_schs_from_mkprdpurordv1_by_pare(cal_rec)   ##alocctblのxxxschsは一件のみ
+	
+  def select_schs_from_mkprdpurordv1_by_pare(cal_rec)   ##alocctblのxxxschsは一件のみ
 		%Q&
 			select  1	from trngantts gantt #{@add_tbl_pare} --- 親の属性による選択mkord_term
 										where mkprdpurords_id_trngantt = #{cal_rec["mkprdpurords_id"]}
@@ -1024,8 +1024,8 @@ module MkordinstLib
                       0,current_timestamp,current_timestamp,
 				              #{mkprdpurords_id}  mkprdpurords_id  ---xxx
 			            from trngantts gantt
-			            where gantt.mkprdpurords_id_trngantt = #{mkprdpurords_id}  
-                  and tblname in ('prdschs','purschs','conschs')  --- gate custxxxsは除く
+			            where gantt.mkprdpurords_id_trngantt = #{mkprdpurords_id}
+                  ---and tblname in ('prdschs','purschs','conschs')  --- gate custxxxsは除く
 			            group by gantt.prjnos_id,gantt.itms_id_trn,gantt.processseq_trn,gantt.shelfnos_id_trn,gantt.shelfnos_id_to_trn,
                             gantt.itms_id_pare,gantt.processseq_pare,gantt.optfixoterm
 		        &)
@@ -1037,16 +1037,16 @@ module MkordinstLib
 			          select nextval('mkordterms_seq') id,prjnos_id ,
 				                max(gantt.mlevel), 
                         gantt.itms_id_trn,gantt.processseq_trn, gantt.shelfnos_id_trn,gantt.shelfnos_id_to_trn,
-                        gantt.itms_id_pare,gantt.processseq_pare,
-                        (cast(max(gantt.duedate_trn) as date) - cast(max(gantt.optfixoterm) as integer)) optfixodate,
+                    ---    gantt.itms_id_pare,gantt.processseq_pare,
+                        (cast(max(gantt.duedate_trn) as date) - cast(gantt.optfixoterm as integer)) optfixodate,
 				                mkprdpurords_id_trngantt  ---xxx
 			              from trngantts gantt
 			              where mkprdpurords_id_trngantt = #{mkprdpurords_id}  
                       and cast(gantt.duedate_trn as date) < optfixodate
                       and tblname in ('prdschs','purschs','conschs')  --- gate custxxxsは除く
 			              group by gantt.prjnos_id,gantt.itms_id_trn,gantt.processseq_trn,gantt.shelfnos_id_trn,gantt.shelfnos_id_to_trn, 
-                              gantt.itms_id_pare,gantt.processseq_pare, 
-                              mkprdpurords_id_trngantt
+                        ---      gantt.itms_id_pare,gantt.processseq_pare, 
+                              mkprdpurords_id_trngantt,gantt.optfixoterm
               &)
   end
   
@@ -1059,8 +1059,8 @@ module MkordinstLib
                 and itms_id_trn =  #{term["itms_id_trn"]} and processseq_trn = #{term["processseq_trn"]}
                 and shelfnos_id_trn =   #{term["shelfnos_id_trn"]}  and shelfnos_id_to_trn =   #{term["shelfnos_id_to_trn"]} 
                 ---  and itms_id_pare =  #{term["itms_id_pare"]} and processseq_pare = #{term["processseq_pare"]}
-                and cast(duedate_trn as date) >= cast('#{term["optfixodate"]}' as date) 
-                and cast(duedate_trn as date) <= cast(optfixodate as date)
+                and cast(duedate_trn as date) >= cast('#{term["optfixodate"]}' as date)
+                and cast(duedate_trn as date) <= cast(optfixodate as date) ---前回の纏めも含む
                 and mkprdpurords_id_trngantt = #{term["mkprdpurords_id"]}
             &)
 	end	
@@ -1145,22 +1145,65 @@ module MkordinstLib
                                   where mkprdpurords_id = #{sel_rec["mkprdpurords_id"]} ---xxx
                                         and prjnos_id = #{sel_rec["prjnos_id"]} and optfixodate =  '#{sel_rec["optfixodate"]}'
                                         and itms_id_trn =  #{sel_rec["itms_id_trn"]}  and processseq_trn = #{sel_rec["processseq_trn"]}
-                                        and   mlevel = #{sel_rec["mlevel"]}
+                                        and   mlevel = #{sel_rec["mlevel"]} and tblname != 'conschs'  
 																	group by   itms_id_trn,processseq_trn,mkprdpurords_id,prjnos_id,optfixodate
                               )	pare  on gantt.itms_id_pare = pare.itms_id_trn  and gantt.processseq_pare = pare.processseq_trn
                      								and gantt.mkprdpurords_id_trngantt = pare.mkprdpurords_id
 				where  gantt.mkprdpurords_id_trngantt = #{sel_rec["mkprdpurords_id"]} ---xxx
                     and (gantt.paretblname != gantt.tblname or gantt.paretblid != gantt.tblid)
                     and gantt.expiredate > current_date 
-                    and gantt.tblname in ('prdschs','purschs','conschs')  --- gate custxxxsは除く
+                    and gantt.tblname != 'conschs' --- gate custxxxsは除く
                     and gantt.mlevel > #{sel_rec["mlevel"]}
         group by gantt.mkprdpurords_id_trngantt ,gantt.itms_id_trn ,gantt.processseq_trn,	
 						    gantt.prjnos_id ,pare.mkprdpurords_id, gantt.shelfnos_id_to_trn ,gantt.shelfnos_id_trn, gantt.shelfnos_id_pare ,
                 gantt.maxqty,gantt.packqty,gantt.consumchgoverqty,gantt.consumminqty,gantt.consumunitqty,gantt.parenum,gantt.chilnum,
 						    gantt.expiredate,gantt.optfixodate,
                 s.locas_id_shelfno ,sto.locas_id_shelfno 
-         order by gantt.prjnos_id ,gantt.itms_id_trn,gantt.processseq_trn,gantt.shelfnos_id_trn,gantt.shelfnos_id_to_trn,
-                  gantt.optfixodate,	gantt.expiredate desc
+        union
+            select nextval('mkordtmpfs_seq'),  #{sel_rec["mlevel"] + 1} mlevel,
+                max(gantt.tblname) tblname,max(gantt.tblid) tblid,gantt.itms_id_trn ,max(gantt.itms_id_pare) itms_id_pare ,
+						    gantt.processseq_trn,	max(gantt.processseq_pare) processseq_pare  ,
+						    gantt.prjnos_id ,pare.mkprdpurords_id,
+						    gantt.shelfnos_id_to_trn ,gantt.shelfnos_id_trn,
+						    gantt.shelfnos_id_pare shelfnos_id_pare,max(gantt.shelfnos_id_to_pare) shelfnos_id_to_pare,
+                --- COALESCE関数は、NULLでない自身の最初の引数を返します。
+						    sum(coalesce(allocsch.qty_linkto_alloctbl,0)) qty_sch,sum(coalesce(allocord.qty_linkto_alloctbl,0)) qty,
+						    sum(coalesce(allocstk.qty_linkto_alloctbl,0)) qty_stk,gantt.optfixodate,
+						    min(gantt.duedate_trn) duedate_trn,	min(gantt.toduedate_trn) toduedate_trn,min(gantt.starttime_trn) starttime_trn,
+                gantt.maxqty,gantt.packqty,gantt.consumchgoverqty,gantt.consumminqty,gantt.consumunitqty,1 parenum,1 chilnum,
+						    0 persons_id_upd, sum(pare.qty_handover) qty_handover, 0 qty_require,gantt.expiredate,
+                max(gantt.paretblname) paretblname,min(gantt.paretblid) paretblid,
+                s.locas_id_shelfno locas_id_trn,max(itm.taxflg) taxflg,
+                sto.locas_id_shelfno locas_id_to_trn,0 locas_id_pare
+					    from trngantts gantt
+              inner join itms itm on itm.id = gantt.itms_id_trn
+              inner join shelfnos s on s.id = gantt.shelfnos_id_trn
+              inner join  shelfnos sto on sto.id = gantt.shelfnos_id_to_trn 
+					    left join alloctbls allocsch on allocsch.trngantts_id = gantt.id and allocsch.srctblname like '%schs'
+					    left join alloctbls allocord on allocord.trngantts_id = gantt.id and allocord.srctblname like any(array['%ords','%insts','%reply%'])
+					    left join alloctbls allocstk on allocord.trngantts_id = gantt.id and allocstk.srctblname like any(array['%dlvs','%acts'])
+					    inner join (select tblname,tblid,mkprdpurords_id,prjnos_id,optfixodate,sum(qty_handover) qty_handover 
+                                  from mkordtmpfs
+                                  where mkprdpurords_id = 1016 ---  #{sel_rec["mkprdpurords_id"]} ---xxx
+                                     and prjnos_id = #{sel_rec["prjnos_id"]} 
+                                     and optfixodate =  '#{sel_rec["optfixodate"]}'
+                                     and   mlevel =  #{sel_rec["mlevel"]} 
+                                     and tblname = 'conschs'  
+									group by   tblname,tblid,mkprdpurords_id,prjnos_id,optfixodate
+                              )	pare  on gantt.paretblid = pare.tblid  and gantt.paretblname = pare.tblname
+                     								and gantt.mkprdpurords_id_trngantt = pare.mkprdpurords_id
+				where  gantt.mkprdpurords_id_trngantt = #{sel_rec["mkprdpurords_id"]} ---xxx
+                    and (gantt.paretblname != gantt.tblname or gantt.paretblid != gantt.tblid)
+                    and gantt.expiredate > current_date   --  and gantt.qty_sch > 0
+                    and gantt.tblname in ('prdschs','purschs')  --- gate custxxxsは除く
+                   and gantt.mlevel > #{sel_rec["mlevel"]} and gantt.qty_sch > 0
+        group by gantt.mkprdpurords_id_trngantt ,gantt.itms_id_trn ,gantt.processseq_trn,	
+						    gantt.prjnos_id ,pare.mkprdpurords_id, gantt.shelfnos_id_to_trn ,gantt.shelfnos_id_trn, gantt.shelfnos_id_pare ,
+                gantt.maxqty,gantt.packqty,gantt.consumchgoverqty,gantt.consumminqty,gantt.consumunitqty,
+						    gantt.expiredate,gantt.optfixodate,
+                s.locas_id_shelfno ,sto.locas_id_shelfno  
+          order by prjnos_id ,itms_id_trn,processseq_trn,shelfnos_id_trn,shelfnos_id_to_trn,
+                  optfixodate,	expiredate desc
               ----------------------------
 				&)
 	end		

@@ -74,10 +74,10 @@ const AutoCell = ({
             let lineData = {...values,[id]: e.target.value}  //[id] idの内容
             let msg_id = `${id}_gridmessage`
             lineData[msg_id] = "ok"
-            let autoAddFields = {}
+            //let autoAddFields = {}
             lineData = onFieldValite(lineData, id, params.screenCode)  //clientでのチェック
             if(lineData[msg_id]==="ok"){
-                lineData,autoAddFields = onBlurFunc7(params.screenCode, lineData, id)
+                lineData = onBlurFunc7(params.screenCode, lineData, id)
             }
             //updateMyData(index, msg_id, lineData[msg_id])
             //if ( (lineData[msg_id] === "ok"&baseData[index][id]!==data[index][id]) ||lineData[msg_id] === "error not detected" ) { // 変更項目のみ対象error not detected

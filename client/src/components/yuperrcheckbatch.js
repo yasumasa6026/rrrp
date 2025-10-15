@@ -11,7 +11,7 @@ export  function yupErrCheckBatch(lines,screenCode)
     let uploadErrorCheckMaster = false
     let tblnamechop = screenCode.split("_")[1].slice(0, -1)
     let batchField = ""
-    let autoAddFields = {}
+    //let autoAddFields = {}
     lines.map((line,inx) => {
         if(["add","update","delete"].includes(line["aud"])){
             try{
@@ -31,15 +31,14 @@ export  function yupErrCheckBatch(lines,screenCode)
                     batchField = fd
                     row = dataCheck7(screenSchema,fd,row) //row:_gridmessageを含む
                     if(row[`${fd}_gridmessage`] !== "ok"){
-                          line[`${fd}_gridmessage`] = row[`${fd}_gridmessage`]
-                          line[`${tblnamechop}_confirm_gridmessage`] = `error x ${fd} field:${fd} ` + row[`${fd}_gridmessage`]
+                          row[`${tblnamechop}_confirm_gridmessage`] = `error x ${fd} field:${fd} ` + row[`${fd}_gridmessage`]
                           uploadErrorCheckMaster = true
-                          line[`confirm`] = false
-                          line = {...line,[fd]:row[fd]}
+                          row[`confirm`] = false
+                          row = {...row,[fd]:row[fd]}
                         }else{
-                            line,autoAddFields = onBlurFunc7(screenCode,row,fd)
+                            row = onBlurFunc7(screenCode,row,fd)
                         }
-                        return line
+                        return {...line,row}
                     }
                 )
             }      

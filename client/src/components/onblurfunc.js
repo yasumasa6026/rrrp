@@ -8,22 +8,30 @@ import { yupschema } from '../yupschema'
 export function  onBlurFunc7(screenCode,lineData,id){  //id:field
     let starttime
     let toduedate
-    let yymmdd
-    let qty_case
+    let strQty
     let gno
-    let autoAddFields = {}
+    //let autoAddFields = {}
     let itm_code_client
     lineData["confirm_gridmessage"] = "ok"
+    //lineData["confirm"] = true
     switch( true ){
         case /itm_code$/.test(id)://ScreenLib.proc_add_empty_dataで対応
             if(/custschs|custords/.test(screenCode)){ //受注の時はopeitmのLT(duration)は使用できない。
                 itm_code_client = id.split("_")[0] + "_itm_code_client"
                 if(lineData[itm_code_client]===""){
                     lineData[itm_code_client] = lineData[id] 
-                    autoAddFields[itm_code_client] = lineData[itm_code_client]}
+                    //autoAddFields[itm_code_client] = lineData[itm_code_client]
+                    }
                 }
             break
         //starttime 将来部署別のカレンダーでrailsで求める。 prdord_commencementdate
+        case /_isudate/.test(id):
+            if(/pursch|purord|purinst/.test(id)){
+                    starttime = id.split("_")[0] + "_starttime"
+                    lineData[starttime] = lineData[id]
+                    //autoAddFields[starttime] = lineData[id]
+            }
+            break
         case /_duedate/.test(id):
                 //moment.defaultFormat = "YYYY-MM-DD HH:mm"
                 // starttime = id.split("_")[0] + "_starttime" 
@@ -48,22 +56,26 @@ export function  onBlurFunc7(screenCode,lineData,id){  //id:field
                 toduedate = id.split("_")[0] + "_toduedate" 
                 if(lineData[toduedate]===""){
                         lineData[toduedate] = lineData[id] 
-                        autoAddFields[toduedate] = lineData[toduedate]
+                        //autoAddFields[toduedate] = lineData[toduedate]
                 }
             break
-        case /_qty_sch$|_qty$|qty_stk$/.test(id):  //opeitmsのレコードは既に求めていること。
-            qty_case = id.split("_")[0] + "_qty_case" 
-            if(/cust|prd|pur|shp/.test(screenCode)&&/schs|ords/.test(screenCode)&&lineData[qty_case]===0){
-                    if(Number(lineData["opeitm_packqty"])===0){  //opeitm_packqtyは購入時・作成後の完成時の単位
-                        lineData[qty_case] = lineData[id] 
-                        autoAddFields[qty_case] = lineData[qty_case]
-                        
-                    }else{
-                        lineData[id]  = String(Math.ceil(lineData[id]/lineData["opeitm_packqty"])*lineData["opeitm_packqty"])
-                        lineData[qty_case] =  String(Math.ceil(lineData[id]/lineData["opeitm_packqty"]))}
-                        autoAddFields[qty_case] = lineData[qty_case]
-            }
-                //
+        case /_qty_case$/.test(id):  //opeitmsのレコードは既に求めていること。
+            switch( true ){
+                case /schs$/.test(screenCode):
+                    strQty = id.split("_")[0] + "_qty_sch" 
+                    break
+                case /ords$|insts$|replyinputs$/.test(screenCode):
+                    strQty = id.split("_")[0] + "_qty" 
+                    break  
+                case /acts$|dlvs$/.test(screenCode):
+                    strQty = id.split("_")[0] + "_qty_stk" 
+                    break 
+            } 
+            if(Number(lineData["opeitm_packqty"])===0){  //opeitm_packqtyは購入時・作成後の完成時の単位
+                lineData[strQty] = lineData[id] 
+            }else{
+                        lineData[strQty] =  String(lineData[id]*lineData["opeitm_packqty"])
+                    }
             break
 
         case /_invoiceno/.test(id):
@@ -71,14 +83,14 @@ export function  onBlurFunc7(screenCode,lineData,id){  //id:field
                 gno = id.split("_")[0] + "_gno"
                 //opeitm_packqtyは購入時・作成後の完成時の単位
                 lineData[gno] = lineData[id] 
-                autoAddFields[gno] = lineData[gno]
+                //autoAddFields[gno] = lineData[gno]
             } 
             break
         case /^loca_code_cust$/.test(id):
             if(screenCode.match(/custord|custsch/)){
                 if(lineData["loca_code_custrcvplc"]===""){
                     lineData["loca_code_custrcvplc"] = lineData[id]
-                    autoAddFields["loca_code_custrcvplc"] = lineData["loca_code_custrcvplc"]
+                    //autoAddFields["loca_code_custrcvplc"] = lineData["loca_code_custrcvplc"]
                 }
             }
             break
@@ -137,7 +149,7 @@ export function  onBlurFunc7(screenCode,lineData,id){  //id:field
              break    
         }
        
-    return  lineData,autoAddFields
+    return  lineData
 }
 
 function isValidMMDD(mmdd) {

@@ -360,7 +360,7 @@ module Shipment
 					end
 		strsql = "select   #{grid_columns_info[:select_fields]} 
 						from (SELECT ROW_NUMBER() OVER (#{strsorting}) , #{grid_columns_info[:select_row_fields]} 
-												FROM #{screenCode} shp where
+												FROM #{params[:view]} shp where
 												#{tblnamechop}_paretblname = '#{pareTblName}' and
 												#{tblnamechop}_paretblid in #{strselect} and 
 												#{strqty} > 0 and --- 完了済(マイナス出庫分)は除く
@@ -377,7 +377,7 @@ module Shipment
 															  "
 		pagedata = ActiveRecord::Base.connection.select_all(strsql)
 		
-		strsql = " select count(*) FROM #{screenCode} shp where
+		strsql = " select count(*) FROM #{params[:view]} shp where
 					#{tblnamechop}_paretblname = '#{pareTblName}' and
 					#{tblnamechop}_paretblid in #{strselect} and
 					shp.#{strqty} > 0 and

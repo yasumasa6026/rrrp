@@ -71,13 +71,13 @@ const ToSubForm  = ({params, data, subFormInfo,dropDownList,screenCode,index,
             let tmpline = {...linedata,[fld.id]: e.target.value}  //[id] idの内容
             let msg_id = `${linedata[fld.id]}_gridmessage`
             tmpline[`${linedata[fld.id]}_gridmessage`] = "ok"
-            let autoAddFields = {}
+            //let autoAddFields = {}
             tmpline = onFieldValite(tmpline, fld.id, screenCode)  //clientでのチェック
             if(tmpline[msg_id]==="ok"){
-                tmpline,autoAddFields = onBlurFunc7(screenCode, tmpline, linedata[fld.id])
+                tmpline = onBlurFunc7(screenCode, tmpline, linedata[fld.id])
             }
             if ( tmpline[msg_id] === "ok") {
-                const {fetchCheckFlg,idKeys} = fetchCheck( tmpline,autoAddFields,fetch_check)
+                const {fetchCheckFlg,idKeys} = fetchCheck( tmpline,fld.id,fetch_check)
                 params = {...params,fetchCode: JSON.stringify(idKeys),
                                         checkCode: JSON.stringify({ [fld.id]: fetch_check.checkCode[fld.id] }),
                                         linedata: JSON.stringify(newRow),
@@ -86,7 +86,7 @@ const ToSubForm  = ({params, data, subFormInfo,dropDownList,screenCode,index,
                 
               if(fetchCheckFlg){handleFetchRequest(params)}
                      else{Object.keys(autoAddFields).map((field)=>{if(tmpline[field]===""||tmpline[field]===undefined)
-                                                              { tmpline[field] =  autoAddFields[field]}
+                                                              { tmpline[field] =  linedata[field]}
                                                             }
                                                   )
                         setLinedata({...tmpline}) }

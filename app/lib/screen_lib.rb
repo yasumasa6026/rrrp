@@ -680,14 +680,14 @@ module ScreenLib
 					when /person_name_chrg/	
 						temp[cell[:accessor]] = params[:person_name_upd]
 					end
-					if cell[:className] =~ /^Editable/
+					###if cell[:className] =~ /^Editable/
 						if cell[:className] =~ /Numeric/
 							temp[cell[:accessor]] = "0" ###初期表示
 						end
 						case cell[:accessor]   ###初期表示
 						when /_expiredate/
 							temp[cell[:accessor]] =  Constants::EndDate 
-						when /_isudate|_rcptdate|_cmpldate|payact_paymentdate|_acpdate/
+						when /_isudate|_depdate|_rcptdate|_cmpldate|payact_paymentdate|_acpdate/
 							temp[cell[:accessor]] = Time.now.strftime("%Y/%m/%d")
 						when /pobject_objecttype_tbl/
 							temp[cell[:accessor]] = "tbl"
@@ -707,7 +707,7 @@ module ScreenLib
 							temp[cell[:accessor]] = "100"
 						else
 						end
-					end
+					###end
 					case screenCode
 					when "r_mkprdpurords"  ###オーダー作成時の抽出条件初期値
 						case cell[:accessor]
@@ -1074,7 +1074,7 @@ module ScreenLib
 				  				command_c[key.to_s] = val.to_f  
               	when /packqty|minqty|maxqty|unitqty/
 				  				command_c[key.to_s] = val.to_f  					
-              	when /_isudate|_duedate|_toduedate|_starttime/
+              	when /_isudate|_depdate|_duedate|_toduedate|_starttime/
 				  				command_c[key.to_s] = val.to_time  			
               	when /_expiredate/
 				  				command_c[key.to_s] = val.to_date  											
@@ -1300,14 +1300,14 @@ module ScreenLib
 			
 			strsql = %Q&select   #{grid_columns_info[:select_fields]} 
 						from (SELECT ROW_NUMBER() OVER (#{str_orderby}) ,#{grid_columns_info[:select_row_fields]} 
-								FROM #{screenCode} main
+								FROM #{params[:view]} main
 						#{str_innerjoin}) x
 							where ROW_NUMBER > #{(params[:pageIndex].to_f)*params[:pageSize].to_f} 
 							and ROW_NUMBER <= #{(params[:pageIndex].to_f + 1)*params[:pageSize].to_f} 
 					&
 			pagedata = ActiveRecord::Base.connection.select_all(strsql)
 		
-			strsql = %Q& select count(*) FROM #{screenCode} main 
+			strsql = %Q& select count(*) FROM #{params[:view]} main 
 								#{str_innerjoin}
 				&
 		 	###fillterがあるので、table名は抽出条件に合わず使用できない。

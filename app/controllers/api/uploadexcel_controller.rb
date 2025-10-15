@@ -37,6 +37,8 @@ class UploadexcelController < ApplicationController
                 screen.proc_create_upload_editable_columns_info jparams,"import" 
         # upload_columns_info = [columns_info,page_info,init_where_info,select_fields.chop,fetch_check,dropDownList,@sort_info,nameToCode]
         
+        ##Rails.logger.debug("class:#{self},line:#{__LINE__},\n select_fields:#{select_fields}")
+        ##Rails.logger.debug("class:#{self},line:#{__LINE__},\n params[:uploadData][:uploadexcel]:#{params[:uploadData][:uploadexcel]}")
         performSeqNos = []
         results = {}   
         results[:columns] = []
@@ -71,8 +73,8 @@ class UploadexcelController < ApplicationController
             jparams[:screenCode] = screen.screenCode
             jparams[:err] = nil
             parse_linedata["#{tblname.chop}_confirm_gridmessage"] ||= ""
-            if linevalues["confirm"] == true
-                linevalues.each do |field,val| ###confirmはfunction batchcheckで項目追加している。
+            if linevalues["confirm"] == true ###confirmはfunction batchcheckで項目追加している。
+                linevalues.each do |field,val| 
                         ##エラーと最初のレコード(confirm="confirm")のname項目行を除く
                     parse_linedata["confirm"] = true
                     if fetchCode[field] 
@@ -90,8 +92,9 @@ class UploadexcelController < ApplicationController
                     end
                 end
             else
-                uploadError = true  
-                parse_linedata["#{tblname.chop}_confirm_gridmessage"] << jparams[:err]
+                 uploadError = true  
+                 jparams[:err] = " error confirm not true or null "
+                 parse_linedata["#{tblname.chop}_confirm_gridmessage"] << jparams[:err]
             end
             if parse_linedata["confirm"]  == true 
                 parse_linedata.each do |field,val| ###confirmはfunction batchcheckで項目追加している。

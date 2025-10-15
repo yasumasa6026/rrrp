@@ -90,7 +90,7 @@ const Menus7 = ({ isAuthenticated ,menuListData,getScreen,loadingOrg,loadingOrgS
               {firstView&&message&& ( <div colSpan="10000">
                                   {message}
           	              </div>)}
-              {hostError&& ( <div colSpan="10000">
+              {firstView&&hostError&& ( <div colSpan="10000">
                                   {hostError}
           	              </div>)}
               {  
@@ -105,7 +105,7 @@ const Menus7 = ({ isAuthenticated ,menuListData,getScreen,loadingOrg,loadingOrgS
               {secondView&&message&& ( <div colSpan="10000">
                                   {message}
                                   </div>)}
-              {hostError&& ( <div colSpan="10000">
+              {secondView&&hostError&& ( <div colSpan="10000">
                                   {hostError}
           	              </div>)}
           </div>
