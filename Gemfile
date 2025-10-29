@@ -5,7 +5,7 @@ gem "railties", "~> 8.0.0"
 ruby '3.3.9'
 
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails', branch: 'main'
-gem 'rails', '~> 8.0.2'
+gem 'rails', '~> 8.0.4'
 # Use postgresql as the database for Active Record
 gem 'pg', '~> 1.5'
 # Use Puma as the app server
