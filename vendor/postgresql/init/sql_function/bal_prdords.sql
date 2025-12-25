@@ -78,7 +78,6 @@ AS SELECT chrg.person_name_chrg,
     opeitm.opeitm_shpordauto,
     opeitm.opeitm_prdpurordauto,
     opeitm.opeitm_itmtype,
-    prdord.cmplflg AS prdord_cmplflg,
     opeitm.itm_taxflg,
     opeitm.opeitm_utilizationchangeover
    FROM prdords prdord,
@@ -166,7 +165,6 @@ CREATE TABLE sio.sio_bal_prdords (
 	opeitm_shpordauto varchar(1) NULL,
 	opeitm_prdpurordauto varchar(1) NULL,
 	opeitm_itmtype varchar(1) NULL,
-	prdord_cmplflg varchar(1) NULL,
 	itm_taxflg varchar(20) NULL,
 	prdord_shelfno_id numeric(38) NULL,
 	opeitm_unitofduration varchar(4) NULL,
@@ -207,3 +205,7 @@ CREATE TABLE sio.sio_bal_prdords (
 	CONSTRAINT sio_bal_prdords_id_pk PRIMARY KEY (sio_id)
 );
 CREATE INDEX sio_bal_prdords_uk1 ON sio.sio_bal_prdords USING btree (id, sio_id);
+
+
+ drop sequence  if exists sio.sio_bal_prdords_seq ;
+ create sequence sio.sio_bal_prdords_seq ;

@@ -29,20 +29,17 @@ payord.persons_id_upd   payord_person_id_upd,
 payord.contents  payord_contents,
 payord.tax  payord_tax,
 payord.chrgs_id   payord_chrg_id,
-payord.suppliers_id   payord_supplier_id,
 payord.gno  payord_gno,
   payment.crr_code_payment  crr_code_payment ,
   payment.crr_name_payment  crr_name_payment ,
-  supplier.loca_code_payment_supplier  loca_code_payment_supplier ,
-  supplier.loca_name_payment_supplier  loca_name_payment_supplier ,
 payord.payments_id   payord_payment_id,
 payord.taxrate  payord_taxrate,
 payord.denomination  payord_denomination,
 payord.billingdate  payord_billingdate,
 payord.accounttitle  payord_accounttitle
  from payords   payord,
-  persons  person_upd ,  r_chrgs  chrg ,  r_suppliers  supplier ,  r_payments  payment 
-  where       payord.persons_id_upd = person_upd.id      and payord.chrgs_id = chrg.id      and payord.suppliers_id = supplier.id      and payord.payments_id = payment.id      ;
+  persons  person_upd ,  r_chrgs  chrg ,  r_payments  payment 
+  where       payord.persons_id_upd = person_upd.id      and payord.chrgs_id = chrg.id    and payord.payments_id = payment.id      ;
  DROP TABLE IF EXISTS sio.sio_bal_payords;
  CREATE TABLE sio.sio_bal_payords (
           sio_id numeric(22,0)  CONSTRAINT SIO_bal_payords_id_pk PRIMARY KEY           ,sio_user_code numeric(22,0)
@@ -81,8 +78,6 @@ payord.accounttitle  payord_accounttitle
 ,crr_code_payment  varchar (50) 
 ,crr_name_payment  varchar (100) 
 ,payord_gno  varchar (40) 
-,loca_code_payment_supplier  varchar (50) 
-,loca_name_payment_supplier  varchar (100) 
 ,payord_payment_id  numeric (38,0)
 ,payord_remark  varchar (4000) 
 ,payord_contents  varchar (4000) 
@@ -95,7 +90,6 @@ payord.accounttitle  payord_accounttitle
 ,payord_id  numeric (38,0)
 ,payord_person_id_upd  numeric (38,0)
 ,payord_chrg_id  numeric (38,0)
-,payord_supplier_id  numeric (22,0)
 ,chrg_person_id_chrg  numeric (38,0)
 ,chrg_person_id_chrg_payment  numeric (38,0)
 ,person_sect_id_chrg  numeric (22,0)

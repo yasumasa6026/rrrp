@@ -2903,6 +2903,13 @@ export const yupschema = {
                                         }
                                     return value
                                         }).max(99999999999999).required(),
+                  dymsch_qty_case:Yup.number(16,6).transform((value, originalValue) => {
+                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
+                                    if (typeof originalValue === 'string') {
+                                            return parseFloat(originalValue.replace(/,/g, ''))
+                                        }
+                                    return value
+                                        }).max(99999999999999).required(),
                   dymsch_qty_sch:Yup.number(16,6).transform((value, originalValue) => {
                                   // カンマを除去して数値に変換（文字列の場合のみ処理）
                                     if (typeof originalValue === 'string') {
@@ -6524,34 +6531,6 @@ export const yupschema = {
                   loca_code_calendar:Yup.string().max(40).required(),
                   loca_code_shelfno_to:Yup.string().max(200).required(),
                   loca_name_calendar:Yup.string().max(100).required(),
-                  opeitm_deth:Yup.number(32,6).transform((value, originalValue) => {
-                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
-                                    if (typeof originalValue === 'string') {
-                                            return parseFloat(originalValue.replace(/,/g, ''))
-                                        }
-                                    return value
-                                        }).max(99999999999999).required(),
-                  opeitm_length:Yup.number(32,6).transform((value, originalValue) => {
-                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
-                                    if (typeof originalValue === 'string') {
-                                            return parseFloat(originalValue.replace(/,/g, ''))
-                                        }
-                                    return value
-                                        }).max(99999999999999).required(),
-                  opeitm_weight:Yup.number(5,2).transform((value, originalValue) => {
-                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
-                                    if (typeof originalValue === 'string') {
-                                            return parseFloat(originalValue.replace(/,/g, ''))
-                                        }
-                                    return value
-                                        }).max(99999).required(),
-                  opeitm_wide:Yup.number(5,2).transform((value, originalValue) => {
-                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
-                                    if (typeof originalValue === 'string') {
-                                            return parseFloat(originalValue.replace(/,/g, ''))
-                                        }
-                                    return value
-                                        }).max(99999).required(),
                   person_code_chrg:Yup.string().max(10).required(),
                   puract_amt:Yup.number(14,4).transform((value, originalValue) => {
                                   // カンマを除去して数値に変換（文字列の場合のみ処理）
@@ -6572,6 +6551,13 @@ export const yupschema = {
                   puract_lotno:Yup.string().nullable(),
                   puract_packno:Yup.string().nullable(),
                   puract_price:Yup.number(34,4).transform((value, originalValue) => {
+                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
+                                    if (typeof originalValue === 'string') {
+                                            return parseFloat(originalValue.replace(/,/g, ''))
+                                        }
+                                    return value
+                                        }).max(99999999999999).required(),
+                  puract_qty_case:Yup.number(16,6).transform((value, originalValue) => {
                                   // カンマを除去して数値に変換（文字列の場合のみ処理）
                                     if (typeof originalValue === 'string') {
                                             return parseFloat(originalValue.replace(/,/g, ''))

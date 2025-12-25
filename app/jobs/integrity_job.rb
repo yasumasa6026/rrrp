@@ -176,5 +176,45 @@ class IntegrityJob < ApplicationJob
     if error == false
         Rails.logger.debug" ok   "
     end
+    %Q%
+         select  packqty_t4,parenum_t4,chilnum_t4,itms_id_trn_t4 ,processseq_trn_t4,max(qty_t4) qty_t4,min(duedate_trn_t4) duedate_trn_t4,min(duration_t4) duration_t4,
+		packqty_t3,parenum_t3,chilnum_t3, itms_id_trn_t3, processseq_trn_t3,max(qty_sch_t3) qty_sch_t3 ,min(duedate_trn_t3) duedate_trn_t3,min(duration_t3) duration_t3,
+		packqty_t2,parenum_t2, chilnum_t2,itms_id_trn_t2, processseq_trn_t2,max(qty_sch_t2) qty_sch_t2 ,min(duedate_trn_t2) duedate_trn_t2,min(duration_t2) duration_t2,
+		t1.packqty packqty_t1,t1.parenum parenum_t1,t1.chilnum chilnum_t1,t1.itms_id_trn itms_id_trn_t1,t1.processseq_trn processseq_trn_t1,
+		t1.itms_id_pare itms_id_pare_t1,t1.processseq_pare processseq_pare_t1,sum(t1.qty_sch) qty_sch_t1 ,min(t1.duedate_trn) duedate_trn_t1,min(o.duration) duration_t1
+	from trngantts t1
+	inner join opeitms o on o.itms_id = t1.itms_id_trn  and o.processseq = t1.processseq_trn  and o.shelfnos_id_opeitm = t1.shelfnos_id_trn  and o.shelfnos_id_to_opeitm = t1.shelfnos_id_to_trn 
+  inner join (select packqty_t4,parenum_t4,chilnum_t4,itms_id_trn_t4 ,processseq_trn_t4,max(qty_t4) qty_t4,min(duedate_trn_t4) duedate_trn_t4,min(duration_t4) duration_t4,
+		packqty_t3,parenum_t3,chilnum_t3, itms_id_trn_t3, processseq_trn_t3,max(qty_sch_t3) qty_sch_t3 ,min(duedate_trn_t3) duedate_trn_t3,min(duration_t3) duration_t3,
+		t2.packqty packqty_t2,t2.parenum parenum_t2,t2.chilnum chilnum_t2,t2.itms_id_trn itms_id_trn_t2,t2.processseq_trn processseq_trn_t2,
+		t2.itms_id_pare itms_id_pare_t2,t2.processseq_pare processseq_pare_t2,sum(t2.qty_sch) qty_sch_t2 ,min(t2.duedate_trn) duedate_trn_t2,min(o.duration) duration_t2
+		from trngantts t2
+		inner join opeitms o on o.itms_id = t2.itms_id_trn  and o.processseq = t2.processseq_trn  and o.shelfnos_id_opeitm = t2.shelfnos_id_trn  and o.shelfnos_id_to_opeitm = t2.shelfnos_id_to_trn 
+		inner join (select t4.packqty_t4,t4.parenum_t4,t4.chilnum_t4,t4.itms_id_trn_t4 ,t4.processseq_trn_t4,max(t4.qty_t4) qty_t4,min(duedate_trn_t4) duedate_trn_t4,min(duration_t4) duration_t4,
+					t3.packqty packqty_t3,t3.parenum parenum_t3,t3.chilnum chilnum_t3,min(t3.duedate_trn) duedate_trn_t3,min(o.duration) duration_t3,
+					t3.itms_id_trn itms_id_trn_t3,t3.itms_id_pare itms_id_pare_t3,t3.processseq_trn processseq_trn_t3,t3.processseq_pare processseq_pare_t3,
+					sum(t3.qty_sch) qty_sch_t3 
+					from trngantts t3
+					inner join opeitms o on o.itms_id = t3.itms_id_trn  and o.processseq = t3.processseq_trn  and o.shelfnos_id_opeitm = t3.shelfnos_id_trn  and o.shelfnos_id_to_opeitm = t3.shelfnos_id_to_trn
+					inner join (select t4.packqty packqty_t4,t4.parenum parenum_t4,t4.chilnum chilnum_t4,t4.itms_id_pare  itms_id_pare_t4,t4.processseq_pare processseq_pare_t4,
+							t4.itms_id_trn itms_id_trn_t4,t4.processseq_trn processseq_trn_t4,sum(t4.qty) qty_t4 ,min(t4.duedate_trn) duedate_trn_t4,min(o.duration) duration_t4
+					from trngantts t4	
+					inner join opeitms o on o.itms_id = t4.itms_id_trn  and o.processseq = t4.processseq_trn  and o.shelfnos_id_opeitm = t4.shelfnos_id_trn  and o.shelfnos_id_to_opeitm = t4.shelfnos_id_to_trn 
+					where t4.mkprdpurords_id_trngantt = 1107 and t4.itms_id_trn = 220 and t4.processseq_trn = 999
+					group by  t4.packqty,t4.parenum,t4.chilnum,t4.itms_id_pare ,t4.processseq_pare ,t4.itms_id_trn ,t4.processseq_trn  ) t4
+					on t3.itms_id_trn = t4.itms_id_pare_t4   and t3.processseq_trn  = t4.processseq_pare_t4  
+					group by t4.packqty_t4,t4.parenum_t4,t4.chilnum_t4,t4.itms_id_trn_t4 ,t4.processseq_trn_t4 ,
+						t3.packqty,t3.parenum,t3.chilnum,t3.itms_id_trn ,t3.processseq_trn,t3.itms_id_pare ,t3.processseq_pare ) t3 
+	   		on t2.itms_id_trn = itms_id_pare_t3   and t2.processseq_trn  = processseq_pare_t3  
+			group by packqty_t4,parenum_t4,chilnum_t4,itms_id_trn_t4 ,processseq_trn_t4 ,
+						packqty_t3,parenum_t3,chilnum_t3,itms_id_trn_t3 ,processseq_trn_t3,
+						t2.packqty,t2.parenum,t2.chilnum,t2.itms_id_trn ,t2.processseq_trn,t2.itms_id_pare ,t2.processseq_pare ) t2
+		on t1.itms_id_trn = itms_id_pare_t2   and t1.processseq_trn  = processseq_pare_t2  
+		group by packqty_t4,parenum_t4,chilnum_t4,itms_id_trn_t4 ,processseq_trn_t4 ,
+						packqty_t3,parenum_t3,chilnum_t3,itms_id_trn_t3 ,processseq_trn_t3,
+						packqty_t2,parenum_t2,chilnum_t2,itms_id_trn_t2 ,processseq_trn_t2,itms_id_pare_t2 ,processseq_pare_t2 ,
+						t1.packqty,t1.parenum,t1.chilnum,t1.itms_id_trn ,t1.processseq_trn,t1.itms_id_pare ,t1.processseq_pare 
+
+      %
   end
 end

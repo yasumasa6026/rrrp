@@ -626,7 +626,7 @@ module ScreenLib
 					setParams[:sortBy] = []
 				end
 			end
-			setParams[:clickIndex] = []
+			setParams[:clickIndex] = []  ###			gridmessages_fields << "confirm_gridmessage"
 			strsql = "select #{grid_columns_info[:select_fields]} 
 							from (SELECT ROW_NUMBER() OVER (#{strsorting}) ,#{grid_columns_info[:select_row_fields]}
 									 FROM #{params[:view]} #{if where_str == '' then '' else where_str end }  #{grid_columns_info[:strGroupBy]}) x
@@ -800,6 +800,11 @@ module ScreenLib
                     temp[cell[:accessor]] = params[:lineData][cell[:accessor]]
                   end
                 end
+					when /payments|bills/
+								case cell[:accessor]   ###初期表示
+                when /_ratejson/
+                  temp[cell[:accessor]] = %Q%[[{"rate":000,"duration":0,"denomination":"deposit","day":00}]]%
+								end
 					else
 						case cell[:accessor]
 						when /itm_taxflg/	
@@ -1027,6 +1032,8 @@ module ScreenLib
 						command_c[(field+"_gridmessage").to_sym] = setParams[:err] 
 				 		if command_c[:errPath].nil? 
 							command_c[:errPath] = [field+"_gridmessage"]
+						else
+							command_c[:errPath] << field+"_gridmessage"
 				 		end
 				   		break
 				 	end
@@ -1059,26 +1066,30 @@ module ScreenLib
 							  	command_c[:confirm] = false 
 							  	setParams[:err] = "error  key #{key.to_s} missing"
 							  	if command_c[:errPath].nil? 
-								  command_c[:errPath] = [key+"_gridmessage"]
+								  	command_c[:errPath] = [key+"_gridmessage"]
+									else
+								  	command_c[:errPath] << key+"_gridmessage"
 							  	end
 							 	 break
-					else
+					else  ### parse_linedata (String) ---> command_c  DB type 変換
               case key.to_s
 								when /_gridmessage/
 									command_c[key.to_s] = val  
               	when /_amt$|amt_sch$|_cash$/
                 	setParams[:outamt] += val.to_f 
 				  				command_c[key.to_s] = val.to_f  
-              	when /_qty_sch$|_qty$|_qty_stk$/
+              	when /_tax$|_taxrate$|_price$|masterprice/
+				  				command_c[key.to_s] = val.to_f  
+              	when /_qty_sch$|_qty$|_qty_stk$|_qty_case$/
                 	setParams[:outqty] = val.to_f
 				  				command_c[key.to_s] = val.to_f  
               	when /packqty|minqty|maxqty|unitqty/
 				  				command_c[key.to_s] = val.to_f  					
-              	when /_isudate|_depdate|_duedate|_toduedate|_starttime/
+              	when /_isudate|_depdate|_duedate|_toduedate|_dlvdate|_rcptdate|_retdate|_cmpldate|saledate|_starttime/
 				  				command_c[key.to_s] = val.to_time  			
               	when /_expiredate/
 				  				command_c[key.to_s] = val.to_date  											
-              	when /_id/
+              	when /_id|^id$/
 				  				command_c[key.to_s] = val.to_i  					
 								else
 									command_c[key.to_s] = val  
@@ -1086,24 +1097,24 @@ module ScreenLib
 					end
 				end
 				### セカンドkeyのユニークチェック
-				if setParams[:aud] == "add" 
-					err = CtlFields.proc_blkuky_check(screenCode.split("_")[1],parse_linedata)
-					err.each do |key,recs|
+				###if setParams[:aud] == "add" 
+					rslt = CtlFields.proc_blkuky_check(screenCode.split("_")[1],parse_linedata)
+					rslt.each do |key,recs|
 				  		recs.each do |rec|
-					   		if command_c["id"] != rec["id"]
-								setParams[:err] = " error  field:#{key} already exist line:#{setParams[:index]} "
-								command_c[:confirm_gridmessage] = setParams[:err] 
-								if command_c[:errPath].nil? 
-									command_c[:errPath] = [key+"_gridmessage"]
-								end
-								command_c[:confirm] = false 
-							end  
-						end	
+										setParams[:err] = " error  field:#{key} already exist line:#{setParams[:index]} "
+										command_c[:confirm_gridmessage] = setParams[:err] 
+										if command_c[:errPath].nil? 
+											command_c[:errPath] = [key+"_gridmessage"]
+										else
+											command_c[:errPath] << key+"_gridmessage"
+										end
+										command_c[:confirm] = false 
+							end	
 					end
-				end
+				###end
 			end	
 			if  setParams[:err].nil?  or setParams[:err] == ""
-				if command_c["id"] == "" or  command_c["id"].nil?   ### add画面で同一lineで二度"enter"を押されたとき errorにしない
+				if command_c["id"] == "" or  command_c["id"].nil? or command_c["id"] == 0   ### add画面で同一lineで二度"enter"を押されたとき errorにしない
 					###  追加後エラーに気づいたときエラーしないほうが，操作性がよい
 				  command_c["sio_classname"] = "_add_grid_linedata"
 				  command_c["#{tblnamechop}_created_at"] = Time.now
@@ -1230,12 +1241,7 @@ module ScreenLib
 							end
 						end			
             if setParams[:last_lotstks] 
-              setParams[:segment]  = "link_lotstkhists_update"
-              setParams[:tbldata] = {}
-              setParams[:gantt] = {}
-              setParams[:tblname] = ""
-              setParams[:tblid] = ""
-              processreqs_id,setParams = ArelCtl.proc_processreqs_add(setParams)
+							ArelCtl.proc_add_update_lotstkhists(setParams[:last_lotstks],setParams[:person_id_upd])
             end
 				when /custactheads/
           command_c["custacthead_amt"] = 0
@@ -1261,10 +1267,7 @@ module ScreenLib
         		command_c["sio_result_f"] = "9"  ##9:error
 				parse_linedata["confirm"] = false  
 			end
-			Rails.logger.debug " class:#{self} ,line:#{__LINE__},setParams[:err]:#{setParams[:err]}  " if setParams[:err]
-                      
-      		##parse_linedata = {} 
-      		return setParams
+      return setParams
 		end
 
 		def ok_confirm(parse_linedata,command_c,tblnamechop)
@@ -1511,12 +1514,12 @@ module ScreenLib
 
 			  command_custact["custact_invoiceno"] = tbldata["invoiceno"]
 				command_custact = custact.proc_create_tbldata(command_custact) ###
-				if amtTaxRate[command_custact["custact_taxrate"].to_s]
-				    amtTaxRate[command_custact["custact_taxrate"].to_s]["amt"] += command_custact["custact_amt"].to_f
-				    amtTaxRate[command_custact["custact_taxrate"].to_s]["qty"] += command_custact["custact_qty_stk"].to_f
-				    amtTaxRate[command_custact["custact_taxrate"].to_s]["count"] += 1
+				if amtTaxRate[command_custact["custact_taxrate"]]
+				    amtTaxRate[command_custact["custact_taxrate"]]["amt"] += command_custact["custact_amt"].to_f
+				    amtTaxRate[command_custact["custact_taxrate"]]["qty"] += command_custact["custact_qty_stk"].to_f
+				    amtTaxRate[command_custact["custact_taxrate"]]["count"] += 1
 				else
-				    amtTaxRate[command_custact["custact_taxrate"].to_s] = {"amt" => command_custact["custact_amt"].to_f,
+				    amtTaxRate[command_custact["custact_taxrate"]] = {"amt" => command_custact["custact_amt"].to_f,
 															"qty" => command_custact["custact_qty_stk"].to_f,"count" => 1}
 				end
 				custact.proc_private_aud_rec(params,command_custact)  ### add custacts

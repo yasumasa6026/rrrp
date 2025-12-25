@@ -58,7 +58,7 @@ export function* ScreenSaga({ payload: {params}  }) {
               else
                   {return yield put({ type:SCREEN_SUCCESS7, payload:{data:response.data,params:{...params,index:-1},headers:response.headers}})}
             case "confirm7":  //データ更新時のEnteのbuttonflgはinlineedit7やinlineadd7ではなくてconfirm7になる。更新実行
-              lineData  = response.data.params.parse_linedata
+              lineData  = response.data.params.parse_linedata   
               params = {...params,screenFlg:response.data.params.screenFlg,
                           screenCode:response.data.params.screenCode,err:response.data.params.err,index:parseInt(params.index)}
               if(params.screenFlg==="second")
@@ -70,7 +70,7 @@ export function* ScreenSaga({ payload: {params}  }) {
               return   
             case "fetch_request":  //viewによる存在チェック内容表示
             case "check_request":   //項目毎のチェック帰りはfetchと同じ
-                    lineData = response.data.params.parse_linedata      
+                    lineData = response.data.params.parse_linedata   
                      params = {...params,...response.data.params,screenFlg:response.data.params.screenFlg,
                                  screenCode:response.data.params.screenCode,err:response.data.params.err} 
                                  if(params.screenFlg==="second"){

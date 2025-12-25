@@ -29,7 +29,7 @@ module Shipment
 								t.consumtype,t.parenum,t.chilnum,t.consumunitqty,t.consumminqty,t.consumchgoverqty,
 								t.shelfnos_id_pare,   ---親作業場所
 								t.shelfnos_id_to_trn shelfnos_id_child,   ---子の保管先
-                ope.packqty,'' packno,'' lotno,
+                ope.packqty,'' packno,'' lotno,t.expiredate,
 								ope.units_id_case_shp,ope.consumauto,ope.shpordauto,
                --- alloc.srctblname ,alloc.srctblid,
                   sum(alloc.qty_linkto_alloctbl) qty_sch,0 qty,0 qty_stk  from trngantts t
@@ -48,7 +48,7 @@ module Shipment
               and alloc.srctblname like '%schs'   ---子部品がschsに引き当っている
               group by t.itms_id_trn ,t.processseq_trn ,	t.prjnos_id,t.chrgs_id_trn,
 								t.consumtype,t.parenum,t.chilnum,t.consumunitqty,t.consumminqty,t.consumchgoverqty,
-                ope.packqty,
+                ope.packqty,t.expiredate,
 								t.shelfnos_id_pare, t.shelfnos_id_to_trn ,  ope.units_id_case_shp,ope.consumauto,ope.shpordauto	
           union
             select t.itms_id_trn itms_id,t.processseq_trn processseq,max(t.id) trngantts_id,
@@ -56,7 +56,7 @@ module Shipment
 								t.consumtype,t.parenum,t.chilnum,t.consumunitqty,t.consumminqty,t.consumchgoverqty,
 								t.shelfnos_id_pare,   ---親作業場所
 								t.shelfnos_id_to_trn shelfnos_id_child,   ---子の保管先
-                ope.packqty,'' packno,'' lotno,
+                ope.packqty,'' packno,'' lotno,t.expiredate,
 								ope.units_id_case_shp,ope.consumauto,ope.shpordauto,
                --- alloc.srctblname ,alloc.srctblid,
                   0 qty_sch,sum(alloc.qty_linkto_alloctbl)  qty,0 qty_stk  from trngantts t
@@ -76,7 +76,7 @@ module Shipment
                      ---子部品がordsに引き当っている
               group by t.itms_id_trn ,t.processseq_trn ,	t.prjnos_id,t.chrgs_id_trn,
 								t.consumtype,t.parenum,t.chilnum,t.consumunitqty,t.consumminqty,t.consumchgoverqty,
-                ope.packqty,
+                ope.packqty,t.expiredate,
 								t.shelfnos_id_pare, t.shelfnos_id_to_trn ,  ope.units_id_case_shp,ope.consumauto,ope.shpordauto	
           union 
             select t.itms_id_trn itms_id,t.processseq_trn processseq,max(t.id) trngantts_id,
@@ -84,7 +84,7 @@ module Shipment
 								t.consumtype,t.parenum,t.chilnum,t.consumunitqty,t.consumminqty,t.consumchgoverqty,
 								t.shelfnos_id_pare,   ---親作業場所
 								t.shelfnos_id_to_trn shelfnos_id_child,   ---子の保管先
-                ope.packqty,''  packno,'' lotno,
+                ope.packqty,''  packno,'' lotno,t.expiredate,
 								ope.units_id_case_shp,ope.consumauto,ope.shpordauto,
                   0 qty_sch,0 qty,sum(alloc.qty_linkto_alloctbl)  qty_stk  from trngantts t
               inner join (select pare.*	from trngantts pare
@@ -102,7 +102,7 @@ module Shipment
               and (alloc.srctblname like '%dlvs' or alloc.srctblname like '%dlvs')     ---子部品がdlvs,actsに引き当っている
               group by t.itms_id_trn ,t.processseq_trn ,	t.prjnos_id,t.chrgs_id_trn,
 								t.consumtype,t.parenum,t.chilnum,t.consumunitqty,t.consumminqty,t.consumchgoverqty,
-                ope.packqty, 
+                ope.packqty, t.expiredate,
 								t.shelfnos_id_pare, t.shelfnos_id_to_trn ,  ope.units_id_case_shp,ope.consumauto,ope.shpordauto	
 					&
 					shpschs_sql = %Q$
@@ -144,11 +144,12 @@ module Shipment
                 shp["depdate"] = (shp["pare_starttime"].to_time - 4*3600).strftime("%Y/%m/%d %H:%M:%S")
 								shp["trngantts_id"] = shp["trngantts_id"]
 								shp["shelfnos_id_to"] = shp["shelfnos_id_pare"]
-								shp["shelfnos_id_fm"] = shp["shelfnos_id_chil"]  
+								shp["shelfnos_id_fm"] = shp["shelfnos_id_child"]  
 								shp["paretblname"] = parent["tblname"]
 								shp["paretblid"] = parent["tblid"]
 								shp["qty_case"] = 0
-								shp["qty"] = save_qty_stk = shp["qty_stk"].to_f
+								save_qty_stk = shp["qty_stk"].to_f
+								###shp["qty"] = save_qty_stk = shp["qty_stk"].to_f
 								shp["qty_shortage"] = shp["qty_sch"].to_f + shp["qty"].to_f
                 if shp["qty_shortage"] > 0
                   save_lotno = shp["lotno"]
@@ -174,7 +175,7 @@ module Shipment
                       if shp["packno"] != stk["packno"] or shp["lotno"] != stk["lotno"]
                         outcnt += 1
                         last_lotstks_parts = shpord_create_by_shpsch(shp)   ###
-                        last_lotstks.concat last_lotstks_parts
+                        last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
                         shp["packno"] = stk["packno"]
                         shp["lotno"] = stk["lotno"]
                         if shp["qty_shortage"] >  stk["qty_stk"].to_f
@@ -185,7 +186,7 @@ module Shipment
                           shp["qty_shortage"] = 0
                           outcnt += 1
                           last_lotstks_parts = shpord_create_by_shpsch(shp)   ###
-                          last_lotstks.concat last_lotstks_parts
+                          last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
                           shpf = false
                           break
                         end
@@ -198,7 +199,7 @@ module Shipment
                           shp["qty_shortage"] = 0
                           outcnt += 1
                           last_lotstks_parts = shpord_create_by_shpsch(shp)   ###　  
-                          last_lotstks.concat last_lotstks_parts
+                          last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
                           shpf = false
                           break
                         end
@@ -208,7 +209,7 @@ module Shipment
                       outcnt += 1
                       shortcnt += 1 if shp["qty_shortage"]  > 0
                       last_lotstks_parts = shpord_create_by_shpsch(shp)   ###
-                      last_lotstks.concat last_lotstks_parts
+                      last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
                     end
                   else
                     ActiveRecord::Base.connection.select_all(shuffle_sql).each do |stk|
@@ -217,11 +218,11 @@ module Shipment
                     outcnt += 1
                     shortcnt += 1 if shp["qty_shortage"]  > 0
                     last_lotstks_parts = shpord_create_by_shpsch(shp)   ###
-                    last_lotstks.concat last_lotstks_parts
+                    last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
                   end
                 else
 								  last_lotstks_parts = shpord_create_by_shpsch(shp)   ###prd,purordsによる自動作成 
-                  last_lotstks.concat last_lotstks_parts
+                  last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
 								  outcnt += 1
                   shortcnt += 1 if shp["qty_shortage"]  > 0
 								  if shp["consumauto"] == "A"   ###使用後自動返却
@@ -231,7 +232,7 @@ module Shipment
 										shp["shelfnos_id_fm"] = shp["shelfnos_id_pare"]
 										shp["shelfnos_id_to"] = shp["shelfnos_id_to"]  
 										last_lotstks_parts = shpord_create_by_shpsch(shp)   ###
-                    last_lotstks.concat last_lotstks_parts
+                    last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
 								  end
                 end
             end
@@ -531,7 +532,7 @@ module Shipment
 				last_lotstks_parts = update_mold_IToll_shp_link(blk.tbldata,"add") do
 						yield
 				end
-        last_lotstks.concat last_lotstks_parts
+        last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
 				###
 		end ###
     return last_lotstks
@@ -552,7 +553,7 @@ module Shipment
 						  last_lotstks_parts = nextshp_create_by_prevshp(prev_shpord,"shpords","shpinsts")
 						  outcnt += 1
 						  err = ""
-              last_lotstks.concat last_lotstks_parts
+              last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
 					  end
 				  end
 				  if outcnt == 0
@@ -651,8 +652,8 @@ module Shipment
 		command_c["#{nextshpchop}_created_at"] = Time.now
 		blk.proc_private_aud_rec({},command_c)
 
-		last_lotstks << {"tblname" => nextshpchop + "s","tblid" => command_c["id"],"qty_src" => command_c["#{nextshpchop}_qty_stk"] ,
-                    "set_f" => true ,"rec" => blk.tbldata}
+		last_lotstks << {"tblname" => nextshpchop + "s","tblid" => command_c["id"],"qty_src" => command_c["#{nextshpchop}_qty_stk"] } ###,
+                ####    "set_f" => true ,"rec" => blk.tbldata} processreqs.reqparams.length > 8096
 		###
 		#  mold,ITollのshpxxxxのlinktbls
 		###
@@ -660,9 +661,7 @@ module Shipment
 			nextshpchop
 		end
 		###
-    last_lotstks.concat << last_lotstks_parts
-		
-					 Rails.logger.debug " calss:#{self},line:#{__LINE__},last_lotstks:#{last_lotstks}"
+    last_lotstks.concat last_lotstks_parts  if last_lotstks_parts.size > 0  ###nilを避ける
 		return last_lotstks
 	end
 
@@ -776,12 +775,12 @@ module Shipment
       if decrease 
         new_con_qty = - consume[str_qty].to_f + consume[str_qty].to_f * (tbldata[str_qty].to_f / last_rec[str_qty].to_f)
         if new_con_qty >= 0
-          last_lotstks << {"tblname" => conTblname,"tblid" => consume["id"],"qty_src" =>  new_con_qty -  consume[str_qty].to_f ,
-                          "set_f" => true,"rec" => consume}
+          last_lotstks << {"tblname" => conTblname,"tblid" => consume["id"],"qty_src" =>  new_con_qty -  consume[str_qty].to_f}#  # ,
+                        ###  "set_f" => true,"rec" => consume,"paretblname" => tblname,"paretblid" => tbldata["id"]}
         else
           new_con_qty = 0
           last_lotstks << {"tblname" => conTblname,"tblid" => consume["id"],"qty_src" => - consume[str_qty].to_f ,
-                          "set_f" => true,"rec" => consume}
+                          "paretblname" => tblname,"paretblid" => tbldata["id"]}
         end
       else 
         ndsql = %Q%
@@ -795,7 +794,7 @@ module Shipment
                                  nd["chilnum"],nd["parenum"],
                                  nd["packqty"],child["consumunitqty"].to_f,nd["consumminqty"],nd["consumchgoverqty"])
         last_lotstks << {"tblname" => conTblname,"tblid" => consume["id"],"qty_src" =>  new_con_qty - consume[str_qty].to_f,
-                          "set_f" => true,"rec" => consume}
+                          "paretblname" => tblname,"paretblid" => tbldata["id"]}
       end
       prev = RorBlkCtl::BlkClass.new("r_#{conTblname}")
 		  command_prev = prev.command_init
@@ -860,8 +859,7 @@ module Shipment
 			
 			command_c["#{tblnamechop}_created_at"] = Time.now
 			setParams = blk.proc_private_aud_rec(setParams,command_c)
-      last_lotstks = {"tblname" => tblnamechop + "s","tblid" => command_c["id"],"qty_src" => qty_src ,
-                      "set_f" => true ,"rec" => blk.tbldata}
+      last_lotstks = {"tblname" => tblnamechop + "s","tblid" => command_c["id"],"qty_src" => qty_src}
 			###
 			#  mold,ITollのshpxxxxのlinktbls
 			###
@@ -869,7 +867,7 @@ module Shipment
 				tblnamechop
 			end
 			###
-      last_lotstks.concat last_lotstks_parts
+      last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
     return last_lotstks
 	end		
 
@@ -1210,6 +1208,7 @@ module Shipment
 		command_c["shpord_prjno_id"] = shp["prjnos_id"]
 		command_c["shpord_chrg_id"] = shp["chrgs_id_trn"]
 		command_c["shpord_person_id_upd"] = shp["persons_id_upd"]
+		command_c["shpord_expiredate"] = shp["expiredate"]
 
 		if shp["paretblname"] =~ /^pur/   ###tblname= 'feepayment'--->有償支給
 			command_c = CtlFields.proc_judge_check_supplierprice(command_c,"",0,"r_shpords")
@@ -1240,15 +1239,14 @@ module Shipment
 		command_c["shpord_created_at"] = Time.now
 		blk.proc_private_aud_rec({},command_c)
     
-		last_lotstks << {"tblname" => "shpords","tblid" => command_c["id"],"qty_src" => command_c["shpord_qty"] ,
-                    "set_f" => true ,"rec" => blk.tbldata}
+		last_lotstks << {"tblname" => "shpords","tblid" => command_c["id"],"qty_src" => command_c["shpord_qty"] }
 		###
 		#  mold,ITollのshpxxxxのlinktbls
 		###
 		last_lotstks_parts = update_mold_IToll_shp_link(blk.tbldata,"add") do
 			"shpord"
 		end
-    last_lotstks.concat last_lotstks_parts
+    last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
 		###
     return last_lotstks
 	end	
@@ -1379,13 +1377,14 @@ module Shipment
       command_c["shp#{paretblname[3..-2]}_#{str_qty}"] =  0
       command_c["shp#{paretblname[3..-2]}_qty_shortage"] =  0
       blk.proc_private_aud_rec({},command_c) 
-      last_lotstks << {"tblname" => "shp#{paretblname[3..-1]}","tblid" => shp["id"],"set_f" =>true,
-                "itms_id" => shp["shp#{paretblname[3..-2]}_itm_id"],"processseq" => shp["shp#{paretblname[3..-2]}_processseq"],
-                "shelfnos_id_fm" => shp["shp#{paretblname[3..-2]}_shelfno_id_fm"],"shelfnos_id_to" => shp["shp#{paretblname[3..-2]}_shelfno_id_to"],
-                "lotno" => shp["shp#{paretblname[3..-2]}_lotno"],"packno" => shp["shp#{paretblname[3..-2]}_packno"],
-                "depdate" => shp["shp#{paretblname[3..-2]}_depdate"],"duedate" => shp["shp#{paretblname[3..-2]}_duedate"],
-                "prjnos_id" => shp["shp#{paretblname[3..-2]}_prjno_id"],
-                qty =>shp["shp#{paretblname[3..-2]}_#{str_qty}"] * -1}     
+      last_lotstks << {"tblname" => "shp#{paretblname[3..-1]}","tblid" => shp["id"],qty_src =>shp["shp#{paretblname[3..-2]}_#{str_qty}"] * -1 }  ###,
+								##"set_f" =>true,
+                ##"rec"=>{"itms_id" => shp["shp#{paretblname[3..-2]}_itm_id"],"processseq" => shp["shp#{paretblname[3..-2]}_processseq"],
+                ##						"shelfnos_id_fm" => shp["shp#{paretblname[3..-2]}_shelfno_id_fm"],"shelfnos_id_to" => shp["shp#{paretblname[3..-2]}_shelfno_id_to"],
+                ##						"lotno" => shp["shp#{paretblname[3..-2]}_lotno"],"packno" => shp["shp#{paretblname[3..-2]}_packno"],
+                ##						"depdate" => shp["shp#{paretblname[3..-2]}_depdate"],"duedate" => shp["shp#{paretblname[3..-2]}_duedate"],
+                ##						"prjnos_id" => shp["shp#{paretblname[3..-2]}_prjno_id"],
+                ##						qty =>shp["shp#{paretblname[3..-2]}_#{str_qty}"] * -1}}     
     end
     return last_lotstks
   end

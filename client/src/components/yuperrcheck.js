@@ -29,10 +29,11 @@ export  function yupErrCheck (schema,field,linedata) {
     catch(err){
         linedata.confirm = false
         linedata["confirm_gridmessage"] = " error yupErrCheck"
+        linedata["errPath"] = []
         err.errors.map((fd) => {
-            mfield = fd.split(" ")[0]+"_gridmessage"
+            mfield = fd.split(" ")[0]+"_gridmessage"  //ex:fd:purord_confirm must be a `string` type, but the final value was:..."
             linedata[mfield] = " error "+ fd
-            linedata["errPath"] = mfield
+            linedata["errPath"].push(mfield)
         })  
     return linedata
     }

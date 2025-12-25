@@ -64,8 +64,9 @@ const AutoCell = ({
     }) => {
         const setFieldsByonChange = (e) => {
             if(e.target){
-                 values[id] =  e.target.value
-                 updateMyData(index, id, values[id] ) //dataの内容が更新されない。但しとると、画面に入力内容が表示されない。
+                values[id] =  e.target.value
+                updateMyData(index, id, values[id] ) //dataの内容が更新されない。但しとると、画面に入力内容が表示されない。
+                params = {...params,index:index}
                 handleDataSetRequest(data,params)
                }   
         } 
@@ -93,13 +94,12 @@ const AutoCell = ({
                                 handleFetchRequest(params,buttonflg)}
                   // else{if(Object.keys(autoAddFields).length)
                   //       {updateData(index, lineData) 
-                  //         handleDataSetRequest(data,params)}} //onBlurFunc7でセットされた項目を画面に反映
             }
               // else{if ( lineData[msg_id] !== "ok")
               //           {updateMyData(index, msg_id, " error " + lineData[msg_id])
-              //           handleDataSetRequest(data,params)}
               // }
              updateData(index, lineData) 
+             params = {...params,index:index}
              handleDataSetRequest(data,params)
         }    
   
@@ -114,13 +114,14 @@ const AutoCell = ({
             })  
             checkFields = yupErrCheck(screenSchema,"confirm",checkFields)
             Object.keys(checkFields).map((field)=>lineData[field] = checkFields[field])
-            if (lineData.confirm_gridmessage === "ok") {
+            if (lineData.confirm_gridmessage && lineData.confirm_gridmessage === "ok") {
                 params = {...params, lineData: JSON.stringify(lineData),  index: index , buttonflg: "confirm7" }
                 handleScreenRequest(params,data)
             }else{
                 let msg_id = "confirm_gridmessage"
-                let gridmsg_id = lineData["errPath"]
-                updateData(index, {[msg_id]:" error " + lineData[msg_id],[gridmsg_id]: " error " + lineData[gridmsg_id],confirm: false})
+                lineData["errPath"].map((gridmsg_id) =>
+                        updateData(index, {[msg_id]:" error " + lineData[msg_id],[gridmsg_id]: " error " + lineData[gridmsg_id],confirm: false})
+                        )
                 handleDataSetRequest(data,params)
             }
         }   
@@ -202,7 +203,10 @@ const AutoCell = ({
           return <input  type="checkbox" 
               onChange={e => {
                 setFieldsByonChange(e)
-              }}/>
+                              }
+                      }
+            className={setClassFunc(id,data[index],className,params.aud)} 
+            />
         case /^NonEditable/.test(className):
             return <span> {initialValue||""} </span>
 
@@ -738,10 +742,11 @@ const GridTable = ({
                       if(e.ctrlKey){  //複数行選択
                           if(Object.keys(selectedRowIds).length===0){
                             toggleAllRowsSelected(true)
+                            params = {...params,clickIndex:[]}
                             data.map((line,idx) => params.clickIndex.push({lineId:idx,id:line.id,
                                                     screenCode:params.screenCode,sNo:line[sNo]})
                             )  
-                            params.index = -1
+                            params = {...params,index:-1}
                           }else{
                             toggleAllRowsSelected(false)
                             params = {...params,clickIndex:[],index:-1}
@@ -755,13 +760,15 @@ const GridTable = ({
                           }
                         else{
                           row.toggleRowSelected(true)
+                          params = {...params,clickIndex:[]}
                           params.clickIndex.push({lineId:row.index,id:data[row.index]["id"],
                                                             screenCode:params.screenCode,sNo:data[row.index][sNo]})
-                          params.index = row.index
+                            params = {...params,index:row.index}
                         }
                       }
                      // params = {...params,changeData:changeData}
                      toggleSubForm&&handleSubForm(params,toggleSubForm)
+                     handleDataSetRequest(data,params)
                     }
                   })
                   } 

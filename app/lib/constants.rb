@@ -25,12 +25,15 @@ module Constants
  
     Tblfield_materiallized = ["r_pobjects","r_screenfields"]
 
+    ###
+
           ##calendar
     Calendar_cnt = 400  ###create_calendarの未来の最大作成日
 
     Whr = 8  ###壱日の労働時間
 
     NilOpeitmsId = "99999999"  ###opeitms.idがなっかった場合の値
-    MaxSplitCnt = 20  ###最大分割数
+    MaxSplitCnt = 10  ###最大分割数
 
+    OderConfirmDefult = 1 ###0：仮　 1:確定　　mkprdpurordsでorderを作成した時の規定値
 end

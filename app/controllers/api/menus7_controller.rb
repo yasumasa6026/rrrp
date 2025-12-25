@@ -105,13 +105,12 @@ module Api
                 reqparams = params.dup
                 parse_linedata = JSON.parse(params[:lineData])
                 JSON.parse(params[:checkCode]).each do |sfd,checkcode|
-                  err = reqparams[:err]
-                  reqparams = CtlFields.proc_judge_check_code reqparams,sfd,checkcode,parse_linedata
-                  reqparams[:err] = (reqparams[:err] ||="")  + (err||="")
+                  reqparams = CtlFields.proc_judge_check_code reqparams,sfd,checkcode,parse_linedata  
                 end
                 render json: {:params=>reqparams}   
 
             when "confirm7"
+                params[:err] = ""
                 screen = ScreenLib::ScreenClass.new(params)
                 reqparams = params.dup   ### 　
                 reqparams = screen.proc_confirm_screen(reqparams)
@@ -399,16 +398,7 @@ module Api
                 if params[:clickIndex]
                     outcnt,shortcnt,err,last_lotstks = Shipment.proc_mkShpords(params)      
                     if last_lotstks.size > 0 and err == ""
-                      setParams = {}
-                      setParams[:segment]  = "link_lotstkhists_update"   ###
-                      setParams[:tbldata] = {}
-                      setParams[:tblname] = nil
-                      setParams[:tblid] = nil
-                      setParams[:gantt] = {}
-                      setParams[:person_id_upd] = params[:person_id_upd]
-                      setParams[:last_lotstks] = last_lotstks.dup
-                      processreqs_id,setParams = ArelCtl.proc_processreqs_add(setParams)
-                      CreateOtherTableRecordJob.perform_later(setParams[:seqno][0])
+                      ArelCtl.proc_add_update_lotstkhists(last_lotstks,params[:person_id_upd])
                       ActiveRecord::Base.connection.commit_db_transaction()
                       render json:{:outcnt=>outcnt,:shortcnt=>shortcnt,:params=>{:buttonflg=>"mkShpords",:err => err}}
                     else

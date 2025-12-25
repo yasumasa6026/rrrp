@@ -488,14 +488,14 @@ module ArelCtl
         end
       else
         src = ActiveRecord::Base.connection.select_one(%Q& select * from alloctbls where id = #{rec_alloc["id"]}  &)
-        if aud == "update+" or  aud == "edit+"
+        if aud == "update+" or  aud == "edit+"  ###今ある数値に加算
             last_lotstk = {"tblname" => src["srctblname"],"tblid" => src["srctblid"],"qty_src" => rec_alloc["qty_linkto_alloctbl"]}
 			      strsql = %Q&
 						  update alloctbls set qty_linkto_alloctbl = qty_linkto_alloctbl + #{rec_alloc["qty_linkto_alloctbl"]},
 									remark = '#{rec_alloc["remark"]}'||left(remark,3000)   --- persond_id_upd=0
 									where id = #{rec_alloc["id"]}
                   &
-        else
+        else   ### そのままの数値で更新
             last_lotstk = {"tblname" => src["srctblname"],"tblid" => src["srctblid"]}
             last_lotstk["qty_src"] = rec_alloc["qty_linkto_alloctbl"].to_f - src["qty_linkto_alloctbl"].to_f 
 			      strsql = %Q&
@@ -823,6 +823,7 @@ module ArelCtl
                 max(trn.consumunitqty) consumunitqty,max(trn.consumminqty) consumminqty,max(trn.consumchgoverqty) consumchgoverqty,
                 pare.shelfnos_id_trn pare_shelfnos_id,   ---親作業場所
                 trn.shelfnos_id_to_trn shelfnos_id_to,   ---子の保管先
+								sp.locas_id_shelfno locas_id_pare,
 	 		          max(ope.units_id_case_shp) units_id_case_shp,max(trn.qty) qty,max(trn.qty_stk) qty_stk,
 	 		          sum(pare.qty_linkto_alloctbl) qty_sch,max(ope.consumauto) consumauto,max(ope.shpordauto) shpordauto
              from trngantts trn
@@ -836,8 +837,9 @@ module ArelCtl
                     and trn.paretblname = pare.tblname and   trn.paretblid = pare.tblid 
 	 			      inner join opeitms ope on trn.itms_id_trn = ope.itms_id and trn.processseq_trn = ope.processseq
 	 							and trn.shelfnos_id_trn = ope.shelfnos_id_opeitm
+							inner join shelfnos sp on sp.id = trn.shelfnos_id_pare
 	 		        where (trn.paretblname != trn.tblname or trn.paretblid != trn.tblid) and pare.mlevel < trn.mlevel
-	 		        group by trn.itms_id_trn ,trn.processseq_trn ,pare.shelfnos_id_trn,trn.shelfnos_id_to_trn,trn.consumtype
+	 		        group by trn.itms_id_trn ,trn.processseq_trn ,pare.shelfnos_id_trn,trn.shelfnos_id_to_trn,trn.consumtype,sp.locas_id_shelfno
          %  
   end
 	
@@ -849,6 +851,7 @@ module ArelCtl
 					      trn.consumchgoverqty,pare.qty_linkto_alloctbl  pare_qty_alloc,
 					      trn.itms_id_trn itms_id,trn.processseq_trn processseq,
 					      ope.duration ,ope.unitofduration,ope.locas_id_shelfno,
+								sp.locas_id_shelfno locas_id_pare,
                 pare.duedate_trn duedate_pare,pare.starttime_trn starttime_pare, pare.shelfnos_id_trn shelfnos_id_pare    
              	from trngantts trn
                 inner join (select p.*, alloc.qty_linkto_alloctbl 
@@ -862,8 +865,10 @@ module ArelCtl
                                                         inner join shelfnos s on o.shelfnos_id_opeitm = s.id                                   
                             )ope on trn.itms_id_trn = ope.itms_id and trn.processseq_trn = ope.processseq
 	 							          and trn.shelfnos_id_trn = ope.shelfnos_id_opeitm
+							inner join shelfnos sp on sp.id = trn.shelfnos_id_pare
 	 		        where (trn.paretblname != trn.tblname or trn.paretblid != trn.tblid) and pare.mlevel < trn.mlevel
               and trn.tblname in('prdschs','purschs')  ---,'dvsschs','ercschs','shpschs'は二重計上になるので除外
+							and trn.qty_sch > 0
             %  
   end
 	
@@ -934,5 +939,348 @@ module ArelCtl
                                 on  o.id = n.opeitms_id
           where ic.code = 'apparatus' and n.opeitms_id = #{opeitms_id}
     &
+  end
+  def proc_add_update_lotstkhists(last_lotstks,persons_id_upd)
+      tmptbls = []
+      save_tblname = ""
+      suppliers_id_fm = suppliers_id_to = save_tblid = -1
+      last_lotstks.each do |last_lotstk| 
+        next if last_lotstk.nil?
+          if last_lotstk["set_f"]
+              rec = last_lotstk["rec"].dup
+          else
+            case last_lotstk["tblname"]
+            when /^prd|^pur|^cust|^movacts/
+                  strsql = %Q& select rec.*,ope.itms_id,ope.processseq from #{last_lotstk["tblname"]} rec 
+                          inner join opeitms ope on ope.id = rec.opeitms_id
+                          where rec.id = #{last_lotstk["tblid"]}&
+                  rec = ActiveRecord::Base.connection.select_one(strsql)
+                  case last_lotstk["tblname"]
+                  when /^pur/
+                      suppliers_id_fm  = rec["suppliers_id"]
+                      supp_str = %Q&
+                              select supp.id from suppliers supp
+                                            inner join shelfnos shelf on shelf.locas_id_shelfno = supp.locas_id_supplier
+                                            where shelf.id = #{rec["shelfnos_id_to"]}
+                      &
+                      suppliers_id_to = ActiveRecord::Base.connection.select_value(supp_str)
+                      suppliers_id_to ||= -1
+                  else
+                      suppliers_id_fm = -1
+                      suppliers_id_to = -1
+                  end
+            when /^con/
+                      strsql = %Q& select rec.* from #{last_lotstk["tblname"]} rec where rec.id = #{last_lotstk["tblid"]}&
+                      rec = ActiveRecord::Base.connection.select_one(strsql)
+											case last_lotstk["paretblname"]
+												when /pur/ 
+                      			supp_str = %Q&
+                              select supp.id from suppliers supp
+                                            inner join shelfnos shelf on shelf.locas_id_shelfno = supp.locas_id_supplier
+                                            where shelf.id = #{rec["shelfnos_id_fm"]}
+                      				&
+                      				suppliers_id_fm = ActiveRecord::Base.connection.select_value(supp_str)
+                      				suppliers_id_to = -1
+												else
+                      				suppliers_id_fm = -1
+                      				suppliers_id_to = -1
+											end
+            when /^shp/
+                  		strsql = %Q& select rec.* from #{last_lotstk["tblname"]} rec where rec.id = #{last_lotstk["tblid"]}
+                  				&
+                  		rec = ActiveRecord::Base.connection.select_one(strsql)
+											case last_lotstk["paretblname"]
+												when /pur/ 
+                    			supp_str = %Q&
+                            select supp.id from suppliers supp
+                                          inner join shelfnos shelf on shelf.locas_id_shelfno = supp.locas_id_supplier
+                                          where shelf.id = #{rec["shelfnos_id_to"]}
+                    			&
+                    			suppliers_id_to = ActiveRecord::Base.connection.select_value(supp_str)
+												else
+                    			suppliers_id_to ||= -1
+											end
+                    	supp_str = %Q&
+                      select supp.id from suppliers supp
+                                          inner join shelfnos shelf on shelf.locas_id_shelfno = supp.locas_id_supplier
+                                          where shelf.id = #{rec["shelfnos_id_fm"]}
+                    			&
+                    	suppliers_id_fm = ActiveRecord::Base.connection.select_value(supp_str)
+                    	suppliers_id_fm ||= -1
+            when /^rejections/
+              strsql = %Q&
+                          select pa.itms_id,pa.processseq,pa.prjnos_id,'rejections' tblname,rj.id tblid,pa.lotno,pa.packno,
+                                  '' shelfnos_id, pa.shelfnos_id shelfnos_id_fm,rj.shelfnos_id_to,rj.acpdate starttime,rj.qty_rejection
+                                    from rejections rj
+                                    inner join (select p.id pare_id,ope.itms_id,ope.proceeseq,p.prjnos_id ,
+                                                        p.shelfnos_id shelfnos_id_fm,p.lotno,p.packno
+                                                        from #{last_lotstk["paretblname"]} p
+                                                    inner join opeitms ope on ope.id = p.opeitms_id
+                                                      where p.id = #{last_lotstk["paretblid"]}) pa 
+                                            on pa.pare_id = rj.paretblid
+              &
+              rec = ActiveRecord::Base.connection.select_one(strsql)
+            when /dymschs/
+              next
+            else
+              3.times{Rails.logger.debug" class:#{self} , line:#{__LINE__} ,error last_lotstk:#{last_lotstk}"}
+              raise
+            end
+          end
+          temp = {"itms_id" => rec["itms_id"],"processseq" => rec["processseq"],"prjnos_id" => rec["prjnos_id"],
+                    "tblname" => last_lotstk["tblname"],"tblid" => last_lotstk["tblid"],
+                    "qty_sch" => 0,"qty" => 0,"qty_stk" => 0, "qty_real" => 0,"qty_rejection" => 0,
+                    "shelfnos_id" => -1,"suppliers_id_fm" => suppliers_id_fm,"suppliers_id_to" => suppliers_id_to ,"custrcvplcs_id" =>-1 }
+          case last_lotstk["tblname"]
+            when /purschs|prdschs/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                        "qty_sch" => last_lotstk["qty_src"],
+                      "lotno" => "","packno" => ""})
+              tmptbls << xtemp
+            when /custschs/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["starttime"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_fm"],
+                                "qty_sch" => last_lotstk["qty_src"].to_f*-1,"lotno" => "","packno" => ""})
+              tmptbls << xtemp
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"custrcvplcs_id" => rec["custrcvplcs_id"],
+                                "qty_sch" => last_lotstk["qty_src"].to_f*-1,"lotno" => "","packno" => ""})
+              tmptbls << xtemp
+            when /purords|purinsts/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                      "qty" => last_lotstk["qty_src"],"lotno" => "","packno" => ""})
+              tmptbls << xtemp
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => 0,
+                      "suppliers_id_fm" => rec["suppliers_id"], "qty" => last_lotstk["qty_src" ] * -1,"lotno" => "","packno" => ""})
+              tmptbls << xtemp
+            when /prdords|prdinsts/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                      "qty" => last_lotstk["qty_src"],"lotno" => "","packno" => ""})
+              tmptbls << xtemp
+            when /custords/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["starttime"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_fm"],
+                              "custrcvplcs_id" => -1,"qty" => last_lotstk["qty_src"].to_f*-1,"lotno" => "","packno" => ""})
+              tmptbls << xtemp
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => -1,
+                      "custrcvplcs_id" => rec["custrcvplcs_id"],"qty_sch" => -1,"qty" => last_lotstk["qty_src"],"lotno" => "","packno" => ""})
+              tmptbls << xtemp
+            when /purreplyinputs/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["replaydate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                        "qty" => last_lotstk["qty_src"],"qty_stk" => 0, "qty_real" => 0,"lotno" => "","packno" => ""})
+              tmptbls << xtemp
+            when /custdlvs/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["depdate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_fm"],
+                      "custrcvplcs_id" => -1,"qty_stk" => last_lotstk["qty_src"],"lotno" => "","packno" => ""})
+              tmptbls << xtemp
+            when /purdlvs/
+              xtemp = temp.dup
+              temp.merge!({"starttime" => rec["depdate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => "","custrcvplcs_id" =>-1,
+                        "suppliers_id_fm" => suppliers_id_fm,"qty_stk" => last_lotstk["qty_src"],"lotno" => "","packno" => ""})
+              tmptbls << xtemp
+            when /puracts/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["rcptdate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                      "qty_stk" => last_lotstk["qty_src"], "qty_real" => last_lotstk["qty_src"],
+                      "lotno" => rec["lotno"],"packno" => rec["packno"]})
+              tmptbls << xtemp
+            when /prdacts/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["cmpldate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                            "qty_stk" => last_lotstk["qty_src"], "qty_real" => last_lotstk["qty_src"],
+                              "lotno" => rec["lotno"],"packno" => rec["packno"]})
+              tmptbls << xtemp
+            when /custacts/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["saledate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => -1,
+                        "custrcvplcs_id" => rec["custrcvplcs_id"],
+                        "qty_stk" => last_lotstk["qty_src"], "qty_real" => last_lotstk["qty_src"],
+                        "lotno" => rec["lotno"],"packno" => rec["packno"]})
+              tmptbls << xtemp
+            when /shpests/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["depdate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_fm"],
+                        "qty_sch" => last_lotstk["qty_src"] * -1,
+                        "lotno" => "","packno" => ""})
+              tmptbls << xtemp
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                         "qty_sch" => last_lotstk["qty_src"], "lotno" => "","packno" => ""})
+               tmptbls << xtemp
+            when /shpschs/
+              xtemp = temp.dup              
+              if rec["prdpur"] == "run" or rec["prdpur"] == "BYP"
+                ### ruuner or BYP(副産物)では出はない
+              else
+                xtemp.merge!({"starttime" => rec["depdate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_fm"],
+                                    "qty_sch" => last_lotstk["qty_src"] * -1,"lotno" => "","packno" => ""})
+                tmptbls << xtemp
+              end
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                                     "qty_sch" => last_lotstk["qty_src"],"lotno" => "","packno" => ""})
+              tmptbls << xtemp
+            when /shpords/
+              if rec["prdpur"] == "run" or rec["prdpur"] == "BYP"
+                ### ruuner or BYP(副産物)では出はない
+              else
+                xtemp = temp.dup
+                temp.merge!({"starttime" => rec["depdate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_fm"],
+                               "qty" => last_lotstk["qty_src"] * -1,
+                                    "lotno" => "","packno" => ""})
+                tmptbls << temp
+              end
+              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                                     "qty_sch" => 0,"qty" => last_lotstk["qty_src"],"qty_stk" => 0, "qty_real" => 0,
+                                     "lotno" => "","packno" => ""})
+               tmptbls << xtemp
+            when /shpinsts/
+              if rec["prdpur"] == "run" or rec["prdpur"] == "BYP"
+                ### ruuner or BYP(副産物)では出はない
+              else
+                xtemp = temp.dup
+                xtemp.merge!({"starttime" => rec["depdate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_fm"],
+                      "qty_stk" => last_lotstk["qty_src"] * -1, "qty_real" => last_lotstk["qty_src"] * -1,
+                                    "lotno" =>rec["lotno"],"packno" => rec["packno"]})
+                tmptbls << xtemp
+              end
+            when /shpacts/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["rcptdate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                      "qty_stk" => last_lotstk["qty_src"], "qty_real" => last_lotstk["qty_src"],
+                      "lotno" => rec["lotno"],"packno" => rec["packno"]})
+              tmptbls << xtemp
+            when /conschs/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_fm"],
+                     "qty_sch" => last_lotstk["qty_src"] * -1, "lotno" => "","packno" => ""})
+              tmptbls << xtemp
+            when /conords|coninsts/
+                xtemp = temp.dup
+                xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_fm"],
+                     "qty" => last_lotstk["qty_src"] * -1, "lotno" => "","packno" => ""})
+              tmptbls << xtemp
+            when /conacts/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_fm"],
+                              "qty_stk" => last_lotstk["qty_src"] * -1, "qty_real" => last_lotstk["qty_src"] * -1,
+                              "lotno" => rec["lotno"],"packno" => rec["packno"]})
+              tmptbls << xtemp
+            when /rejections/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["starttime"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                      "qty_rejection" => rec["qty_rejection"] , "lotno" => rec["lotno"],"packno" => rec["packno"]})
+              tmptbls << xtemp
+            when /movacts/
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["cmpldate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_fm"],
+                              "qty_rejection" => rec["qty_rejection_fm"].to_f * -1,"qty_stk" => rec["qty_stk_fm"].to_f * -1 ,
+                              "lotno" => rec["lotno"],"packno" => rec["packno"]})
+              tmptbls << xtemp
+              xtemp = temp.dup
+              xtemp.merge!({"starttime" => rec["cmpldate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
+                      "qty_rejection" => rec["qty_rejection_to"].to_f  ,"qty_stk" => rec["qty_stk_to"].to_f ,
+                      "lotno" => rec["lotno"],"packno" => rec["packno"]})
+              tmptbls << xtemp
+            else
+              3.times{Rails.logger.debug" error class:#{self} , line:#{__LINE__} ,tblname not support last_lotstk:#{last_lotstk}"}
+              raise
+          end 
+      end
+      ###data.sort_by { |h| h.values_at(:k1, :k2, :k3, :k4) }else
+      Rails.logger.debug" class:#{self} , line:#{__LINE__} ,\n tmptbls:#{tmptbls}"
+      tmplotstktbls = tmptbls.sort_by {|h| [h["itms_id"],h["processseq"],h["prjnos_id"],h["starttime"],h["lotno"],h["packno"],
+                        h["shelfnos_id"],h["suppliers_id_fm"],h["suppliers_id_to"],h["custrcvplcs_id"]]}
+      lotstktbls = []
+      save_lotno = save_packno = save_tblname = save_starttime = ""
+      save_itms_id = save_processseq = save_shelfnos_id = save_prjnos_id = -1
+      save_suppliers_id_fm = save_suppliers_id_to = save_custrcvplcs_id = save_tblid = -1
+      save_qty_sch = save_qty = save_qty_stk = save_qty_real = save_qty_rejection = 0
+      tmplotstktbls.each do |tmpl|
+        if save_itms_id == tmpl["itms_id"] and save_processseq == tmpl["processseq"] and 
+              save_shelfnos_id == tmpl["shelfnos_id"] and
+                 save_lotno == tmpl["lotno"] and save_packno == tmpl["packno"]  and 
+                  save_prjnos_id == tmpl["prjnos_id"]  and save_starttime == tmpl["starttime"] and 
+                     save_suppliers_id_fm == tmpl["suppliers_id_fm"]  and save_suppliers_id_to == tmpl["suppliers_id_to"] and 
+                          save_custrcvplcs_id == tmpl["custrcvplcs_id"]
+          save_qty_sch += tmpl["qty_sch"].to_f
+          save_qty += tmpl["qty"].to_f
+          save_qty_stk += tmpl["qty_stk"].to_f
+          save_qty_real += tmpl["qty_real"].to_f
+          save_qty_rejection += tmpl["qty_rejection"].to_f
+        else
+          if save_itms_id == -1 and save_processseq == -1 and 
+                save_shelfnos_id == -1 and save_lotno == "" and save_packno == ""  and 
+                    save_prjnos_id == -1  and save_starttime == "" and 
+                      save_suppliers_id_fm == -1 and  save_suppliers_id_to == -1 and  save_custrcvplcs_id == -1
+          else
+            lotstktbls << {"itms_id" => save_itms_id ,"processseq" => save_processseq ,
+                          "shelfnos_id" => save_shelfnos_id ,
+                          "suppliers_id_fm" => save_suppliers_id_fm ,"suppliers_id_to" => save_suppliers_id_to , 
+                          "custrcvplcs_id" => save_custrcvplcs_id,
+                          "tblname" => save_tblname,"tblid" => save_tblid,
+                          "lotno" => save_lotno ,"packno" => save_packno,  "persons_id_upd" => persons_id_upd,
+                           "prjnos_id" => save_prjnos_id ,"starttime" => save_starttime ,
+                          "qty_sch" => save_qty_sch ,"qty" => save_qty ,"qty_stk" => save_qty_stk ,"qty_real" => save_qty_real,
+                          "qty_rejection" => save_qty_rejection  }
+          end
+            save_itms_id = tmpl["itms_id"] 
+            save_processseq = tmpl["processseq"] 
+            save_shelfnos_id = tmpl["shelfnos_id"] 
+            save_suppliers_id_fm = tmpl["suppliers_id_fm"] 
+            save_suppliers_id_to = tmpl["suppliers_id_to"] 
+            save_custrcvplcs_id = tmpl["custrcvplcs_id"] 
+            save_lotno = tmpl["lotno"] 
+            save_packno = tmpl["packno"]  
+            save_prjnos_id = tmpl["prjnos_id"]  
+            save_starttime = tmpl["starttime"]
+            save_qty_sch = tmpl["qty_sch"].to_f
+            save_qty = tmpl["qty"].to_f
+            save_qty_stk = tmpl["qty_stk"].to_f
+            save_qty_rejection = tmpl["qty_rejection"].to_f
+            save_tblname = tmpl["tblname"]
+            save_tblid = tmpl["tblid"]
+        end
+      end
+      lotstktbls << {"itms_id" =>save_itms_id ,"processseq" => save_processseq ,
+                      "shelfnos_id" => save_shelfnos_id ,"suppliers_id_fm" => save_suppliers_id_fm,"suppliers_id_to" => save_suppliers_id_to,
+                      "custrcvplcs_id" => save_custrcvplcs_id,"lotno" => save_lotno ,"packno" => save_packno , 
+                      "prjnos_id" => save_prjnos_id ,"starttime" => save_starttime , "persons_id_upd" => persons_id_upd,
+                      "tblname" => save_tblname,"tblid" => save_tblid,
+                      "qty_sch" => save_qty_sch ,"qty" => save_qty ,"qty_stk" => save_qty_stk ,"qty_real" => save_qty_real,
+                      "qty_rejection" => save_qty_rejection}                      
+      lotstktbls.each do |lotstktbl|
+        if lotstktbl["suppliers_id_fm"] != -1 and lotstktbl["suppliers_id_fm"] != -1
+            lotstktbl["suppliers_id"] = lotstktbl["suppliers_id_fm"] 
+            Shipment.proc_mk_supplierwhs_rec "in",lotstktbl
+        else  
+          if lotstktbl["suppliers_id_to"] != -1 and lotstktbl["suppliers_id_to"] != -1
+              lotstktbl["suppliers_id"] = lotstktbl["suppliers_id_to"] 
+              Shipment.proc_mk_supplierwhs_rec "in",lotstktbl
+          else
+            if lotstktbl["custrcvplcs_id"] != -1 and lotstktbl["custrcvplcs_id"] != -1 
+              Shipment.proc_mk_custwhs_rec "in",lotstktbl
+            else
+              if lotstktbl["shelfnos_id"] == -1
+                if lotstktbl["qty_sch"] == 0 and lotstktbl["qty"] == 0 and lotstktbl["qty_stk"] == 0 and lotstktbl["qty_rejection"] == 0 ###dymschs
+                    next
+                else
+                  3.times{Rails.logger.debug" error shelfnos_id missing class:#{self} , line:#{__LINE__} ,lotstktbl:#{lotstktbl}"}
+                  raise
+                end
+              else
+                Shipment.proc_lotstkhists_in_out('in',lotstktbl)
+              end
+            end
+          end
+        end
+      end
   end
 end
