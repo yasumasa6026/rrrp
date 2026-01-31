@@ -42,11 +42,11 @@ export function* GanttChartSaga({ payload: {params}  }) {
                 return yield put({ type: GANTTCHART_SUCCESS, payload:{ tasks:tasks,viewMode:params.viewMode,
                                                                                 screenCode:params.screenCode,
                                                                                 buttonflg:params.buttonflg,
-                                                                                screenFlg:params.screenFlg,}} )  
+                                                                                screenFlg:params.screenFlg,headers:response.headers}} )  
             case "updateNditm":  //ganttchartからtaskをclickされた時
             case "updateTrngantt":
                 params = {...response.data.params,err:null,parse_linedata:{},index:0,clickIndex:[]}
-                return yield put({type:SECOND_SUCCESS7,payload:{data:response.data,params:params} })
+                return yield put({type:SECOND_SUCCESS7,payload:{data:response.data,params:params,headers:response.headers} })
         }}else
         {  
         let message

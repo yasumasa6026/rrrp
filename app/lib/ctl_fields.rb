@@ -2,14 +2,8 @@
 module CtlFields
 	extend self
 	def proc_fetch_rec params,parse_linedata
-		params[:err] = ""
-		if params[:errFields]
-			 	if params[:errFields].class.to_s == "String"
-					params[:errFields] = JSON.parse(params[:errFields])		
-				end 
-		else
-			params[:errFields] = {}
-		end
+		params[:err] = nil
+		params[:errFields] = {}
 		fetchview = save_fetchview = ""  ### save_fetchview:複数項目でkeyを構成するする時の重複処理を避ける
 		params[:fetchview].split(",").each do |fetch|
 			fetchview,delm = fetch.split(":")   ## YupSchemaでparagrapfをもとに作成済　split(":")拡張子の確認
@@ -18,8 +12,12 @@ module CtlFields
 			params = detail_fetch_rec(params,fetchview,delm,parse_linedata)
 			save_fetchview = fetch	
 		end
-		params[:errFields].each do |k,v|
-				params[:err] << v + ","	
+		params[:errFields].each do |k,v|   ###複数error対応
+				if params[:err]
+					params[:err] << v + ","	
+				else
+					params[:err] =  v + ","	
+				end
 		end
 		return params
 	end
@@ -79,7 +77,7 @@ module CtlFields
           end
 					params[:errFields].delete("error22")
 			end
-			params[:errFields].delete("error25")
+			params[:errFields].delete("error29")
 	  else
 			if mainviewflg   ###自身の登録の時
 				###
@@ -94,10 +92,10 @@ module CtlFields
 				 	end
 				end  
 			else
-				params[:errFields].delete("error25")
+				params[:errFields].delete("error29")
 				if missing  ###検索に必要な項目まだ未入力
 				else
-					params[:errFields]["error25"] =  "error25  --->not find code:#{keyfields},line:#{params[:index]}  "
+					params[:errFields]["error29"] =  "error29  --->not find code:#{keyfields},view:#{fetchview},line:#{params[:index]}  "
 					params[:parse_linedata]["confirm"] = false
 					keyfields.split(",").each do |key| ###コードが変更されたとき既に使用されている？
 						params[:parse_linedata][key.split(":")[0]+"_gridmessage"] = "error 2a not find code #{key} "
@@ -117,8 +115,8 @@ module CtlFields
 			parseLineData = parse_linedata.dup   ### loop 中に内容の変更はできない。
 			keyfields = ""
 			xno = ""
-			screentblnamechop = params[:screenCode].split("_")[1].chop
-			viewtblnamechop = fetchview.split("_")[1].chop
+			screentblnamechop = params[:screenCode].split("_")[1].chop   ###main table
+			viewtblnamechop = fetchview.split("_")[1].chop   ### sub table
 			mainviewflg = true  ##自分自身の登録か？
 			findstatus = true
 			if params[:screenCode].split("_")[1] != fetchview.split("_")[1] 
@@ -144,8 +142,10 @@ module CtlFields
 			fetchs = ActiveRecord::Base.connection.select_all(fetcfieldgetsql)
 			cnt = 0
       paragraphs = []
+					Rails.logger.debug("class:#{self},line:#{__LINE__},\n fetchview:#{fetchview},flgfetchview:#{flgfetchview}")
 			fetchs.each do |prefetch|
 				prefetch["screenfield_paragraph"].split(",").each do |paragraph|
+					Rails.logger.debug("class:#{self},line:#{__LINE__},\n paragraph:#{paragraph},flgfetchview:#{flgfetchview}")
 					if paragraph == flgfetchview   
 						paragraphs << prefetch["pobject_code_sfd"]
 					else
@@ -158,7 +158,7 @@ module CtlFields
 			paragraphs.each do |fetch|  ###viewの複数keyの入力確認
 					cnt += 1 
 					valOfField = parseLineData[fetch]
-					Rails.logger.debug("class:#{self},line:#{__LINE__},\n fetch:#{fetch},parseLineData:#{parseLineData}") if valOfField.class.to_s != "String"
+					Rails.logger.debug("class:#{self},line:#{__LINE__},\n fetch:#{fetch},parseLineData:#{parseLineData}")
 					if valOfField =~ /,/				 ###入力項目に「,」が入っていた時
 						params[:errFields]["error33"] =  "error33  --->not input comma:#{params[:index]} "
 						parseLineData[(fetch+"_gridmessage")] =  "error33 --->not input comma"  ###!!!
@@ -193,8 +193,9 @@ module CtlFields
 			end
       rec = nil
 			if missing == false  ###検索のための入力項目はすべて入力されている。
-          	if 	parseLineData["aud"] =~ /update|edit/ or params[:aud] =~ /update|edit/
-								strsql = %Q&select * from #{params[:view]} where id = #{parseLineData["id"]}  --- ##自身の登録のとき
+          	###if 	parseLineData["aud"] =~ /update|edit/ or params[:aud] =~ /update|edit/
+          	if 	parseLineData["id"]  and parseLineData["id"] != ""
+								strsql = %Q&select * from r_#{screentblnamechop}s where id = #{parseLineData["id"]}  --- ##自身の登録のとき
 											&
 								mainTblRec = ActiveRecord::Base.connection.select_one(strsql)  ### 自身のrecord
 								if mainTblRec.nil?  ##
@@ -227,33 +228,32 @@ module CtlFields
 					 # new_array = array.reject { |x| x >= 3 }
 					fields = fieldsall.reject{|i| i =~ /^id$|_sno$|_cno$|_gno$|_isudate$|_created_at$|_updated_at$|_update_ip$|_remark$|_contents$|_seqno|_upd$/}
 					### masterの項目名をセット
-					if viewtblnamechop =~ /sch$|ord$|inst$|replyinput$|dlv$|act$/###prd,pur,custxxxxのとき
+					if screentblnamechop =~ /sch$|ord$|inst$|replyinput$|dlv$|act$/###prd,pur,custxxxxのとき
 						org = nil
 						fields.each do |af|
 								mainaf = af + delm  ### 
 								ix = allLineKeys.index(mainaf)
-								if ix ### schsの項目はords に　ords,instsも同様
+								if ix    ### schsの項目はords に　ords,instsも同様
 										### masterの項目名を自身の項目として
-										parseLineData[allLineKeys[ix]] = rec[af].to_s
+										parseLineData[allLineKeys[ix]] = rec[af].to_s 
 								else
 										if af == (viewtblnamechop + "_id")
 														ix = allLineKeys.index(screentblnamechop + "_" + viewtblnamechop + "_id" + delm)
-																	Rails.logger.debug("class:#{self},line:#{__LINE__},\n ix:#{ix}, parseLineData:#{parseLineData},\n af:#{af},rec:#{rec}") 
-														if ix
+														if ix   
 																	parseLineData[allLineKeys[ix]] = rec[af].to_s
 														end
 										else
-											af = af.sub(/^#{viewtblnamechop}/,"#{screentblnamechop}")  ### schs -> ords  ords -> insts  insts -> dlvs  dlvs -> acts
-											mainaf = af + delm  ### 
-											next if mainaf == "#{screentblnamechop}_id"  ###idは別途処理
-											ix = allLineKeys.index(mainaf)
-											if ix
-												### masterの項目名を自身の項目として
-												parseLineData[allLineKeys[ix]] = rec[af].to_s
-											end
+												mainaf = af.sub(/^#{viewtblnamechop}/,"#{screentblnamechop}")  ### schs -> ords  ords -> insts  insts -> dlvs  dlvs -> acts
+												mainaf = mainaf + delm  ### 
+												next if mainaf == "#{screentblnamechop}_id"  ###idは別途処理
+												ix = allLineKeys.index(mainaf)
+												if ix   
+													### masterの項目名を自身の項目として
+													parseLineData[allLineKeys[ix]] = rec[af].to_s
+												end
 										end
 								end
-						end
+						end 
 						case screentblnamechop
 							when /prd|pur/
 								  str_srctbl_qty = "" ###次のステータスに移行していないqtyを求める。　
@@ -278,7 +278,7 @@ module CtlFields
 								  end
 									
 									if parseLineData[lineStrQty].to_s == "0"   ###初期値でzeroがセットされていること
-									    str_srctbl_qty = "sum(srctbl.#{viewStrQty}) srctbl_qty"
+									    str_srctbl_qty = "max(srctbl.#{viewStrQty}) srctbl_qty"
 											if	xno =~ /_cno/  ###xxx_cnoのとき
 						 						if  parseLineData[(screentblnamechop+"_shelfno_id")] != ""  and  !parseLineData[(screentblnamechop+"_shelfno_id")].nil? and
 						 							screentblnamechop =~ /pur/
@@ -326,7 +326,6 @@ module CtlFields
 							when /custord|custdlv|custact/
 						end
 						if org	###既に状態が変化している
-								packqty = ( if org["packqty"].to_f == 0 then 1 else org["packqty"].to_f end)
 								case screentblnamechop
 							  	when /prd|pur/
 								  		if org["qty_src"] >= org["srctbl_qty"] 
@@ -336,14 +335,16 @@ module CtlFields
 										    		parseLineData[(screentblnamechop+"_qty_gridmessage")] =  "error 42--->over qty"
 									    		when /dlv$|act$/
 									  					params[:errFields]["error43"] =  "error43 --->over qty  line:#{params[:index]} "
-										    			parseLineData[(screentblnamechop+"_qty_gridmessage")] =  "error43--->over qty_stk"
+										    			parseLineData[(screentblnamechop+"_qty_case_gridmessage")] =  "error43--->over qty_case"
 									  		end
+												parseLineData[(screentblnamechop+"_qty_case")] = 0 
 											else
-												parseLineData[lineStrQty] = ((org["srctbl_qty"] - org["qty_src"])/packqty).ceil * packqty
-												parseLineData[(screentblnamechop+"_qty_case")] = ((org["srctbl_qty"] - org["qty_src"])/packqty).ceil * packqty
+												parseLineData[(screentblnamechop+"_qty_case")] = ((org["srctbl_qty"] - org["qty_src"])/packqty).ceil 
+												parseLineData[lineStrQty] = parseLineData[(screentblnamechop+"_qty_case")] * packqty
 												params[:errFields].delete("error42")
 												params[:errFields].delete("error43")
 											end
+					Rails.logger.debug("class:#{self},line:#{__LINE__},\n org:#{org},\n parseLineData:#{parseLineData},\n params[:errFields]:#{params[:errFields]}")
 									when /custord|custinst|custdlv|custact/
 							  	when /pay|bill/
 								    	if org["amt_src"].to_f >= org["srctbl_amt"].to_f 
@@ -373,20 +374,20 @@ module CtlFields
 													### masterの項目名をセット
 													parseLineData[allLineKeys[ix] ] = rec[af].to_s
 											end
-											mainaf = af.sub(/^#{viewtblnamechop}/,"#{screentblnamechop}")
-											next if mainaf == "#{screentblnamechop}_id"
-											ix = allLineKeys.index(mainaf)
-														if ix
-															### masterの項目名を自身の項目として
-															parseLineData[allLineKeys[ix] ] = rec[af].to_s
-														end
-											###マスターの内容をsfixなしてもセット
-											mainaf = af.sub(/_#{viewtblnamechop}$/,"")
-											ix = allLineKeys.index(mainaf)
-											if ix
-													### masterの親項目名を自身の項目として
-													parseLineData[allLineKeys[ix] ] = rec[af].to_s
-											end
+											# mainaf = af.sub(/^#{viewtblnamechop}/,"#{screentblnamechop}")
+											# next if mainaf == "#{screentblnamechop}_id"
+											# ix = allLineKeys.index(mainaf)
+											# 			if ix
+											# 				### masterの項目名を自身の項目として
+											# 				parseLineData[allLineKeys[ix] ] = rec[af].to_s
+											# 			end
+											# ###マスターの内容をsfixなしてもセット
+											# mainaf = af.sub(/_#{viewtblnamechop}$/,"")
+											# ix = allLineKeys.index(mainaf)
+											# if ix
+											# 		### masterの親項目名を自身の項目として
+											# 		parseLineData[allLineKeys[ix] ] = rec[af].to_s
+											# end
 											if viewtblnamechop =~ /opeitms|nditms|custs/  and screentblnamechop =~ /schs$|ords$|acts$/  ###opeitm,nditmのとき
 												mainaf = af.sub(/^#{viewtblnamechop}/,"#{screentblnamechop}").sub(/_#{viewtblnamechop}$/,"")
 												next if mainaf == "#{screentblnamechop}_id"
@@ -502,7 +503,7 @@ module CtlFields
 					strwhere << "  #{key} = '#{parseLineData[symkey]}'     and "
 			end
 		end
-		if parseLineData["id"] == "" or parseLineData.nil?  ###新規
+		if parseLineData["id"] == "" or parseLineData["id"].nil?  ###新規
 			if strwhere =~ /where/ 
 				strsql = "select id from #{tbl} " + strwhere[0..-5]
 				recs = ActiveRecord::Base.connection.select_all(strsql)
@@ -549,7 +550,7 @@ module CtlFields
 	def proc_judge_check_code params,sfd,checkCode,parse_linedata  ###
 		parseLineData = parse_linedata.dup
 		err = nil
-		params[:err] = ""
+		params[:err] = nil
 		if params[:errFields]
 			 	if params[:errFields].class.to_s == "String"
 					params[:errFields] = JSON.parse(params[:errFields])		
@@ -578,7 +579,12 @@ module CtlFields
       end
 		end
 		params[:errFields].each do |k,v|
-				params[:err] << v + ","	
+				next if v == nil or v == ""
+				if params[:err]
+					params[:err] << v + ","
+				else
+					params[:err] =  v + ","
+				end	
 		end
 		params[:parse_linedata] = parseLineData.dup
 		return params 
@@ -622,7 +628,7 @@ module CtlFields
 				parseLineData["screenfield_paragraph"].split(",").each do |paragraph|
 					screen,delm = paragraph.split(":",2)
 					if parseLineData["pobject_code_sfd"] =~ /_sno_|_cno_|_gno_|_packinglistno_/
-						if  parseLineData["pobject_code_sfd"] =~ /^#{tblname.chop}/   ###目的のtableをsno_目的のtable名で指定
+						if parseLineData["pobject_code_sfd"] !~ /^#{tblname.chop}/   ###目的のtableをsno_目的のtable名で指定
 							case parseLineData["pobject_code_sfd"]
 								when /_sno_/
 									field = parseLineData["pobject_code_sfd"].split("_sno_")[1] + "_sno"
@@ -886,24 +892,6 @@ module CtlFields
 
 	def proc_judge_check_already_used parse_linedata,item,index,screenCode  ###あるidで登録されたcodeが別のテーブルに既に登録されているとき、codeの変更は不可
 		parseLineData = parse_linedata.dup
-		###外部keyでチェックすべき???
-		# check_code,views = checkCode.split(",")
-		# strsql = %Q&select #{field} from #{view} where #{field} = '#{params[:parse_linedata][item]}'
-		# 		&
-		# old_value = ActiveRecord::Base.connection.select_value(strsql)
-		# old_value ||= ""
-		# if params[:parse_linedata][item] == "" or old_value.nil?
-		# 			new_value = ""
-		# else
-		# 			strsql = %Q&select #{field} from #{view} where #{field.sub("_code","_id")} = #{params[:parse_linedata]["id"]}
-		# 			&
-		# 			new_value = ActiveRecord::Base.connection.select_value(strsql)
-		# end
-		# if old_value == new_value
-		# 			params[:err] = nil
-		# else	
-		# 			params[:err] =  "error   ---> #{field} can not change because #{view} already used "
-		# end
 		if parseLineData["id"] and parseLineData["id"] != ""  ###変更の時 
       err = nil
 			case screenCode
@@ -971,28 +959,38 @@ module CtlFields
 		when /pursch/
 			strpur = "pursch"
 			stramtsym = "pursch_amt_sch"
-			strqtysym = "pursch_qty_case"
+			strqtysym = "pursch_qty_sch"
 			strtaxsym = "pursch_tax"
 		when /purord/
 			strpur = "purord"
 			stramtsym = "purord_amt"
-			strqtysym = "purord_qty_case"
+			strqtysym = "purord_qty"
 			strtaxsym = "purord_tax"
 		when /purinst/
 			strpur = "purinst"
 			stramtsym = "purinst_amt"
-			strqtysym = "purinst_qty_case"
+			strqtysym = "purinst_qty"
 			strtaxsym = "purinst_tax"
 		when /purdlv/
 			strpur = "purdlv"
 			stramtsym = "purdlv_amt"
-			strqtysym = "purdlv_qty_case"
+			strqtysym = "purdlv_qty_stk"
 			strtaxsym = "purdlv_tax"
 		when /puract/
 			strpur = "puract"
 			stramtsym = "puract_amt"
-			strqtysym = "puract_qty_case"
+			strqtysym = "puract_qty_stk"
 			strtaxsym = "puract_tax"
+		when /shpord/
+			strpur = "shpord"
+			stramtsym = "shpord_amt"
+			strqtysym = "shpord_qty"
+			strtaxsym = "shpord_tax"
+		when /shpact/
+			strpur = "shpact"
+			stramtsym = "shpact_amt"
+			strqtysym = "shpact_qty_stk"
+			strtaxsym = "shpact_tax"
 		end	
 		strcontractpricesym = "#{strpur}_contractprice"
 		strmasterpricesym = "#{strpur}_masterprice"
@@ -1003,13 +1001,16 @@ module CtlFields
 		strtaxratesym = "#{strpur}_taxrate"
 		strcrrsym = "#{strpur}_crr_id"
 		strsuppliersym = "#{strpur}_supplier_id"
+		strshpsql = ""
 		case screenCode
 		when /pursch|purord/
 			case parseLineData[strcontractpricesym]
 			when "1"
-				ex_date = "expiredate >= to_date('#{parseLineData[strisudatesym]}','yyyy/mm/dd')" 
+				ex_date = "expiredate >= to_date('#{parseLineData[strisudatesym]}','yyyy/mm/dd')
+										 and opeitms_id = #{parseLineData[stropeitmsym]}	" 
 			when "2","3"
-				ex_date = "expiredate >= to_date('#{parseLineData[strduedatesym]}','yyyy/mm/dd')"
+				ex_date = "expiredate >= to_date('#{parseLineData[strduedatesym]}','yyyy/mm/dd')
+											 and opeitms_id = #{parseLineData[stropeitmsym]}"
 			when "A"
 				ex_date = nil
 			when "B"
@@ -1022,14 +1023,34 @@ module CtlFields
 		when /purdlv/ 
 			ex_date = case parseLineData[strcontractpricesym] 
 						when "1"
-							"expiredate >= to_date('#{parseLineData["purdlv_depdate"]}','yyyy/mm/dd')"
+							"s.expiredate >= to_date('#{parseLineData["purdlv_depdate"]}','yyyy/mm/dd')
+										 and s.opeitms_id = #{parseLineData[stropeitmsym]}"
 						else
 							nil
 						end
 		when /puract/ 
 			ex_date = case parseLineData[strcontractpricesym] 
+						when "2","3"
+							"s.expiredate >= to_date('#{parseLineData["puract_rcptdate"]}','yyyy/mm/dd')
+										 and s.opeitms_id = #{parseLineData[stropeitmsym]}"
+						else
+							nil
+						end
+		when /shp/ 
+			strshpsql = %Q%inner join (select p.id from opeitms p
+																			where p.itms_id = #{parseLineData["#{strpur}_itm_id"]}
+																			and p.processseq = #{parseLineData["#{strpur}_processseq"]}
+																			and p.shelfnos_id_opeitm = #{parseLineData["#{strpur}_shelfno_id_to"]}) ope
+																on s.opeitms_id = ope.id%
+			ex_date = case parseLineData[strcontractpricesym] 
 						when "1"
-							"expiredate >= to_date('#{parseLineData["puract_rcptdate"]}','yyyy/mm/dd')"
+							"s.expiredate >= to_date('#{parseLineData["#{strpur}_isudate"]}','yyyy/mm/dd')"
+						when "2","3"
+							if strpur == "shpact"
+								"s.expiredate >= to_date('#{parseLineData["#{strpur}_rcptdate"]}','yyyy/mm/dd')"
+							else
+									nil
+							end
 						else
 							nil
 						end
@@ -1038,12 +1059,12 @@ module CtlFields
 			
 		if ex_date
 			strsql = %Q&
-						select * from supplierprices 
-									where suppliers_id = #{parseLineData[strsuppliersym]} and opeitms_id = #{parseLineData[stropeitmsym]}
-									and maxqty >= #{parseLineData[strqtysym]}
-									and minqty < #{parseLineData[strqtysym]}
+						select s.* from supplierprices s #{strshpsql}
+									where s.suppliers_id = #{parseLineData[strsuppliersym]}
+									and s.maxqty >= #{parseLineData[strqtysym]}
+									and s.minqty < #{parseLineData[strqtysym]}
 									and #{ex_date}
-									order by maxqty,expiredate limit 1
+									order by s.maxqty,s.expiredate limit 1
 				&								
 			price = ActiveRecord::Base.connection.select_one(strsql)	
 			if price
@@ -1137,7 +1158,7 @@ module CtlFields
 		err = nil
 		case screenCode
 		when /custschs/
-			if parseLineData["custsch_contractprice"] =~ /[A-Z]|[a-z]/ and parseLineData["custsch_price"] != "" ###数字の時マスター単価
+			if parseLineData["custsch_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
 				return parseLineData,err
 			end
 			strsql = %Q&
@@ -1207,7 +1228,7 @@ module CtlFields
 				parseLineData["custsch_contractprice"] = "C"  ###C:マスター単価無
 			end
 		when /custords/
-			if parseLineData["custord_contractprice"] =~ /[A-Z]|[a-z]/ and parseLineData["custord_price"] != "" ###数字の時マスター単価
+			if parseLineData["custord_contractprice"] =~ /[A-Z]|[a-z]/ ###数字の時マスター単価
 				return parseLineData,err
 			end
 			strsql = %Q&
@@ -1394,7 +1415,7 @@ module CtlFields
 			when "A"
 				if parseLineData["puract_sno_purord"] != "" and !parseLineData["puract_sno_purord"].nil?
 					strsql = %Q&
-						select isudate from purords where sno = #{parseLineData["puract_sno_purord"]}
+						select ISUdate from purords where sno = #{parseLineData["puract_sno_purord"]}
 					&
 					base_date =  ActiveRecord::Base.connection.select_value(strsql)
 				else  ###purordsを纏めるとき同一taxrateであること
@@ -1507,7 +1528,7 @@ module CtlFields
 			&
 			parseLineData["shpsch_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
 		when /custacts/ ###再度求める
-			case parseLineData["itm_taxflg"]
+			case parseLineData["itm_taxflg"]  #itms[0:非課税・不課税,1:消費税,9:低減税率,A::請負工事・指定役務]
 			when "A"
 				if parseLineData["custact_sno_custord"] != "" and !parseLineData["custact_sno_custord"].nil?
 					strsql = %Q&
@@ -1554,10 +1575,10 @@ module CtlFields
 					end
 				end
 			when "0","1","9"
-				strsql = %Q&
-					select saledate from custacts where  id = #{parseLineData["custact_id"]}
-				&
-				base_date =  ActiveRecord::Base.connection.select_value(strsql)
+				# strsql = %Q&
+				# 	select saledate from custacts where  id = #{parseLineData["custact_id"]}
+				# &
+				base_date =   parseLineData["custact_saledate"]
 			else
 				raise"taxflg error C 1 paymants_id : #{parseLineData["paymets_id"]} LINE:#{__LINE__} "
 			end
@@ -1613,9 +1634,9 @@ module CtlFields
 		###
 		case item
 		when /_org$/
-			if parseLineData["mkprdpurord_orgtblname"] !~ /prd|pur/
+			if parseLineData["mkprdpurord_orgtblname"] !~ /prd|pur|cust/
 				parseLineData[item.sub("code","name")] = " not select orgtblname "
-				err = "#{parseLineData[item]}  not select org table "
+				err = "#{parseLineData[item]}  not select orgtable "
 				return parseLineData,err
 			end
 		when /_pare$/
@@ -1796,7 +1817,7 @@ module CtlFields
 	def proc_schs_fields_making nd,parent,command_x  ###xxxschsの作成のみ
 		err = false
 		qty_require = 0
-		nd["packqty"] =  if nd["packqty"] == 0
+		nd["packqty"] =  if nd["packqty"] == 0 and  nd["packqty"].nil?
 									1
 								else
 									nd["packqty"]
@@ -2427,17 +2448,17 @@ module CtlFields
     	when "ercsch"
 		  strsql = %Q&  ---予定されている担当者
 				select fc.id ,fc.itms_id_fcoperator  ,fc.chrgs_id_fcoperator from fcoperators fc
-						left join ercschs es1 on fc.id = es1.fcoperators_id and es1.starttime  < to_timestamp('#{command_x["ercsch_starttime"]}','yyyy-mm-dd hh24:mi:ss') 
-																			and es1.duedate  > to_timestamp('#{command_x["ercsch_starttime"]}','yyyy-mm-dd hh24:mi:ss')
-						left join ercschs es2 on fc.id = es2.fcoperators_id and es2.starttime  < to_timestamp('#{command_x["ercsch_duedate"]}','yyyy-mm-dd hh24:mi:ss')
+						left join ercschs es1 on fc.id = es1.fcoperators_id and es1.commencementdate  < to_timestamp('#{command_x["ercsch_commencementdate"]}','yyyy-mm-dd hh24:mi:ss') 
+																			and es1.duedate  > to_timestamp('#{command_x["ercsch_commencementdate"]}','yyyy-mm-dd hh24:mi:ss')
+						left join ercschs es2 on fc.id = es2.fcoperators_id and es2.commencementdate  < to_timestamp('#{command_x["ercsch_duedate"]}','yyyy-mm-dd hh24:mi:ss')
 																			and es2.duedate > to_timestamp('#{command_x["ercsch_duedate"]}','yyyy-mm-dd hh24:mi:ss')
-						left join ercords eo1 on fc.id = eo1.fcoperators_id and eo1.starttime  < to_timestamp('#{command_x["ercsch_starttime"]}','yyyy-mm-dd hh24:mi:ss') 
-																			and eo1.duedate  > to_timestamp('#{command_x["ercsch_starttime"]}','yyyy-mm-dd hh24:mi:ss')
-						left join ercords eo2 on fc.id = eo2.fcoperators_id and eo2.starttime  < to_timestamp('#{command_x["ercsch_duedate"]}','yyyy-mm-dd hh24:mi:ss')
+						left join ercords eo1 on fc.id = eo1.fcoperators_id and eo1.commencementdate  < to_timestamp('#{command_x["ercsch_commencementdate"]}','yyyy-mm-dd hh24:mi:ss') 
+																			and eo1.duedate  > to_timestamp('#{command_x["ercsch_commencementdate"]}','yyyy-mm-dd hh24:mi:ss')
+						left join ercords eo2 on fc.id = eo2.fcoperators_id and eo2.commencementdate  < to_timestamp('#{command_x["ercsch_duedate"]}','yyyy-mm-dd hh24:mi:ss')
 																			and eo2.duedate > to_timestamp('#{command_x["ercsch_duedate"]}','yyyy-mm-dd hh24:mi:ss')
-						left join ercinsts ei1 on fc.id = ei1.fcoperators_id and ei1.starttime  < to_timestamp('#{command_x["ercsch_starttime"]}','yyyy-mm-dd hh24:mi:ss') 
-																			and ei1.duedate  > to_timestamp('#{command_x["ercsch_starttime"]}','yyyy-mm-dd hh24:mi:ss')
-						left join ercinsts ei2 on fc.id = ei2.fcoperators_id and ei2.starttime  < to_timestamp('#{command_x["ercsch_duedate"]}','yyyy-mm-dd hh24:mi:ss')
+						left join ercinsts ei1 on fc.id = ei1.fcoperators_id and ei1.commencementdate  < to_timestamp('#{command_x["ercsch_commencementdate"]}','yyyy-mm-dd hh24:mi:ss') 
+																			and ei1.duedate  > to_timestamp('#{command_x["ercsch_commencementdate"]}','yyyy-mm-dd hh24:mi:ss')
+						left join ercinsts ei2 on fc.id = ei2.fcoperators_id and ei2.commencementdate  < to_timestamp('#{command_x["ercsch_duedate"]}','yyyy-mm-dd hh24:mi:ss')
 																			and ei2.duedate > to_timestamp('#{command_x["ercsch_duedate"]}','yyyy-mm-dd hh24:mi:ss')
 						where fc.itms_id_fcoperator = #{nd["itms_id"]} and fc.expiredate > current_date
 		    &

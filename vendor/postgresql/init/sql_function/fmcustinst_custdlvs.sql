@@ -13,7 +13,7 @@
   cust.loca_code_cust  loca_code_cust ,
   custrcvplc.loca_code_custrcvplc  loca_code_custrcvplc ,
   custrcvplc.loca_name_custrcvplc  loca_name_custrcvplc ,
-'' id,
+	cast(null as numeric)  id ,
   cust.cust_loca_id_cust  cust_loca_id_cust ,
   person_upd.code  person_code_upd ,
   person_upd.name  person_name_upd ,
@@ -27,6 +27,7 @@
   opeitm.boxe_code boxe_code,
   opeitm.boxe_code  boxe_code_custdlv ,
   opeitm.boxe_name  boxe_name_custdlv ,
+  opeitm.opeitm_packqty  opeitm_packqty ,
   0  custdlv_boxe_id_custdlv ,---boxes_id=0 ����,dummy
     0 boxe_outdepth_custdlv,
     0 boxe_outwide_custdlv,
@@ -66,7 +67,7 @@ custinst.opeitms_id   custdlv_opeitm_id,
 custinst.crrs_id   custdlv_crr_id,
 custinst.sno  custdlv_sno_custinst,
 custinst.cno  custdlv_cno_custinst,
-custinst.duedate  custdlv_duedate_custord,
+custord.duedate  custdlv_duedate_custord,
 current_date  custdlv_depdate,
 ''  custdlv_cartonno,
 custinst.qty_stk  custdlv_qty_stk,
@@ -86,14 +87,12 @@ opeitm.opeitm_processseq opeitm_processseq,
   opeitm.opeitm_itmtype  opeitm_itmtype ,
 '' custdlv_dimension,
 0  custdlv_weight,
-0  custdlv_unit_id_weight,
-'KG'  unit_code_weight,
-'kg'  unit_name_weight,
 custinst.packno custdlv_packno,
 '' custdlv_packinglistno
  from r_custs  cust ,  r_custrcvplcs  custrcvplc ,  persons  person_upd ,  r_shelfnos  shelfno_fm ,
   r_opeitms  opeitm ,  r_chrgs  chrg , r_crrs crr,
   custinsts   custinst
+  inner join custords custord on custord.sno = custinst.sno_custord
   left join (select sum(link.qty_src) qty_src,link.srctblid from linkcusts link where link.srctblname = 'custinsts'  
  											and(link.tblname = 'custdlvs' OR link.tblname = 'custacts' )
  											group by link.srctblname ,link.srctblid) link on link.srctblid = custinst.id
@@ -133,7 +132,6 @@ custinst.packno custdlv_packno,
 ,itm_code  varchar (50) 
 ,classlist_code  varchar (50) 
 ,unit_name  varchar (100) 
-,unit_name_weight  varchar (100) 
 ,custdlv_lotno  varchar (50) 
 ,itm_name  varchar (100) 
 ,classlist_name  varchar (100) 
@@ -200,9 +198,8 @@ custinst.packno custdlv_packno,
 ,opeitm_processseq numeric (3,0)
 ,custdlv_dimension  varchar (20) 
 ,custdlv_weight  numeric (7,2)
-,custdlv_unit_id_weight   numeric (38,0)
-,unit_code_weight varchar(3)
 ,opeitm_shelfno_id_opeitm  numeric (22,0)
+,opeitm_packqty  numeric (18,2)
 ,itm_classlist_id  numeric (38,0)
 ,shelfno_loca_id_shelfno_opeitm  numeric (38,0)
 ,person_sect_id_chrg_cust  numeric (22,0)

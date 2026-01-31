@@ -330,6 +330,7 @@ module MkordinstLib
                       ### qty_handover の分解
                       cal_rec["optfixodate"] =  sum_cal_rec["optfixodate"]
                       @re_cal_flg = true
+                      maxcnt = 0
                       until tmp_qty_handover < cal_rec["maxqty"]
                           cal_rec["qty_handover"] = cal_rec["maxqty"]   
                           cal_rec["starttime_trn"] = base_starttime
@@ -465,7 +466,7 @@ module MkordinstLib
 		command_c["sio_viewname"] = "r_#{tblord}s"
 		command_c["#{tblord}_id"] = command_c["id"] = ArelCtl.proc_get_nextval("#{tblord}s_seq")
     command_c["#{tblord}_sno"] = CtlFields.proc_field_sno("#{tblord}s",Time.now,command_c["id"])
-		command_c["#{tblord}_gno"] = "" ### 	
+		command_c["#{tblord}_gno"] = params[:mkprdpurords_id] ### 	
 		command_c["#{tblord}_prjno_id"] = choice_rec["prjnos_id"] ### 	
 		command_c["#{tblord}_confirm"] = Constants::OderConfirmDefult ###
     command_c["#{tblord}_toduedate"] = command_c["#{tblord}_duedate"]  
@@ -1068,8 +1069,8 @@ module MkordinstLib
                     and gantt.tblname = 'prdschs'  --- gate custxxxsは除く
                     and (gantt.qty_sch > 0 or gantt.qty > 0)
           order by prjnos_id ,itms_id_trn,processseq_trn,shelfnos_id_trn,shelfnos_id_to_trn,duedate_trn desc,
-                    itms_id_pare,processseq_pare,shelfnos_id_pare,
-                   packqty,consumchgoverqty,shelfnos_id_pare,itms_id_pare,processseq_pare
+                    itms_id_pare,processseq_pare,shelfnos_id_pare,   --- consumchgoverqty加算のため
+                   packqty,consumchgoverqty,shelfnos_id_pare
 				&
 	end		
 
@@ -1150,21 +1151,23 @@ module MkordinstLib
         command_c["#{tblname.chop}_#{str_amt}"] = tbldata["amt_src"]
         command_c["#{tblname.chop}_tax"] = tbldata["amt_src"].to_f * tbldata["taxrate"].to_f / 100 
         case tblname
-          when "payords"
+          when /pay/
               strsql = %Q&
-                    select payord.* from payords payord
+                    select trnpay.* from #{tblname} trnpay
                               inner join suppliers supp
-                              on supp.payments_id_supplier = payord.payments_id
+                              on supp.payments_id_supplier = trnpay.payments_id
                             where supp.payments_id_supplier = #{tbldata["payments_id"].to_s}
-                            and payord.duedate = '#{tbldata["duedate"].to_date}'
+                            and trnpay.duedate = '#{tbldata["duedate"].to_date}'
+                            for update
                         &
-          when "billords"
+          when /bill/
               strsql = %Q&
-                    select billord.* from billords billord
+                    select trnbill.* from #{tblname} trnbill
                               inner join custs cust
-                              on cust.bills_id_cust = billord.bills_id
+                              on cust.bills_id_cust = trnbill.bills_id
                             where cust.bills_id_cust = #{tbldata["bills_id"].to_s}
-                              and billord.duedate = '#{tbldata["duedate"].to_date}' 
+                              and trnbill.duedate = '#{tbldata["duedate"].to_date}' 
+                            for update
                 &
         end
         actrec = ActiveRecord::Base.connection.select_one(strsql)

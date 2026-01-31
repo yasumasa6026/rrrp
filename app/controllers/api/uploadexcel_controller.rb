@@ -36,9 +36,6 @@ class UploadexcelController < ApplicationController
         columns_info,page_info,init_where_info,select_fields,fetch_check,dropDownList,@sort_info,nameToCode = 
                 screen.proc_create_upload_editable_columns_info jparams,"import" 
         # upload_columns_info = [columns_info,page_info,init_where_info,select_fields.chop,fetch_check,dropDownList,@sort_info,nameToCode]
-        
-        ##Rails.logger.debug("class:#{self},line:#{__LINE__},\n select_fields:#{select_fields}")
-        ##Rails.logger.debug("class:#{self},line:#{__LINE__},\n params[:uploadData][:uploadexcel]:#{params[:uploadData][:uploadexcel]}")
         performSeqNos = []
         results = {}   
         results[:columns] = []
@@ -82,7 +79,7 @@ class UploadexcelController < ApplicationController
                         jparams[:fetchview] = fetchCode[field]
                         jparams = CtlFields.proc_fetch_rec jparams, parse_linedata  
                         if jparams[:err] 
-                            parse_linedata["confirm_gridmessage"] = jparams[:err] 
+                            parse_linedata["#{tblname.chop}_confirm_gridmessage"] = jparams[:err] 
                             parse_linedata["confirm"] = false 
                             parse_linedata[(field+"_gridmessage")] = jparams[:err] 
                             break
@@ -144,7 +141,7 @@ class UploadexcelController < ApplicationController
                     end
                 else
                     uploadError = true
-                    parse_linedata["confirm"] = false 
+                    parse_linedata["confirm"] = false   ### no error message
                 end                
                 parse_linedata.each do |key,value|
                     case value.class.to_s  ###画面からの入力はすべてcharとして扱っている。

@@ -157,7 +157,7 @@ module Api
                              raise
                         end
                     end 
-		                    ###Rails.logger.debug " class:#{self} ,line:#{__LINE__},tasks:#{tasks} "
+		            Rails.logger.debug " class:#{self} ,line:#{__LINE__},tasks:#{tasks} "
                     render json: {:tasks=>tasks}   
                 when "updateNditm"
                     reqparams = params.dup

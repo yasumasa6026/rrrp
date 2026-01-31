@@ -95,10 +95,15 @@ module Api
                 pagedata,reqparams = secondScreen.proc_showdetail reqparams ###共通lib
                 render json:{:grid_columns_info=>grid_columns_info,:data=>pagedata,:params=>reqparams}             
                 
-            when "fetch_request"
+            when /fetch_request/
                 reqparams = params.dup   ### 　　
                 parse_linedata = JSON.parse(params[:lineData])
                 reqparams = CtlFields.proc_fetch_rec reqparams,parse_linedata
+                if params[:buttonflg] =~ /check_request/ and reqparams[:err].nil?
+                    JSON.parse(params[:checkCode]).each do |sfd,checkcode|
+                        reqparams = CtlFields.proc_judge_check_code reqparams,sfd,checkcode,reqparams[:parse_linedata] 
+                    end                                      
+                end
                 render json: {:params=>reqparams}   
 
             when "check_request"  
@@ -113,7 +118,7 @@ module Api
                 params[:err] = ""
                 screen = ScreenLib::ScreenClass.new(params)
                 reqparams = params.dup   ### 　
-                reqparams = screen.proc_confirm_screen(reqparams)
+                reqparams = screen.proc_confirm_screen(reqparams,nil)
                 if reqparams[:err]
                     render json: {:params=>reqparams}
                 else
@@ -157,7 +162,7 @@ module Api
                                                     where id = #{strselected["id"]} & 
                             end
                             parse_linedata = ActiveRecord::Base.connection.select_one(strsql)
-                            reqparams = screen.proc_confirm_screen(reqparams)
+                            reqparams = screen.proc_confirm_screen(reqparams,parse_linedata)
                             if reqparams[:err].nil? or reqparams[:err] == ""
                                 outcnt += 1
                                 outamt += reqparams[:outamt]
@@ -173,6 +178,7 @@ module Api
                                 render json:{:params => reqparams}
                                 raise    
                             end
+                            reqparams = params.dup
                         else
                             raise "#{Time.now} #{self} line:#{__LINE__} screnCode ummatch  params[:screenCode]:#{params[:screenCode]}  selected[screenCode]:#{selected["screenCode"]} "
                         end
@@ -180,9 +186,9 @@ module Api
                     if  outcnt > 0
                         ActiveRecord::Base.connection.commit_db_transaction()
                         params[:err] = ""
-                        render json:{:outcnt => outcnt,:outqty => outqty,:outamt => outamt,:params => {:buttonflg => params[:buttonflg]}}
+                        render json:{:outcnt => outcnt,:outqty => outqty,:outamt => outamt,:params=>params}
                     else
-                        params[:err] = "please  select Order"
+                        params[:err] = 
                         render json:{:params => params}
                     end
                 else
@@ -190,18 +196,19 @@ module Api
                   render json:{:params => params}
                 end  
 
-            when 'MkPackingListNo'   ###purords,prdordsからshpordsを表示
+            when 'MkPackingListNo'   ###xxx_custdlvsのとき
                 if params[:clickIndex]
                     outcnt = 0
                     reqparams = params.dup
                     packingListNo = "P-" + format('%06d',ArelCtl.proc_get_nextval("packinglistno_seq"))
-                    strPackingListNo = "#{params[:screenCode].split("_")[1].chop}_packinglistno"
+                    strPackingListNo = "custdlv_packinglistno"
                     begin
                     ActiveRecord::Base.connection.begin_db_transaction()
                       params[:clickIndex].each_with_index do |strselected,idx|
                         next if strselected == "undefined"
                         selected = JSON.parse(strselected)
                         next if selected.empty?
+                        reqparams[:head] = "{}"
                         if params[:screenCode] == selected["screenCode"]
                             screen = ScreenLib::ScreenClass.new(params)
                             grid_columns_info = screen.proc_create_grid_editable_columns_info(reqparams)
@@ -214,35 +221,41 @@ module Api
                                     raise
                                 end
                                 strsql = %Q&select #{grid_columns_info[:select_fields]} from #{params[:view]} where #{strSno}&
+                                parse_linedata = ActiveRecord::Base.connection.select_one(strsql)
+                                if parse_linedata.nil?
+                                    strsql = %Q&select #{grid_columns_info[:select_fields]} from r_custdlvs where #{strSno}&
+                                    parse_linedata = ActiveRecord::Base.connection.select_one(strsql)
+                                end
                             else
                                 fields =  ActiveRecord::Base.connection.select_values(%Q&
                                                 select pobject_code_sfd from func_get_screenfield_grpname('#{params[:email]}','r_#{params[:screenCode].split("_")[1]}')&)
-                                strsql = %Q& select #{fields.join(",")} from r_#{params[:screenCode].split("_")[1]} 
-                                                    where id = #{selected["id"]} & 
+                                strsql = %Q& select #{fields.join(",")} from r_custdlvs  where id = #{selected["id"]} & 
+                                parse_linedata = ActiveRecord::Base.connection.select_one(strsql)
                             end
-                            parse_linedata = ActiveRecord::Base.connection.select_one(strsql)
                             parse_linedata[strPackingListNo] =  packingListNo
-                            reqparams = screen.proc_confirm_screen(reqparams)
+                            reqparams = screen.proc_confirm_screen(reqparams,parse_linedata)
                             if reqparams[:err].nil? or reqparams[:err] == ""
                                 outcnt += 1
                             else
                                 ActiveRecord::Base.connection.rollback_db_transaction()
-                                Rails.logger.debug"error class #{self} : #{Time.now}: #{$@} "
-                                Rails.logger.debug"error class #{self} : $!: #{$!} "
-                                render json:{:params => reqparams[:err]}
+                                render json:{:params => reqparams}
+                                return
                             end
                         else
-                            params[:err] = "#{Time.now} #{self} line:#{__LINE__} screnCode ummatch  params[:screenCode]:#{params[:screenCode]}  selected[screenCode]:#{selected["screenCode"]} "
-                            render json:{:params => params[:err]}
+                            reqparams[:err] = "#{Time.now} #{self} line:#{__LINE__} screnCode ummatch  params[:screenCode]:#{params[:screenCode]}  selected[screenCode]:#{selected["screenCode"]} "
+                            render json:{:params => reqparams}
+                            return
                         end
                       end
                       ActiveRecord::Base.connection.commit_db_transaction()
-                      params[:err] = ""
-                      render json:{:outcnt => outcnt,:params => params}
+                      reqparams[:err] = ""
+                      render json:{:outcnt => outcnt,:params => reqparams}
                     rescue
-                      params[:err] = " state 500"
-                      parse_linedata["confirm"] = false
-                      ActiveRecord::Base.connection.rollback_db_transaction()
+                        ActiveRecord::Base.connection.rollback_db_transaction()
+                        Rails.logger.debug"error class #{self} : #{Time.now}: #{$@} "
+                        Rails.logger.debug"error class #{self} ,line:#{__LINE__} : $!: #{$!} "
+                        reqparams[:err] = "error class #{self},line:#{__LINE__} : $!: #{$!} "
+                        render json:{:params=> reqparams},:status => 500    
                     else
                       ActiveRecord::Base.connection.commit_db_transaction()
                     end
@@ -409,7 +422,49 @@ module Api
                     render json:{:outcnt=>0,:shortcnt=>0,:params=>{:buttonflg=>"mkShpords",:err=>" please select"}}
                 end
             
-            when 'refShpords'   ###purords,prdordsからshpordsを表示
+            when 'ref_shpords'   ###purords,prdordsからshpordsを表示
+                reqparams = params.dup   ###
+                 selected_id = ""
+                 cnt = 0
+                 (params[:clickIndex]).each_with_index  do |selected,idx|  ###-次のフェーズに進んでないこと。
+                        selected = JSON.parse(selected)
+                        if selected["id"]
+                          selected_id = selected["id"]
+                          cnt +=1
+                        end
+                end
+                if params[:clickIndex] and cnt == 1
+                    reqparams[:where_str] ||= ""
+                    reqparams[:filtered] ||= []
+                    reqparams[:pageIndex] ||= 0
+                    reqparams[:pageSize] ||= 100
+                    reqparams[:buttonflg] = 'viewtablereq7'
+                    reqparams[:screenFlg] = "second"
+                    reqparams[:gantt] ||= {}
+                    reqparams[:screenCode] = "ref_shpords"  
+                    secondScreen = ScreenLib::ScreenClass.new(reqparams)
+                    grid_columns_info = secondScreen.proc_create_grid_editable_columns_info(reqparams)
+                    reqparams[:view] = "ref_shpords('#{params[:screenCode].split("_",2)[1]}',#{selected_id})"  
+                    pagedata,reqparams = secondScreen.proc_second_shpview reqparams  ###共通lib
+                    if pagedata.length == 0
+                        params[:err] = "no shpords "
+                        params[:status] = 202
+                        render json:{:outcnt=>0,:params=>params},:status=>202
+                    else
+                        render json:{:grid_columns_info=>grid_columns_info,:data=>pagedata,:params=>reqparams}
+                    end
+                else
+                  screen = ScreenLib::ScreenClass.new(reqparams)
+                  pagedata,reqparams = screen.proc_search_blk(reqparams)   ###:pageInfo  -->menu7から未使用
+                  if cnt > 1 
+                    oreqparams[:message] = "select only one order"     
+                  else
+                    reqparams[:message] = "please  select "                                     
+                  end   
+                  render json:{:grid_columns_info=>screen.grid_columns_info,:data=>pagedata,:params=>reqparams}    
+                end
+            
+            when 'forInstsShpords'   ###purords,prdordsからshpordsを表示
                 reqparams = params.dup   ###
                 if params[:clickIndex]
                     reqparams[:where_str] ||= ""
@@ -425,10 +480,10 @@ module Api
                     secondScreen = ScreenLib::ScreenClass.new(reqparams)
                     grid_columns_info = secondScreen.proc_create_grid_editable_columns_info(reqparams)
                     pagedata,reqparams = Shipment.proc_second_shp reqparams,grid_columns_info
-                    if pagedata == []
-                        params[:screenFlg] = "first"
-                        reqparams[:err] = "no shpords "
-                        render json:{:params=>params}
+                    if pagedata.length == 0
+                        params[:err] = "no shpords "
+                        params[:status] = 202
+                        render json:{:outcnt=>0,:params=>params},:status=>202
                     else
                         render json:{:grid_columns_info=>grid_columns_info,:data=>pagedata,:params=>reqparams}
                     end
@@ -439,7 +494,7 @@ module Api
                   render json:{:grid_columns_info=>screen.grid_columns_info,:data=>pagedata,:params=>reqparams}   
                 end
             
-            when 'refShpinsts'  ###purords,prdordsからshpinstsを表示
+            when 'foractShpinsts'  ###purinsts,prdinstsからshpactsを表示
                 reqparams = params.dup   ### f
                 if params[:clickIndex]
                     reqparams[:where_str] ||= ""
@@ -455,9 +510,10 @@ module Api
                     secondScreen = ScreenLib::ScreenClass.new(reqparams)
                     grid_columns_info = secondScreen.proc_create_grid_editable_columns_info(reqparams)
                     pagedata,reqparams = Shipment.proc_second_shp reqparams,grid_columns_info   ###
-                    if pagedata == []
+                    if pagedata.length == 0
                         params[:err] = "no shpinsts "
-                        render json:{:params=>reqparams}  
+                        params[:status] = 202
+                        render json:{:outcnt=>0,:params=>params},:status=>202
                     else
                         render json:{:grid_columns_info=>grid_columns_info,:data=>pagedata,:params=>reqparams}
                     end
@@ -483,7 +539,13 @@ module Api
                     secondScreen = ScreenLib::ScreenClass.new(reqparams)
                     grid_columns_info = secondScreen.proc_create_grid_editable_columns_info(reqparams)
                     pagedata,reqparams = secondScreen.proc_second_shpview reqparams  ###共通lib
-                    render json:{:grid_columns_info=>grid_columns_info,:data=>pagedata,:params=>reqparams}
+                    if pagedata.length == 0
+                        params[:err] = "no shpacts "
+                        params[:status] = 202
+                        render json:{:outcnt=>0,:params=>params},:status=>202
+                    else
+                        render json:{:grid_columns_info=>grid_columns_info,:data=>pagedata,:params=>reqparams}
+                    end
                 else
                   screen = ScreenLib::ScreenClass.new(reqparams)
                   pagedata,reqparams = screen.proc_search_blk(reqparams)   ###:pageInfo  -->menu7から未使用
@@ -495,6 +557,17 @@ module Api
                   reqparams = params.dup   ### 
                   reqparams[:where_str] ||= ""
                   if params[:clickIndex]
+                    errflg = false                       
+		            params[:clickIndex].each  do |select|  ###-次のフェーズに進んでないこと。
+				        selected = JSON.parse(select)
+				        errflg = true if selected["id"].to_s == ""
+			        end
+                    if errflg 
+                        screen = ScreenLib::ScreenClass.new(reqparams)
+                        pagedata,reqparams = screen.proc_search_blk(reqparams)   ###:pageInfo  -->menu7から未使用
+                        reqparams[:message] = "please  select Order"
+                        render json:{:grid_columns_info=>screen.grid_columns_info,:data=>pagedata,:params=>reqparams}                                              
+                    else
                       reqparams[:filtered] ||= []
                       reqparams[:pageIndex] ||= 0
                       reqparams[:pageSize] ||= 10
@@ -512,6 +585,7 @@ module Api
                       grid_columns_info = secondScreen.proc_create_grid_editable_columns_info(reqparams)
                       pagedata,reqparams = secondScreen.proc_second_dvserc reqparams  ###共通lib
                       render json:{:grid_columns_info=>grid_columns_info,:data=>pagedata,:params=>reqparams}
+                    end
                   else
                     screen = ScreenLib::ScreenClass.new(reqparams)
                     pagedata,reqparams = screen.proc_search_blk(reqparams)   ###:pageInfo  -->menu7から未使用

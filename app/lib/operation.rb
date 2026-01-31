@@ -112,7 +112,6 @@ module Operation
 			  target_trngantt = ActiveRecord::Base.connection.select_one(strsql)
 			  return last_lotstks   if target_trngantt.nil? ###  last_lotstks = []
 			  @trngantts_id =  @gantt["trngantts_id"]  = last_rec["trngantts_id"] = target_trngantt["id"]
-      Rails.logger.debug("class:#{self},line:#{__LINE__},\n @tbldata:#{@tbldata},\n @str_starttime:#{@str_starttime}")
         update_strsql = %Q&
                         update trngantts set   --- xxschs,xxxordsが変更された時のみ
                               updated_at = cast('#{Time.now.strftime("%Y/%m/%d %H:%M:%S")}' as timestamp),
@@ -292,8 +291,8 @@ module Operation
     # consume schs,ords,insts,acts
     #### 
 	  def proc_consume_by_parent()  ### target ==> all children 
-		  return if @gantt["stktakingproc"] != "1"
       last_lotstks = []
+		  return  last_lotstks if @gantt["stktakingproc"] != "1"
 		  ###if @reqparams[:classname] =~ /_insert_|_add_/  ###trngantts 追加
 			  base = {}
         base["shelfnos_id"] =  @tbldata["shelfnos_id"]
@@ -749,6 +748,8 @@ module Operation
       command_dvs["#{currdvstbl.chop}_prjno_id"] = @tbldata["prjnos_id"]
       command_dvs["#{currdvstbl.chop}_expiredate"] =  Constants::EndDate 
       command_dvs["sio_classname"] = "_add_dvs_data"
+			command_dvs["#{currdvstbl.chop}_created_at"] = Time.now
+			command_dvs["#{currdvstbl.chop}_updated_at"] = Time.now
 			command_dvs["id"]  = command_dvs["#{currdvstbl.chop}_id"]  = ArelCtl.proc_get_nextval("#{currdvstbl}_seq")
       @reqparams[:mkprdpurords_id] = 0
       @reqparams[:child] = {}
@@ -771,22 +772,25 @@ module Operation
                                 where  #{prev_prd["srctblname"]}_id_#{prev_prd["srctblname"].sub("prd","dvs").chop} = #{prev_prd["srctblid"]}
               &
               prev_dvs = ActiveRecord::Base.connection.select_one(strsql)
-              acttbldata["starttime"] = prev_dvs["starttime"]
-              if currdvstbl == "dvsacts"
-                acttbldata["duedate"] = @tbldata["cmpldate"]
-              else
-                acttbldata["duedate"] = @tbldata["duedate"]
+              if prev_dvs
+            ###    acttbldata["starttime"] = prev_dvs["starttime"]
+                if currdvstbl == "dvsacts"
+                  acttbldata["duedate"] = @tbldata["cmpldate"]
+                else
+                  acttbldata["duedate"] = @tbldata["duedate"]
+                end
+                acttbldata["commencementdate"] = prev_dvs["commencementdate"]
+                command_dvs,err = CtlFields.proc_field_duedate(currdvstbl.chop,command_dvs,acttbldata,apparatus)
+            ###    command_dvs,err = CtlFields.proc_field_starttime(currdvstbl.chop,command_dvs,acttbldata,apparatus)
               end
-              acttbldata["commencementdate"] = prev_dvs["commencementdate"]
-              command_dvs,err = CtlFields.proc_field_duedate(currdvstbl.chop,command_dvs,acttbldata,apparatus)
-              command_dvs,err = CtlFields.proc_field_starttime(currdvstbl.chop,command_dvs,acttbldata,apparatus)
         when "dvsschs"
 				      command_dvs = CtlFields.proc_field_facilities_id(currdvstbl.chop,command_dvs,@tbldata,apparatus)
               command_dvs,err = CtlFields.proc_field_duedate(currdvstbl.chop,command_dvs,@tbldata,apparatus)
-              command_dvs,err = CtlFields.proc_field_starttime(currdvstbl.chop,command_dvs,@tbldata,apparatus)
+            ###  command_dvs,err = CtlFields.proc_field_starttime(currdvstbl.chop,command_dvs,@tbldata,apparatus)
         else
               command_dvs,err = CtlFields.proc_field_duedate(currdvstbl.chop,command_dvs,@tbldata,apparatus)
-              command_dvs,err = CtlFields.proc_field_starttime(currdvstbl.chop,command_dvs,@tbldata,apparatus)
+          ###    command_dvs,err = CtlFields.proc_field_starttime(currdvstbl.chop,command_dvs,@tbldata,apparatus)
+              command_dvs["dvsord_commencementdate"] = @tbldata["starttime"]
       end
       command_dvs["#{currdvstbl.chop}_sno"] = CtlFields.proc_field_sno(currdvstbl.chop,Time.now,command_dvs["id"])
       command_dvs = CtlFields.proc_field_facilities_id(currdvstbl.chop,command_dvs,@tbldata,apparatus)
@@ -847,6 +851,8 @@ module Operation
 		  prev_erc = {}
 		   
 	    command_erc["sio_classname"] = "_add_erc_link"
+			command_erc["#{currerctbl.chop}_created_at"] = Time.now
+			command_erc["#{currerctbl.chop}_updated_at"] = Time.now
       command_erc["#{currerctbl.chop}_#{@tblname.chop}_id_#{currerctbl.chop}"] = @tbldata["id"]
       cnt = 0
       gantt_key = gantt["key"]
@@ -874,10 +880,14 @@ module Operation
                       and erc.processname = '#{processname}'
 					  	    &
               prev_erc = ActiveRecord::Base.connection.select_one(strsql)
-              command_erc["#{currerctbl.chop}_duedate"] = prev_erc["duedate"]
-              command_erc["#{currerctbl.chop}_starttime"] = prev_erc["starttime"]
-              command_erc["#{currerctbl.chop}_commencementdate"] = prev_erc["commencementdate"]
-              command_erc["#{currerctbl.chop}_fcoperator_id"] = prev_erc["fcoperators_id"]
+              if prev_erc
+                command_erc["#{currerctbl.chop}_duedate"] = prev_erc["duedate"]
+                ###command_erc["#{currerctbl.chop}_starttime"] = prev_erc["starttime"]
+                command_erc["#{currerctbl.chop}_commencementdate"] = prev_erc["commencementdate"]
+                command_erc["#{currerctbl.chop}_fcoperator_id"] = prev_erc["fcoperators_id"]
+              else
+                return
+              end
             when "ercschs","ercords"
               strsql = %Q&  --- from master when ercords
                 select f.id from  fcoperators f 
@@ -888,8 +898,8 @@ module Operation
               command_erc = CtlFields.proc_field_fcoperators_id(currerctbl.chop,command_erc,nil,apparatus)
               command_erc["#{currerctbl.chop}_fcoperator_id"] = fcop["id"]
               command_erc["#{currerctbl.chop}_duedate"] = @tbldata["duedate"]
-              command_erc["#{currerctbl.chop}_starttime"] = @tbldata["starttime"]
-              command_erc,err = CtlFields.proc_field_starttime(currerctbl.chop,command_erc,@tbldata,apparatus)
+              command_erc["#{currerctbl.chop}_commencementdate"] = @tbldata["starttime"]
+            ###  command_erc,err = CtlFields.proc_field_starttime(currerctbl.chop,command_erc,@tbldata,apparatus)
               command_erc,err = CtlFields.proc_field_duedate(currerctbl.chop,command_erc,@tbldata,apparatus)
             else
           end

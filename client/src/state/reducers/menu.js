@@ -133,7 +133,7 @@ const menureducer =  (state= initialValues , actions) =>{
           return {...state,
                     loading:true,
                     firstView:true,
-                    hostError:actions.payload.data[idx].confirm_gridmessage,
+                    hostError:actions.payload.data[idx]&&actions.payload.data[idx].confirm_gridmessage,
                     message:null,
       }
 

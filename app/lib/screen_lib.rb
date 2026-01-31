@@ -691,7 +691,7 @@ module ScreenLib
 							temp[cell[:accessor]] = Time.now.strftime("%Y/%m/%d")
 						when /pobject_objecttype_tbl/
 							temp[cell[:accessor]] = "tbl"
-						when /opeitm_processseq|opeitm_priority|nditm_processseq_nditm|lotstkhist_processseq/	
+						when /opeitm_processseq|opeitm_priority|nditm_processseq_nditm|nditm_priority_nditm|lotstkhist_processseq/	
 							temp[cell[:accessor]] = "999"
 						when /mkprdpurord_priority|mkprdpurord_processseq/	
 							temp[cell[:accessor]] = "0"
@@ -742,6 +742,8 @@ module ScreenLib
 						case cell[:accessor]
 						when /opeitm_stktakingproc/	###opeitm_stktakingproc
 							temp[cell[:accessor]] = "1"  ###棚卸有 opeitmsの規定値
+						when /shelfno_code/	###
+							temp[cell[:accessor]] = "000"  ###opeitmsの規定値
 						end
 					when /gantt_nditms/  ###parse_linedata  
 						case cell[:accessor]
@@ -782,6 +784,11 @@ module ScreenLib
 								end
 							end
 						end
+					when /custactheads$/
+						case cell[:accessor]
+								when /_saledate/
+									temp[cell[:accessor]] = Time.now.strftime("%Y/%m/%d %H:%M")									
+						end
 					when /^bal/   ###
 						case cell[:accessor]
 						when  /qty.*bal/  ###
@@ -803,7 +810,7 @@ module ScreenLib
 					when /payments|bills/
 								case cell[:accessor]   ###初期表示
                 when /_ratejson/
-                  temp[cell[:accessor]] = %Q%[[{"rate":000,"duration":0,"denomination":"deposit","day":00}]]%
+                  temp[cell[:accessor]] = %Q%[[{"rate":100,"duration":1,"denomination":"deposit","day":10}]]%
 								end
 					else
 						case cell[:accessor]
@@ -821,6 +828,7 @@ module ScreenLib
 			setParams[:sortBy]= []
 			setParams[:groupBy]= []
 			setParams[:aggregations] = {}
+			setParams[:clickIndex] = []
       setParams[:message] = case screenCode
                   when /puracts/
                     "受入数は合格数+不良数"
@@ -1001,17 +1009,18 @@ module ScreenLib
 			return upload_columns_info
 		end
 
-		def proc_confirm_screen(params)
+		def proc_confirm_screen(params,parse_linedata)
 			setParams = params.dup
+			if parse_linedata.nil?  ###when fmcustXXXX_custYYYs,set parse_linedata
       		parse_linedata = JSON.parse(params[:lineData])
-      		setParams[:head] = JSON.parse(params[:head]||="{}")
+			end	
+      setParams[:head] = JSON.parse(params[:head]||="{}")
 			tblnamechop = screenCode.split("_")[1].chop
 			yup_fetch_code = grid_columns_info[:fetch_check][:fetchCode]
 			yup_check_code = grid_columns_info[:fetch_check][:checkCode]
-			addfield = {}
 			setParams[:err] = nil
-      		setParams[:outqty] = 0
-      		setParams[:outamt] = 0
+      setParams[:outqty] = 0
+    	setParams[:outamt] = 0
 			blk =  RorBlkCtl::BlkClass.new(screenCode)
 			command_c = blk.command_init
 			parse_linedata.each do |field,val|
@@ -1040,7 +1049,7 @@ module ScreenLib
 				end
 				if setParams[:err].nil? or setParams[:err] == "" 
 					if yup_check_code[field] 
-						setParams[:err] = "" 
+						setParams[:err] = nil
 						setParams = CtlFields.proc_judge_check_code setParams,field,yup_check_code[field] ,parse_linedata 
 						if setParams[:err]
 							command_c[:confirm_gridmessage] = setParams[:err] 
@@ -1058,6 +1067,23 @@ module ScreenLib
 				###parse_linedata[field] = val    
 			end	
 			### cannot use parse_linedata
+				### セカンドkeyのユニークチェック
+				###if setParams[:aud] == "add" 
+					rslt = CtlFields.proc_blkuky_check(screenCode.split("_")[1],parse_linedata)
+					rslt.each do |key,recs|
+				  		recs.each do |rec|
+										setParams[:err] = " error  field:#{key} already exist line:#{setParams[:index]} "
+										command_c[:confirm_gridmessage] = setParams[:err] 
+										if command_c[:errPath].nil? 
+											command_c[:errPath] = [key+"_gridmessage"]
+										else
+											command_c[:errPath] << key+"_gridmessage"
+										end
+										command_c[:confirm] = false 
+							end	
+					end
+				###end
+							Rails.logger.debug " class:#{self} ,line:#{__LINE__},\n setParams:#{setParams} "
 			if  setParams[:err].nil? or setParams[:err] == "" 
 				parse_linedata.each do |key,val|
 				 	if key.to_s =~ /_id/ and val == ""   and tblnamechop == key.to_s.split("_")[0] and
@@ -1096,25 +1122,11 @@ module ScreenLib
               end
 					end
 				end
-				### セカンドkeyのユニークチェック
-				###if setParams[:aud] == "add" 
-					rslt = CtlFields.proc_blkuky_check(screenCode.split("_")[1],parse_linedata)
-					rslt.each do |key,recs|
-				  		recs.each do |rec|
-										setParams[:err] = " error  field:#{key} already exist line:#{setParams[:index]} "
-										command_c[:confirm_gridmessage] = setParams[:err] 
-										if command_c[:errPath].nil? 
-											command_c[:errPath] = [key+"_gridmessage"]
-										else
-											command_c[:errPath] << key+"_gridmessage"
-										end
-										command_c[:confirm] = false 
-							end	
-					end
-				###end
 			end	
+							Rails.logger.debug " class:#{self} ,line:#{__LINE__},\n setParams:#{setParams} "
 			if  setParams[:err].nil?  or setParams[:err] == ""
-				if command_c["id"] == "" or  command_c["id"].nil? or command_c["id"] == 0   ### add画面で同一lineで二度"enter"を押されたとき errorにしない
+				  ### or command_c["id"] == 0   ### add画面で同一lineで二度"enter"を押されたとき errorにしない
+				if setParams[:aud] =~ /add|insert/ and  (command_c["id"] == "" or  command_c["id"].nil? or  command_c["id"] == 0) 
 					###  追加後エラーに気づいたときエラーしないほうが，操作性がよい
 				  command_c["sio_classname"] = "_add_grid_linedata"
 				  command_c["#{tblnamechop}_created_at"] = Time.now
@@ -1123,6 +1135,7 @@ module ScreenLib
 				  command_c["sio_classname"] = "_edit_update_grid_linedata"
 				end
 				command_c["#{tblnamechop}_person_id_upd"] = setParams[:person_id_upd]
+							Rails.logger.debug " class:#{self} ,line:#{__LINE__},\n command_c:#{command_c} "
 				case screenCode 
 				when /tblfields/  ###前処理 　 　
 					if  setParams[:err].nil?    or setParams[:err] == ""
@@ -1239,6 +1252,13 @@ module ScreenLib
 								ActiveRecord::Base.connection.commit_db_transaction()
                 setParams[:last_lotstks] = last_lotstks.dup
 							end
+						else
+							setParams,command_c = blk.proc_add_update_table(setParams,command_c) 
+							if command_c["sio_result_f"]  == "9"
+								command_c[:confirm] = false  
+							else
+								setParams[:parse_linedata] = ok_confirm(parse_linedata,command_c,tblnamechop)
+							end
 						end			
             if setParams[:last_lotstks] 
 							ArelCtl.proc_add_update_lotstkhists(setParams[:last_lotstks],setParams[:person_id_upd])
@@ -1254,6 +1274,7 @@ module ScreenLib
 						setParams[:parse_linedata] = ok_confirm(parse_linedata,command_c,tblnamechop)
 					end
 				else
+							Rails.logger.debug " class:#{self} ,line:#{__LINE__},\n command_c:#{command_c} "
 					setParams,command_c = blk.proc_add_update_table(setParams,command_c) 
 					if command_c["sio_result_f"]  == "9"
 						command_c[:confirm] = false  
@@ -1264,7 +1285,7 @@ module ScreenLib
 				end
 			else
 				command_c[:confirm] = false
-        		command_c["sio_result_f"] = "9"  ##9:error
+        command_c["sio_result_f"] = "9"  ##9:error
 				parse_linedata["confirm"] = false  
 			end
       return setParams
@@ -1288,7 +1309,7 @@ module ScreenLib
 				if idx == 0
 					innerjoinTblName = selected["screenCode"].split("_",2)[1]
 				end
-				strselects << selected["id"]+ ","
+				strselects << selected["id"].to_s + ","
 			end
 			strselects = strselects.chop + ")"
 			str_innerjoin = %Q&
@@ -1327,12 +1348,12 @@ module ScreenLib
       mainTblName = screenCode.split("_")[1]
 			strselects = "("
 
-			(params[:clickIndex]).each_with_index  do |selected,idx|  ###-次のフェーズに進んでないこと。
-				selected = JSON.parse(selected)
+			(params[:clickIndex]).each_with_index  do |select,idx|  ###-次のフェーズに進んでないこと。
+				selected = JSON.parse(select)
 				if idx == 0
 					innerjoinTblName = selected["screenCode"].split("_",2)[1]
 				end
-				strselects << selected["id"]+ ","
+				strselects << selected["id"].to_s + ","
 			end
 			strselects = strselects.chop
       strselects << ")"
@@ -1479,7 +1500,6 @@ module ScreenLib
 			fields =  ActiveRecord::Base.connection.select_values(%Q&
 							select pobject_code_sfd from func_get_screenfield_grpname('#{params[:email]}','#{pareview}_custacts')&)
 			custact =  RorBlkCtl::BlkClass.new("#{pareview}_custacts")
-			linktbl_ids = []
 			amtTaxRate = {}
 			prevs.each do |prev|   ###records
 				command_custact = custact.command_init
@@ -1487,14 +1507,14 @@ module ScreenLib
 					next if key == "id"
 					next if key == "tblname"
 					next if key =~ /#{prev["tblname"]}_id$|#{prev["tblname"]}_sno$|#{prev["tblname"]}_cno$|#{prev["tblname"]}_gno$/
-					if fields.grep(key.sub("#{prev["tblname"].chop}","custact")).empty?
-            case key
-            when /#{prev["tblname"].chop}_duedate_custord/
-					    command_custact["custact_duedate_custord"] = val  ##custact_duedate_custord
-            end
-          else
+					# if fields.grep(key.sub("#{prev["tblname"].chop}","custact")).empty?
+          #   case key
+          #   when /#{prev["tblname"].chop}_duedate_custord/
+					#     command_custact["custact_duedate_custord"] = val  ##custact_duedate_custord
+          #   end
+          # else
 					  command_custact[key.sub("#{prev["tblname"].chop}","custact")] = val
-          end
+          # end
 				end
 
 				command_custact["sio_classname"] = "detail_add_custacts"
@@ -1525,21 +1545,6 @@ module ScreenLib
 				custact.proc_private_aud_rec(params,command_custact)  ### add custacts
 				###
 				#
-				###
-				# base = {"tblname" => "custacts" ,	"tblid" => command_custact["id"],
-				# 					"qty_src" => command_custact["custact_qty_stk"] ,
-				# 					"amt_src" => command_custact["custact_amt"]  ,
-				# 					"trngantts_id" => prev["trngantts_id"],"persons_id_upd" => params[:person_id_upd]}
-				# linktbl_ids  << ArelCtl.proc_insert_linkcusts(prev,base)
-				# 			update_strsql = %Q&
-				# 				update  linkcusts link set qty_src = qty_src - #{command_custact["custact_qty_stk"]}
-				# 											,amt_src = amt_src - #{command_custact["custact_amt"]} 
-				# 											,remark = ' #{self} line:#{__LINE__} '||remark
-				# 								where id  = '#{prev["link_id"]}'
-				# 			&
-				# ActiveRecord::Base.connection.update(update_strsql)
-				###
-				# 親子関係作成
 				###
 					ArelCtl.proc_insert_linkheads(params[:head],{"tblname" => "custacts","tblid" => command_custact["id"],"persons_id_upd" => params[:person_id_upd]})
 				###

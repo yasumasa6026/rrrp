@@ -1,4 +1,4 @@
-
+--- test date 初期化用
 truncate table purschs cascade;
 truncate table purords cascade;
 truncate table purinsts cascade;

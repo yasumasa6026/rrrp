@@ -89,7 +89,7 @@ custord.crrs_id   custinst_crr_id,
   opeitm.opeitm_prdpurordauto  opeitm_prdpurordauto ,
   opeitm.opeitm_itmtype  opeitm_itmtype ,
   '' custinst_packingListNo
- from custords   custord,func_get_custord_stk_qty(custord.id) lotpackno,
+ from custords   custord,func_get_custord_stk_qty(custord.id)  lotpackno,
   persons  person_upd ,  r_custs  cust ,  r_prjnos  prjno ,  r_chrgs  chrg ,  r_custrcvplcs  custrcvplc ,
   r_opeitms  opeitm ,   r_crrs  crr 
   where       custord.persons_id_upd = person_upd.id      and custord.custs_id = cust.id      

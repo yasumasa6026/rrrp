@@ -89,15 +89,13 @@ const AutoCell = ({
                                 params = {...params,fetchCode: JSON.stringify(idKeys),
                                         checkCode: JSON.stringify({ [id]: fetch_check.checkCode[id] }),
                                         lineData: JSON.stringify(lineData),
-                                        fetchview: fetchCheckFlg==="fetch_request"?fetch_check.fetchCode[id]:"",
+                                        fetchview: fetchCheckFlg.split(",")[0]==="fetch_request"?fetch_check.fetchCode[id]:"",
                                         index: index,buttonflg: fetchCheckFlg}
                                 handleFetchRequest(params,buttonflg)}
-                  // else{if(Object.keys(autoAddFields).length)
-                  //       {updateData(index, lineData) 
+                   else{} 
             }
-              // else{if ( lineData[msg_id] !== "ok")
-              //           {updateMyData(index, msg_id, " error " + lineData[msg_id])
-              // }
+            else{}
+            
              updateData(index, lineData) 
              params = {...params,index:index}
              handleDataSetRequest(data,params)
@@ -301,8 +299,8 @@ const ScreenGrid7 = ({
        // const [columns,setColumns] = useState([])
         useEffect(()=>{setLoading(loadingOrg)},[loadingOrg])
         //useEffect(()=>{setColumns(columnsOrg)},[])
-        useEffect(()=>{setScreenCode(screenCodeOrg),
-                        params = {...params,clickIndex:[]}},[screenCodeOrg])          
+        //useEffect(()=>{setScreenCode(screenCodeOrg),
+        //                params = {...params,clickIndex:[]}},[screenCodeOrg])          
         
         // const setInitChangeData = (data) => {
         //   setChangeData(old=>
@@ -737,7 +735,7 @@ const GridTable = ({
                           sNo = "custdlv_sno_custinst"
                           break
                         default:
-                          sNo = "sno"
+                          sNo =  `${params.screenCode.split("_")[1].slice(0,-1)}_sno`
                       }
                       if(e.ctrlKey){  //複数行選択
                           if(Object.keys(selectedRowIds).length===0){
@@ -760,10 +758,10 @@ const GridTable = ({
                           }
                         else{
                           row.toggleRowSelected(true)
-                          params = {...params,clickIndex:[]}
+                        //  params = {...params,clickIndex:[]}
+                          params = {...params,index:row.index}
                           params.clickIndex.push({lineId:row.index,id:data[row.index]["id"],
                                                             screenCode:params.screenCode,sNo:data[row.index][sNo]})
-                            params = {...params,index:row.index}
                         }
                       }
                      // params = {...params,changeData:changeData}

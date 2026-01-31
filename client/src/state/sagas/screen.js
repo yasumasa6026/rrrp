@@ -52,7 +52,7 @@ export function* ScreenSaga({ payload: {params}  }) {
             case 'inlineedit7':   //第一画面又は第二画面のみ　両方修正は不可  更新画面要求
             case 'inlineadd7':  //追加画面要求
             case 'rejections':  //追加画面要求
-              params = {...response.data.params,err:null,parse_linedata:{},index:0,clickIndex:[]}
+              params = {...response.data.params,err:null,parse_linedata:{},index:0,}
               if(params.screenFlg==="second")
                   {return yield put({type:SECOND_SUCCESS7,payload:{data:response.data,params:{...params,index:-1},headers:response.headers } })}
               else
@@ -70,6 +70,7 @@ export function* ScreenSaga({ payload: {params}  }) {
               return   
             case "fetch_request":  //viewによる存在チェック内容表示
             case "check_request":   //項目毎のチェック帰りはfetchと同じ
+            case "fetch_request,check_request":   //項目毎のチェック帰りはfetchと同じ
                     lineData = response.data.params.parse_linedata   
                      params = {...params,...response.data.params,screenFlg:response.data.params.screenFlg,
                                  screenCode:response.data.params.screenCode,err:response.data.params.err} 
@@ -111,9 +112,20 @@ export function* ScreenSaga({ payload: {params}  }) {
                   }
               }
            case "MkPackingListNo":  //
-               message = "out count : " + response.data.outcnt
-               message = message + ",out qty : " + response.data.outqty
-               return yield put({ type: CONFIRMALL_SUCCESS, payload:{message:message,headers:response.headers}})   
+              params = response.data.params
+              if(params.err==""||params.err===null){
+                  message = "out count : " + response.data.outcnt
+                  message = message + ",out qty : " + response.data.outqty
+                  return yield put({ type: CONFIRMALL_SUCCESS, payload:{message:message,headers:response.headers}})   
+              }
+              else{
+                  hostError = `error ${response.status}: Screen Something went wrong 。。。。${params.err} `
+                  if(params.screenFlg==="second"){
+                      return  yield put({type:SECOND_FAILURE,payload:{message:"",hostError:hostError,}})   
+                  }else{  
+                      return  yield put({type:SCREEN_FAILURE,payload:{message:"",hostError:hostError,}})   
+                  }
+              }
 
             case "MkCalendars":  //
                    message = response.data.params.message
@@ -153,9 +165,16 @@ export function* ScreenSaga({ payload: {params}  }) {
         case 202:
               params = response.data.params
               if(params.screenFlg==="second"){
-                  return  yield put({type:SECOND_FAILURE,payload:{message:"",hostError: params.err,}})   
+                  return  yield put({type:SECOND_FAILURE,payload:{message:"",hostError: params.err,params:params,}})   
               }else{  
-                  return  yield put({type:SCREEN_FAILURE,payload:{message:"",hostError: params.err,}})   
+                  return  yield put({type:SCREEN_FAILURE,payload:{message:"",hostError: params.err,params:params,}})   
+              }
+        case 204:
+              params = response.data.params
+              if(params.screenFlg==="second"){
+                  return  yield put({type:SECOND_FAILURE,payload:{message:"",hostError: "No Content",params:params,}})   
+              }else{  
+                  return  yield put({type:SCREEN_FAILURE,payload:{message:"",hostError: "No Content",params:params,}})   
               }
         default:
                   hostError = `error ${response.status}: Screen Something went wrong ${params.err} `

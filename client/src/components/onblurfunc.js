@@ -71,11 +71,13 @@ export function  onBlurFunc7(screenCode,lineData,id){  //id:field
                     strQty = id.split("_")[0] + "_qty_stk" 
                     break 
             } 
-            if(Number(lineData["opeitm_packqty"])===0){  //opeitm_packqtyは購入時・作成後の完成時の単位
-                lineData[strQty] = lineData[id] 
-            }else{
+            if (strQty !== undefined){
+                if(Number(lineData["opeitm_packqty"])===0){  //opeitm_packqtyは購入時・作成後の完成時の単位
+                    lineData[strQty] = lineData[id] 
+                    }else{
                         lineData[strQty] =  String(lineData[id]*lineData["opeitm_packqty"])
                     }
+                }
             break
 
         case /_invoiceno/.test(id):
@@ -219,12 +221,9 @@ export function fetchCheck(lineData,id,fetch_check) {
         fetchCheckFlg = "fetch_request"
         }else{}//未入力keyがある。  
     }
-    //else{updateLineData(index,data,autoAddFields) } //onBlurFunc7でセットされた項目を画面に反映
-    else{
-        if(fetch_check.checkCode[id]){
-            fetchCheckFlg = "check_request"
-            }else{fetchCheckFlg=""}
-        }
+    if(fetch_check.checkCode[id]){
+            fetchCheckFlg = fetchCheckFlg === "fetch_request"?fetchCheckFlg+",check_request":"check_request"
+            }
     return {fetchCheckFlg,idKeys}
 }
 

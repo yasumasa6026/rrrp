@@ -1,4 +1,4 @@
-drop function func_get_custord_stk_qty ; 
+drop function if  exists func_get_custord_stk_qty cascade;   --- fmcustord_custinsts use this function
 create or replace function  func_get_custord_stk_qty( custord_id numeric)
 		returns table( itm_code varchar(30),itm_name varchar(50), loca_code varchar(30),loca_name varchar(50),
 			 			shelfno_code varchar(30),shelfno_name varchar(50),lotno varchar(50),packno varchar(10),
@@ -27,8 +27,7 @@ BEGIN
 		 	select   
 		 		ope.itm_code, shelf.loca_code, shelf.shelfno_code,
 				shelf.shelfnos_id,shelf.locas_id,
-		 		ope.itm_name, shelf.loca_name, shelf.shelfno_name,
-				tbl.lotno,tbl.packno
+		 		ope.itm_name, shelf.loca_name, shelf.shelfno_name,tbl.*
 			from $$||rec_trn.srctblname||$$ tbl
 			inner join (select itm.code itm_code,itm.name itm_name,ope.id id
 							from opeitms ope
@@ -50,29 +49,43 @@ BEGIN
 			shelfno_code := rec_org.shelfno_code;
 			shelfno_name := rec_org.shelfno_name;
 			shelfnos_id := rec_org.shelfnos_id;
-			lotno := rec_org.lotno;
-			packno := rec_org.packno;
-			case  rec_trn.srctblname
-			when   'prdschs' then 
+			case  
+			when  rec_trn.srctblname like  '%schs' then 
 					qty_sch := rec_trn.alloc_qty;
 					qty := 0;
 					qty_stk := 0;
-			when   'purschs' then 
-					qty_sch := rec_trn.alloc_qty;
-					qty := 0;
-					qty_stk := 0;
-			when   'prdacts' then 
+					lotno := '';
+					packno := '';
+			when   rec_trn.srctblname like    '%acts' then 
 					qty_sch := 0;
 					qty := 0;
 					qty_stk := rec_trn.alloc_qty;
-			when   'puracts' then
+					lotno := rec_org.lotno;
+					packno := rec_org.packno;
+			when   rec_trn.srctblname like    '%dlvs' then
 					qty_sch := 0;
 					qty := 0;
 					qty_stk := rec_trn.alloc_qty; 
-			else
+					lotno := rec_org.lotno;
+					packno := rec_org.packno;
+			when  rec_trn.srctblname like  '%ords' then
 					qty_sch := 0;
 					qty := rec_trn.alloc_qty;
 					qty_stk := 0;
+					lotno := '';
+					packno := '';
+			when  rec_trn.srctblname like  '%insts' then
+					qty_sch := 0;
+					qty := rec_trn.alloc_qty;
+					qty_stk := 0;
+					lotno := '';
+					packno := '';
+			when  rec_trn.srctblname like  '%reply%' then
+					qty_sch := 0;
+					qty := rec_trn.alloc_qty;
+					qty_stk := 0;
+					lotno := '';
+					packno := '';
 			end case;
 			return next;
 	end loop;

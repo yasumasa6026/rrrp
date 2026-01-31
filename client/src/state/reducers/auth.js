@@ -6,6 +6,7 @@ import {  SIGNUPFORM_REQUEST,SIGNUP_REQUEST,SIGNUP_SUCCESS,SIGNUP_FAILURE,
           CHANGEPASSWORD_SUCCESS, CHANGEPASSWORD_FAILURE,
           FETCH_RESULT,SECONDFETCH_RESULT,
           MKSHPORDS_SUCCESS,CONFIRMALL_SUCCESS,SECOND_CONFIRMALL_SUCCESS,
+          GANTTCHART_SUCCESS,
           LOGOUT_REQUEST, LOGOUT_SUCCESS, } from '../../actions'
 
           
@@ -111,6 +112,7 @@ const authreducer =  (state= initialValues , actions) =>{
     case MKSHPORDS_SUCCESS:
     case CONFIRMALL_SUCCESS:
     case SECOND_CONFIRMALL_SUCCESS:
+    case GANTTCHART_SUCCESS:
       return {...state,
         "access-token":actions.payload.headers["access-token"]?actions.payload.headers["access-token"]:state["access-token"],
         client:actions.payload.headers.client, 

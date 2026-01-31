@@ -53,7 +53,6 @@ module ArelCtl
 		if setParams[:where_str]
 			setParams[:where_str] = setParams[:where_str].gsub("'","#!")
 		end
-		setParamsJson = setParams.to_json
 		strsql = %Q&
 			insert into processreqs(
 						contents,remark,
@@ -63,7 +62,7 @@ module ArelCtl
 					values(
 						'','#{setParams[:remark]}',
 						current_timestamp,current_timestamp,
-						'',#{setParams[:person_id_upd]},'#{setParamsJson}',
+						'',#{setParams[:person_id_upd]},'#{setParams.to_json}',
 						#{setParams[:seqno][0]},#{processreqs_id},'0')
 		&
 		ActiveRecord::Base.connection.insert(strsql) 
@@ -533,7 +532,7 @@ module ArelCtl
 						consumminqty,consumchgoverqty,
 					  optfixoterm,maxqty,
 					  packqty,
-						starttime_trn,
+						starttime_trn,optfixodate,  ---開始日、 オーダーの纒可能日 
 						starttime_pare,
 						starttime_org,
 						duedate_trn,
@@ -544,6 +543,7 @@ module ArelCtl
 						toduedate_org,
 						consumtype,
 						chrgs_id_trn,chrgs_id_pare,chrgs_id_org,
+						qty_alloc,qty_pare_alloc,qty_bal,qty_pare_bal,
 						created_at,	updated_at,
 						update_ip,persons_id_upd,expiredate,remark)
 			values(#{gantt["trngantts_id"]},'#{gantt["key"]}',
@@ -565,7 +565,7 @@ module ArelCtl
 					#{gantt["consumminqty"]},#{gantt["consumchgoverqty"]},
 					#{gantt["optfixoterm"]},#{gantt["maxqty"]},
 					#{gantt["packqty"]},
-					cast('#{gantt["starttime_trn"]}' as timestamp),
+					cast('#{gantt["starttime_trn"]}' as timestamp),	cast('#{gantt["starttime_trn"]}' as timestamp),
 					cast('#{gantt["starttime_pare"]}' as timestamp),
 					cast('#{gantt["starttime_org"]}' as timestamp),
 					cast('#{gantt["duedate_trn"]}' as timestamp),
@@ -576,6 +576,7 @@ module ArelCtl
 					cast('#{gantt["toduedate_org"]}' as timestamp),
 					'#{gantt["consumtype"]}',   ---custxxxsの時は""
 					#{gantt["chrgs_id_trn"]},#{gantt["chrgs_id_pare"]},#{gantt["chrgs_id_org"]},
+					0,0,0,0,   ---qty_alloc,qty_pare_alloc,qty_bal,qty_pare_bal,
 					current_timestamp,current_timestamp,
 					' ',#{gantt["persons_id_upd"]},'2099/12/31','#{gantt["remark"]}')
 				&
@@ -653,8 +654,6 @@ module ArelCtl
 		###
 	        
 		###  
-    qty_src_alloc = src["qty_linkto_alloctbl"].to_f 
-    qty_base_alloc = base["qty_src"].to_f
     last_lotstks = []
 		if src["qty_linkto_alloctbl"].to_f > base["qty_src"].to_f
 			base["remark"] = "#{self} line:(#{__LINE__})" + base["remark"]
@@ -720,10 +719,12 @@ module ArelCtl
         "remark" => "#{self} line #{__LINE__} #{Time.now}" + (base["remark"]||=""),"persons_id_upd" => 0}
     alloctbl_id,last_lotstk_tmp = proc_aud_alloctbls(alloc,"update")  ###引当の変更はあるが在庫数の変更はない
 
-		alloc = {"trngantts_id" => src["trngantts_id"],"srctblname" => base["tblname"] ,"srctblid" => base["tblid"],
+		if src["trngantts_id"] != base["trngantts_id"]
+				alloc = {"trngantts_id" => src["trngantts_id"],"srctblname" => base["tblname"] ,"srctblid" => base["tblid"],
               "allocfree" => "alloc",
 			        "qty_linkto_alloctbl" => src["qty_src"] ,"remark" => "#{self} (line: #{__LINE__} #{Time.now})" + (base["remark"]||="")}
-    alloctbl_id,last_lotstk_tmp = proc_aud_alloctbls(alloc,nil)
+    		alloctbl_id,last_lotstk_tmp = proc_aud_alloctbls(alloc,nil)
+		end
 		# ###在庫の修正はproc_src_base_trn_stk_update
 		return  last_lotstks
 	end
@@ -946,6 +947,7 @@ module ArelCtl
       suppliers_id_fm = suppliers_id_to = save_tblid = -1
       last_lotstks.each do |last_lotstk| 
         next if last_lotstk.nil?
+        next if last_lotstk.empty?
           if last_lotstk["set_f"]
               rec = last_lotstk["rec"].dup
           else
@@ -1023,7 +1025,7 @@ module ArelCtl
             when /dymschs/
               next
             else
-              3.times{Rails.logger.debug" class:#{self} , line:#{__LINE__} ,error last_lotstk:#{last_lotstk}"}
+              3.times{Rails.logger.debug" class:#{self} , line:#{__LINE__} ,\n error last_lotstks:#{last_lotstks},\n error last_lotstk:#{last_lotstk}"}
               raise
             end
           end
@@ -1052,10 +1054,10 @@ module ArelCtl
               xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
                       "qty" => last_lotstk["qty_src"],"lotno" => "","packno" => ""})
               tmptbls << xtemp
-              xtemp = temp.dup
-              xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => 0,
-                      "suppliers_id_fm" => rec["suppliers_id"], "qty" => last_lotstk["qty_src" ] * -1,"lotno" => "","packno" => ""})
-              tmptbls << xtemp
+              # xtemp = temp.dup
+              # xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => 0,
+              #         "suppliers_id_fm" => rec["suppliers_id"], "qty" => last_lotstk["qty_src" ] * -1,"lotno" => "","packno" => ""})
+              # tmptbls << xtemp
             when /prdords|prdinsts/
               xtemp = temp.dup
               xtemp.merge!({"starttime" => rec["duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S"),"shelfnos_id" => rec["shelfnos_id_to"],
@@ -1190,7 +1192,7 @@ module ArelCtl
                       "lotno" => rec["lotno"],"packno" => rec["packno"]})
               tmptbls << xtemp
             else
-              3.times{Rails.logger.debug" error class:#{self} , line:#{__LINE__} ,tblname not support last_lotstk:#{last_lotstk}"}
+              3.times{Rails.logger.debug" error class:#{self} , line:#{__LINE__} ,tblname:'#{last_lotstk["tblname"]}' not support last_lotstk:#{last_lotstk}"}
               raise
           end 
       end
@@ -1199,9 +1201,9 @@ module ArelCtl
       tmplotstktbls = tmptbls.sort_by {|h| [h["itms_id"],h["processseq"],h["prjnos_id"],h["starttime"],h["lotno"],h["packno"],
                         h["shelfnos_id"],h["suppliers_id_fm"],h["suppliers_id_to"],h["custrcvplcs_id"]]}
       lotstktbls = []
-      save_lotno = save_packno = save_tblname = save_starttime = ""
+      save_lotno = save_packno = save_starttime = ""
       save_itms_id = save_processseq = save_shelfnos_id = save_prjnos_id = -1
-      save_suppliers_id_fm = save_suppliers_id_to = save_custrcvplcs_id = save_tblid = -1
+      save_suppliers_id_fm = save_suppliers_id_to = save_custrcvplcs_id =  -1
       save_qty_sch = save_qty = save_qty_stk = save_qty_real = save_qty_rejection = 0
       tmplotstktbls.each do |tmpl|
         if save_itms_id == tmpl["itms_id"] and save_processseq == tmpl["processseq"] and 
@@ -1225,7 +1227,6 @@ module ArelCtl
                           "shelfnos_id" => save_shelfnos_id ,
                           "suppliers_id_fm" => save_suppliers_id_fm ,"suppliers_id_to" => save_suppliers_id_to , 
                           "custrcvplcs_id" => save_custrcvplcs_id,
-                          "tblname" => save_tblname,"tblid" => save_tblid,
                           "lotno" => save_lotno ,"packno" => save_packno,  "persons_id_upd" => persons_id_upd,
                            "prjnos_id" => save_prjnos_id ,"starttime" => save_starttime ,
                           "qty_sch" => save_qty_sch ,"qty" => save_qty ,"qty_stk" => save_qty_stk ,"qty_real" => save_qty_real,
@@ -1245,27 +1246,36 @@ module ArelCtl
             save_qty = tmpl["qty"].to_f
             save_qty_stk = tmpl["qty_stk"].to_f
             save_qty_rejection = tmpl["qty_rejection"].to_f
-            save_tblname = tmpl["tblname"]
-            save_tblid = tmpl["tblid"]
         end
+      	Rails.logger.debug" class:#{self} , line:#{__LINE__} ,\n tmpl:#{tmpl},\n lotstktbls#{lotstktbls}"
       end
       lotstktbls << {"itms_id" =>save_itms_id ,"processseq" => save_processseq ,
                       "shelfnos_id" => save_shelfnos_id ,"suppliers_id_fm" => save_suppliers_id_fm,"suppliers_id_to" => save_suppliers_id_to,
                       "custrcvplcs_id" => save_custrcvplcs_id,"lotno" => save_lotno ,"packno" => save_packno , 
                       "prjnos_id" => save_prjnos_id ,"starttime" => save_starttime , "persons_id_upd" => persons_id_upd,
-                      "tblname" => save_tblname,"tblid" => save_tblid,
                       "qty_sch" => save_qty_sch ,"qty" => save_qty ,"qty_stk" => save_qty_stk ,"qty_real" => save_qty_real,
                       "qty_rejection" => save_qty_rejection}                      
       lotstktbls.each do |lotstktbl|
-        if lotstktbl["suppliers_id_fm"] != -1 and lotstktbl["suppliers_id_fm"] != -1
+        if lotstktbl["suppliers_id_fm"] != -1 
             lotstktbl["suppliers_id"] = lotstktbl["suppliers_id_fm"] 
-            Shipment.proc_mk_supplierwhs_rec "in",lotstktbl
+						save_lotstktbl = lotstktbl.dup
+            Shipment.proc_mk_supplierwhs_rec "out",lotstktbl
+              if lotstktbl["shelfnos_id"] == -1
+                if lotstktbl["qty_sch"] == 0 and lotstktbl["qty"] == 0 and lotstktbl["qty_stk"] == 0 and lotstktbl["qty_rejection"] == 0 ###dymschs
+                    next
+                else
+                  3.times{Rails.logger.debug" error shelfnos_id missing class:#{self} , line:#{__LINE__} ,lotstktbl:#{lotstktbl}"}
+                  raise
+                end
+              else
+                Shipment.proc_lotstkhists_in_out('in',save_lotstktbl)
+              end
         else  
-          if lotstktbl["suppliers_id_to"] != -1 and lotstktbl["suppliers_id_to"] != -1
+          if lotstktbl["suppliers_id_to"] != -1 
               lotstktbl["suppliers_id"] = lotstktbl["suppliers_id_to"] 
               Shipment.proc_mk_supplierwhs_rec "in",lotstktbl
           else
-            if lotstktbl["custrcvplcs_id"] != -1 and lotstktbl["custrcvplcs_id"] != -1 
+            if lotstktbl["custrcvplcs_id"] != -1
               Shipment.proc_mk_custwhs_rec "in",lotstktbl
             else
               if lotstktbl["shelfnos_id"] == -1

@@ -42,10 +42,10 @@ module Api
                       raise
 				            end
 		            end
-                foo = File.open("#{Rails.root}/vendor/postgresql/create_view/tblviewupdate#{(Time.now).strftime("%Y%m%d%H%M%S")}.sql", "w:UTF-8") # 書き込みモード
+                foo = File.open("#{Rails.root}/vendor/postgresql/create_view/#{(Time.now).strftime("%Y%m%d%H%M%S")}_tblviewupdate.sql", "w:UTF-8") # 書き込みモード
                 foo.puts modifysql
                 foo.close
-                foo = File.open("#{Rails.root}/vendor/postgresql/create_view/message#{(Time.now).strftime("%Y%m%d%H%M%S")}.sql", "w:UTF-8") # 書き込みモード
+                foo = File.open("#{Rails.root}/vendor/postgresql/create_view/#{(Time.now).strftime("%Y%m%d%H%M%S")}_tblviewupdate_meessage.sql", "w:UTF-8") # 書き込みモード
                 foo.puts message
                 foo.close
                 params[:message] = 	message 

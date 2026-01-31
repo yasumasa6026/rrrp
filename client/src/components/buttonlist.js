@@ -132,7 +132,7 @@ const mapDispatchToProps = (dispatch,ownProps ) => ({
                   //break
       
           case "confirmAll"://
-              params.clickIndex&&params.clickIndex.map((click)=>{if(click.id){clickcnt = clickcnt + 1}
+              params.clickIndex&&params.clickIndex.map((click)=>{if(click.sNo){clickcnt = clickcnt + 1}
                                             }
                                   )
               if(clickcnt>0){
@@ -196,9 +196,10 @@ const mapDispatchToProps = (dispatch,ownProps ) => ({
             params = {...params,buttonflg:"upload",disableFilters:false,screenFlg:ownProps.screenFlg}
             return  dispatch(UploadExcelInit(params,auth)) //
 
-          case "mkShpords":
-          case "refShpords": //第一画面で選択された親より第二画面表示
-          case "refShpinsts": //第一画面で選択された親より第二画面表示
+          case "mkShpords":  //第一画面で選択された親より第二画面表示
+          case "forInstsShpords": //第一画面で選択された親より第二画面表示
+          case "ref_shpords": //第一画面で選択された親より第二画面表示
+          case "foractShpinsts": //第一画面で選択された親より第二画面表示
           case "refShpacts":  //第一画面で選択された親より第二画面表示
           case "prdDvsords":  //第一画面で選択された親より第二画面表示
           case "prdDvsinsts":  //第一画面で選択された親より第二画面表示
@@ -254,7 +255,6 @@ const mapDispatchToProps = (dispatch,ownProps ) => ({
       
               
           default:
-            console.log(` button not Supported ${buttonflg}`)
             return dispatch(ScreenFailure(` button not Supported ${buttonflg}`))
         }   
       } 

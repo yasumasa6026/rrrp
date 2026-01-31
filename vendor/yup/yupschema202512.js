@@ -2764,7 +2764,6 @@ export const yupschema = {
                   dvsact_expiredate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   dvsact_gno:Yup.string().nullable(),
                   dvsact_remark:Yup.string().nullable(),
-                  dvsact_starttime:Yup.date().min('1900/01/01').max('2100/01/01'),
                   dvsact_update_ip:Yup.string().nullable(),
                   dvsact_updated_at:Yup.date().min('1900/01/01').max('2100/01/01'),
                   facilitie_code:Yup.string().max(50).required(),
@@ -2801,7 +2800,6 @@ export const yupschema = {
                   dvsinst_expiredate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   dvsinst_gno:Yup.string().nullable(),
                   dvsinst_remark:Yup.string().nullable(),
-                  dvsinst_starttime:Yup.date().min('1900/01/01').max('2100/01/01'),
                   dvsinst_update_ip:Yup.string().nullable(),
                   dvsinst_updated_at:Yup.date().min('1900/01/01').max('2100/01/01'),
                   facilitie_code:Yup.string().max(50).required(),
@@ -2831,21 +2829,14 @@ export const yupschema = {
                   unit_code_weight_dvsinst:Yup.string().max(3).required(),
            },
           r_dvsords:{
+                  dvsord_commencementdate:Yup.date().min('1900/01/01').max('2100/01/01').required(),
                   dvsord_contents:Yup.string().nullable(),
                   dvsord_duedate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   dvsord_expiredate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   dvsord_gno:Yup.string().nullable(),
                   dvsord_remark:Yup.string().nullable(),
-                  dvsord_starttime:Yup.date().min('1900/01/01').max('2100/01/01'),
                   facilitie_code:Yup.string().max(50).required(),
-                  opeitm_priority_dvsord:Yup.number(3,0).transform((value, originalValue) => {
-                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
-                                    if (typeof originalValue === 'string') {
-                                            return parseFloat(originalValue.replace(/,/g, ''))
-                                        }
-                                    return value
-                                        }).max(999).required(),
-                  person_code_chrg_facilitie:Yup.string().max(10).required(),
+                  person_code_chrg_dvsord:Yup.string().max(10).required(),
                   prdord_sno_dvsord:Yup.string().max(40).required(),
                   prjno_code_chil:Yup.string().max(50).nullable(),
            },
@@ -2855,7 +2846,6 @@ export const yupschema = {
                   dvssch_duedate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   dvssch_expiredate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   dvssch_remark:Yup.string().nullable(),
-                  dvssch_starttime:Yup.date().min('1900/01/01').max('2100/01/01'),
                   dvssch_update_ip:Yup.string().nullable(),
                   dvssch_updated_at:Yup.date().min('1900/01/01').max('2100/01/01'),
                   facilitie_code:Yup.string().max(50).required(),
@@ -2878,13 +2868,6 @@ export const yupschema = {
                   dymsch_expiredate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   dymsch_isudate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   dymsch_processseq:Yup.number(38,0).transform((value, originalValue) => {
-                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
-                                    if (typeof originalValue === 'string') {
-                                            return parseFloat(originalValue.replace(/,/g, ''))
-                                        }
-                                    return value
-                                        }).max(99999999999999).required(),
-                  dymsch_qty_case:Yup.number(16,6).transform((value, originalValue) => {
                                   // カンマを除去して数値に変換（文字列の場合のみ処理）
                                     if (typeof originalValue === 'string') {
                                             return parseFloat(originalValue.replace(/,/g, ''))
@@ -3024,7 +3007,6 @@ export const yupschema = {
                   ercact_expiredate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   ercact_processname:Yup.string().nullable(),
                   ercact_remark:Yup.string().nullable(),
-                  ercact_starttime:Yup.date().min('1900/01/01').max('2100/01/01'),
                   ercact_update_ip:Yup.string().nullable(),
                   ercact_updated_at:Yup.date().min('1900/01/01').max('2100/01/01'),
                   itm_code_fcoperator:Yup.string().max(40).required(),
@@ -3053,6 +3035,8 @@ export const yupschema = {
                   shelfno_code_to_opeitm_ercact:Yup.string().max(50).required(),
                   unit_code_case_prdpur_ercact:Yup.string().max(10).required(),
                   unit_code_case_shp_ercact:Yup.string().max(10).required(),
+                  unit_code_size_ercact:Yup.string().max(3).required(),
+                  unit_code_weight_ercact:Yup.string().max(3).required(),
            },
           r_ercinsts:{
                   boxe_code_ercinst:Yup.string().max(50).nullable(),
@@ -3064,7 +3048,6 @@ export const yupschema = {
                   ercinst_expiredate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   ercinst_processname:Yup.string().nullable(),
                   ercinst_remark:Yup.string().nullable(),
-                  ercinst_starttime:Yup.date().min('1900/01/01').max('2100/01/01'),
                   ercinst_update_ip:Yup.string().nullable(),
                   ercinst_updated_at:Yup.date().min('1900/01/01').max('2100/01/01'),
                   itm_code_fcoperator:Yup.string().max(40).required(),
@@ -3087,6 +3070,8 @@ export const yupschema = {
                   unit_code_case_prdpur_ercinst:Yup.string().max(10).required(),
                   unit_code_case_shp_ercinst:Yup.string().max(10).required(),
                   unit_code_ercinst:Yup.string().max(200).nullable(),
+                  unit_code_size_ercinst:Yup.string().max(3).required(),
+                  unit_code_weight_ercinst:Yup.string().max(3).required(),
            },
           r_ercords:{
                   ercord_commencementdate:Yup.date().min('1900/01/01').max('2100/01/01'),
@@ -3096,7 +3081,6 @@ export const yupschema = {
                   ercord_expiredate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   ercord_processname:Yup.string().nullable(),
                   ercord_remark:Yup.string().nullable(),
-                  ercord_starttime:Yup.date().min('1900/01/01').max('2100/01/01'),
                   ercord_update_ip:Yup.string().nullable(),
                   ercord_updated_at:Yup.date().min('1900/01/01').max('2100/01/01'),
                   itm_code_ercord:Yup.string().max(50).required(),
@@ -3125,6 +3109,8 @@ export const yupschema = {
                   prjno_code_ercord:Yup.string().max(50).required(),
                   shelfno_code_ercord:Yup.string().max(50).required(),
                   shelfno_code_to_ercord:Yup.string().max(50).required(),
+                  unit_code_size_ercord:Yup.string().max(3).required(),
+                  unit_code_weight_ercord:Yup.string().max(3).required(),
            },
           r_ercschs:{
                   boxe_code_ercsch:Yup.string().max(50).nullable(),
@@ -3134,7 +3120,6 @@ export const yupschema = {
                   ercsch_expiredate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   ercsch_processname:Yup.string().nullable(),
                   ercsch_remark:Yup.string().nullable(),
-                  ercsch_starttime:Yup.date().min('1900/01/01').max('2100/01/01'),
                   ercsch_update_ip:Yup.string().nullable(),
                   ercsch_updated_at:Yup.date().min('1900/01/01').max('2100/01/01'),
                   itm_code_ercsch:Yup.string().max(50).required(),
@@ -3168,6 +3153,8 @@ export const yupschema = {
                   unit_code_case_prdpur_ercsch:Yup.string().max(10).required(),
                   unit_code_case_shp_ercsch:Yup.string().max(10).required(),
                   unit_code_ercsch:Yup.string().max(200).nullable(),
+                  unit_code_size_ercsch:Yup.string().max(3).required(),
+                  unit_code_weight_ercsch:Yup.string().max(3).required(),
            },
           r_facilities:{
                   facilitie_code:Yup.string().max(50).required(),
@@ -5963,37 +5950,7 @@ export const yupschema = {
            },
           r_prdacts:{
                   itm_taxflg:Yup.string(),
-                  loca_code_shelfno:Yup.string().max(200).required(),
-                  loca_code_shelfno_opeitm:Yup.string().max(200).required(),
-                  loca_code_shelfno_to_opeitm:Yup.string().max(200).required(),
-                  opeitm_deth:Yup.number(32,6).transform((value, originalValue) => {
-                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
-                                    if (typeof originalValue === 'string') {
-                                            return parseFloat(originalValue.replace(/,/g, ''))
-                                        }
-                                    return value
-                                        }).max(99999999999999).required(),
-                  opeitm_length:Yup.number(32,6).transform((value, originalValue) => {
-                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
-                                    if (typeof originalValue === 'string') {
-                                            return parseFloat(originalValue.replace(/,/g, ''))
-                                        }
-                                    return value
-                                        }).max(99999999999999).required(),
-                  opeitm_weight:Yup.number(5,2).transform((value, originalValue) => {
-                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
-                                    if (typeof originalValue === 'string') {
-                                            return parseFloat(originalValue.replace(/,/g, ''))
-                                        }
-                                    return value
-                                        }).max(99999).required(),
-                  opeitm_wide:Yup.number(5,2).transform((value, originalValue) => {
-                                  // カンマを除去して数値に変換（文字列の場合のみ処理）
-                                    if (typeof originalValue === 'string') {
-                                            return parseFloat(originalValue.replace(/,/g, ''))
-                                        }
-                                    return value
-                                        }).max(99999).required(),
+                  loca_code_shelfno_to:Yup.string().max(200).required(),
                   person_code_chrg:Yup.string().max(10).required(),
                   prdact_cmpldate:Yup.date().min('1900/01/01').max('2100/01/01'),
                   prdact_cmplflg:Yup.string().nullable(),
@@ -6022,10 +5979,7 @@ export const yupschema = {
                   prdact_sno_prdord:Yup.string().max(50).required(),
                   prjno_code:Yup.string().max(50).nullable(),
                   prjno_code_chil:Yup.string().max(50).nullable(),
-                  shelfno_code:Yup.string().max(50).required(),
-                  shelfno_code_opeitm:Yup.string().max(50).required(),
-                  shelfno_code_to:Yup.string().max(50).nullable(),
-                  shelfno_code_to_opeitm:Yup.string().max(50).required(),
+                  shelfno_code_to:Yup.string().max(50).required(),
                   unit_code_case_prdpur:Yup.string().max(10).required(),
                   unit_code_case_shp:Yup.string().max(10).required(),
                   unit_code_size:Yup.string().max(3).required(),

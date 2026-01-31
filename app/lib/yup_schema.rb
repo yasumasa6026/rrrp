@@ -77,7 +77,13 @@ extend self
                         maxval = (10 ** nsize) - 1
                         str<< %Q%.max(#{maxval})% 
                     end
-                end 
+                end  
+                case rec["pobject_code_sfd"]
+                    when "opeitm_packqty"
+                        str<< %Q%.min(1)%
+                    when "nditm_consumunitqty"
+                        str<< %Q%.min(1)%
+                end   
             end  
             if rec["screenfield_indisp"] != '0' or rec["screenfield_type"] == "numeric"
                 str << %Q%.required()% 
