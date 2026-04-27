@@ -11,6 +11,7 @@ Rails.application.routes.draw do
     resources :menus7 
     resources :ganttcharts 
     resources :uploadexcel
+    resources :pdf
     resources :tblfields  if Rails.env == "development" ##テスト環境の時のみ
   end  
 

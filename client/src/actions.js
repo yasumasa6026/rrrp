@@ -89,6 +89,10 @@ export const UPDATEALLOC_REQUEST = 'UPDATEALLOC_REQUEST'
 export const UPDATEALLOC_SUCCESS = 'UPDATEALLOC_SUCCESS'
 export const UPDATEALLOC_FAILURE = 'UPDATEALLOC_FAILURE'
 
+export const PDF_REQUEST = 'PDF_REQUEST'
+export const PDF_SUCCESS = 'PDF_SUCCESS'
+export const PDF_FAILURE = 'PDF_FAILURE'
+
 export const SCREEN_DATASET = 'SCREEN_DATASET'
 export const SECOND_DATASET = 'SECOND_DATASET'
 
@@ -236,8 +240,6 @@ export const ButtonFlgRequest = (buttonflg,params) => ({
   payload: { buttonflg,params}
 })
 
-
-
 export const ButtonReset = () => ({
   type:  BUTTON_RESET,
    //
@@ -361,12 +363,10 @@ export const GanttChartSuccess = (params,auth) => ({
   payload: { params,auth}  //
 })
 
-
 export const GanttChartFailure = (params,auth) => ({
   type:  GANTTCHART_FAILURE,
   payload: { params,auth}  //
 })
-
 
 export const AreaChartRequest = (toggleAreaChart,params) => ({
   type:  AREACHART_REQUEST,
@@ -378,14 +378,10 @@ export const AreaChartSuccess = (params,auth) => ({
   payload: { params,auth}  //
 })
 
-
 export const AreaChartFailure = (params,auth) => ({
   type:  AreaTCHART_FAILURE,
   payload: { params,auth}  //
 })
-
-
-
 
 export const UpdateNditmSuccess = (params,auth) => ({
   type:  UPDATENDITM_SUCCESS,
@@ -400,5 +396,20 @@ export const UpdateNditmSuccess = (params,auth) => ({
 export const UpdateNditmFailure = (params,auth) => ({
   type:  UPDATENDITM_FAILURE,
   payload: { params,auth}  //
+})
+
+export const PdfRequest = (params,auth) => ({
+  type:  PDF_REQUEST,
+  payload: { params,auth}  //
+})
+
+export const PdfSuccess = (message,hosterror) => ({
+  type: PDF_SUCCESS,
+  payload: { message,hosterror }  //
+})
+
+export const PdfFailure = (message,hosterror) => ({
+  type: PDF_FAILURE,
+  payload: { message,hosterror }  //
 })
 

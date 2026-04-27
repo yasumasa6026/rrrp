@@ -33,9 +33,9 @@ class UploadexcelController < ApplicationController
         jparams[:buttonflg] = "import"
         command_c = {}
         screen = ScreenLib::ScreenClass.new(jparams)
-        columns_info,page_info,init_where_info,select_fields,fetch_check,dropDownList,@sort_info,nameToCode = 
+        columns_info,page_info,init_where_info,select_fields,fetchOrCheck,dropDownList,@sort_info,nameToCode = 
                 screen.proc_create_upload_editable_columns_info jparams,"import" 
-        # upload_columns_info = [columns_info,page_info,init_where_info,select_fields.chop,fetch_check,dropDownList,@sort_info,nameToCode]
+        # upload_columns_info = [columns_info,page_info,init_where_info,select_fields.chop,fetchOrCheck,dropDownList,@sort_info,nameToCode]
         performSeqNos = []
         results = {}   
         results[:columns] = []
@@ -171,10 +171,10 @@ class UploadexcelController < ApplicationController
                 else
                 end
                 if uploadError == false and parse_linedata["confirm"] == true 
-                    setParams = blk.proc_private_aud_rec(jparams,command_c)
+                    reqparams = blk.proc_private_aud_rec(jparams,command_c)
                     idx += 1
-                    if setParams[:seqno][0]
-                        performSeqNos << setParams[:seqno][0]
+                    if reqparams[:seqno][0]
+                        performSeqNos << reqparams[:seqno][0]
                     end
                 else
                     ActiveRecord::Base.connection.rollback_db_transaction()

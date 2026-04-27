@@ -5,7 +5,8 @@ import {MENU_REQUEST,MENU_SUCCESS,MENU_FAILURE,
           SCREEN_CONFIRM7, SCREEN_CONFIRM7_SUCCESS,CONFIRMALL_SUCCESS,
           SECOND_CONFIRMALL_REQUEST,SECOND_CONFIRMALL_SUCCESS,
           SECOND_REQUEST,SECOND_SUCCESS7,SECOND_CONFIRM7,MKSHPORDS_SUCCESS,
-          SECOND_FAILURE,SCREEN_DATASET } from '../../actions'
+          SECOND_FAILURE,SCREEN_DATASET,
+          PDF_REQUEST,PDF_SUCCESS,PDF_FAILURE, } from '../../actions'
 const initialValues = {
   isSubmitting:false,
   isSignUp:false,
@@ -157,9 +158,7 @@ const menureducer =  (state= initialValues , actions) =>{
 
       case CONFIRMALL_SUCCESS:
           return {...state,
-            screenFlg:"first",
             loading:false,
-            firstView:true,
             message:actions.payload.message,
           }   
 
@@ -207,7 +206,30 @@ const menureducer =  (state= initialValues , actions) =>{
             screenFlg:"second",
             secondView:true,
             loading:false,
+            hostError:actions.payload.hostError,
           }   
+    
+    case PDF_REQUEST:
+      return {...state,
+        firstView:true,
+        secondView:false,
+        loading:true,
+      }
+
+    case PDF_SUCCESS:
+        return {...state,
+          listNamePdf:actions.payload.params.listNamePdf,
+          listTypePdf:actions.payload.params.listTypePdf,
+          totalPagePdf:actions.payload.params.totalPagePdf,
+          hostError:null,
+          loading:false,
+        }
+
+    case PDF_FAILURE:
+      return {...state,
+          loading:false,
+          hostError:actions.payload.hostError,
+    }    
 
 
     case  LOGOUT_REQUEST:

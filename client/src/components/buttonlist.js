@@ -1,52 +1,49 @@
-import React from 'react'
+import React ,{useState} from 'react'
 import { connect } from 'react-redux'
 import { Tab, Tabs, TabList,TabPanel , } from 'react-tabs'
 //import ScreenGrid7 from './screengrid7.js'
 import UploadExcel from './uploadexcel.js'
 import Download from './download'
+import Pdf from './pdf'
 import GanttTask from './gantttask.tsx'
 import "react-tabs/style/react-tabs.css"
 import {Button} from '../styles/button'
 import "../index.css"
 import {ScreenRequest,DownloadRequest,UploadExcelInit,GanttChartRequest,
-          ButtonFlgRequest,ScreenFailure,
+          ButtonFlgRequest,ScreenFailure,PdfRequest,PdfFailure,
           SecondConfirmAllRequest,YupRequest,TblfieldRequest,ResetRequest, } from '../actions'
 
- const  ButtonList = ({auth,buttonListData,doButtonFlg,buttonflg,loading,
-                        screenCode,data,params,
-                        pareScreenCode, screenFlg//  editableflg,message
+ const  ButtonList = ({auth,buttonListData,doButtonFlg,buttonflgOrg,loading,
+                        screenCode,data,params, screenFlg//  editableflg,message
                       }) =>{
-      let tmpbuttonlist = {}
-      if(buttonListData){
-         buttonListData.map((cate) => {
-            if(tmpbuttonlist[cate.screen_code]){tmpbuttonlist[cate.screen_code].push([cate.button_title,cate.button_code])}
-            else{tmpbuttonlist[cate.screen_code]=[]
-                 tmpbuttonlist[cate.screen_code].push([cate.button_title,cate.button_code])}   
-             return tmpbuttonlist
-          })  
-        } 
+      const [contents,setContents] = useState(null)
+      const  [buttonflg,setButtonflg] = useState(buttonflgOrg)
       return (
         <div>
-        {tmpbuttonlist[screenCode]&&   //画面のボタンが用意されてないときはskip
+        {buttonListData&&   //画面のボタンが用意されてないときはskip
             <Tabs   forceRenderTabPanel defaultIndex={0}  selectedTabClassName="react-tabs--selected_custom_footer">
                 <TabList>
-                  {tmpbuttonlist[screenCode].map((val,index) => 
-                    <Tab key={index} >
-                      <Button  
-                      type="submit"
-                      onClick ={() =>{
-                                      doButtonFlg(val[1],params,data,pareScreenCode,auth)} // buttonflg
+                  {buttonListData.map((bList,idx) =>
+                    bList.screen_code===screenCode&&
+                        <Tab key={idx}>
+                          <Button  
+                            type="submit"
+                            onClick ={(e) =>{ 
+                                        if(e.shiftKey){setContents(bList.usebutton_contents)} 
+                                        else{setContents(null)
+                                          doButtonFlg(bList.button_code,params,data,auth)}
+                                        setButtonflg(bList.button_code)
+                                      } //
                                      }>
-                      {val[0]}       
-                      </Button>             
-                    </Tab>
-                    )} 
+                        {bList.button_title}       
+                        </Button>             
+                      </Tab>)} 
                 </TabList>
-                  {tmpbuttonlist[screenCode].map((val,index) => 
-                     <TabPanel key={index} >
-                      {val[2]}
-                    </TabPanel>
-                    )} 
+                    {buttonListData.map((bList,idx) => 
+                      bList.screen_code===screenCode&&
+                        <TabPanel key={idx}  > 
+                          <p></p>
+                        </TabPanel>)}
             </Tabs>
         }
         
@@ -54,12 +51,13 @@ import {ScreenRequest,DownloadRequest,UploadExcelInit,GanttChartRequest,
                   <div style={{ width: '1800px' }}><GanttTask /> </div>}
         {buttonflg==='upload'&&<UploadExcel/>}
         {buttonflg==="download"&&<Download/>}
+        {buttonflg.endsWith("Pdf")&&<Pdf/>}
         {(buttonflg==="createTblViewScreen"||buttonflg==="createUniqueIndex")&&params.messages.map((msg,index) =>{
                                                 return  <p key ={index}>{msg}</p>
                                                   }
                                                )}
         {loading&&<p>loading</p>}
-      
+        {contents&&(<p>{contents}</p>)}                                       
         </div>    
       )
     }
@@ -70,7 +68,7 @@ const  mapStateToProps = (state,ownProps) =>{
       auth:state.auth,
       buttonListData:state.button.buttonListData ,    //ボタンはemailで一旦全て収集
       loading:state.button.loading , 
-      buttonflg:state.second.params.buttonflg ,  
+      buttonflgOrg:state.second.params.buttonflg ,  
       params:state.second.params ,  
       data:state.second.data ,  
       screenCode:state.second.params.screenCode ,  
@@ -84,7 +82,7 @@ const  mapStateToProps = (state,ownProps) =>{
         auth:state.auth,
         buttonListData:state.button.buttonListData ,  
         loading:state.button.loading , 
-        buttonflg:state.screen.params.buttonflg ,  
+        buttonflgOrg:state.screen.params.buttonflg ,  
         params:state.screen.params ,  
         data:state.screen.data ,  
         screenCode:state.screen.params.screenCode ,  
@@ -99,8 +97,8 @@ const  mapStateToProps = (state,ownProps) =>{
 
 const mapDispatchToProps = (dispatch,ownProps ) => ({
   doButtonFlg : (buttonflg,    //
-                    params,data,pareScreenCode,auth) =>{
-        dispatch(ButtonFlgRequest(buttonflg,params)) // upload download 画面用
+                    params,data,auth) =>{
+        dispatch(ButtonFlgRequest(buttonflg,params)) // 
         let screenData = []
         let newRow = {}
         let clickIndex = []
@@ -136,26 +134,33 @@ const mapDispatchToProps = (dispatch,ownProps ) => ({
                                             }
                                   )
               if(clickcnt>0){
-                  params= {...params,buttonflg:"confirmAll",disableFilters:true,screenFlg:ownProps.screenFlg}
+                  params= {...params,buttonflg:"confirmAll",aud:"add",disableFilters:true,screenFlg:ownProps.screenFlg}
                   return  dispatch(ScreenRequest(params,null)) //
               }else{
                 return dispatch(ScreenFailure("please select and confirmall "))
               }
  
+          case "delAllShpords"://第二画面専用
+          case "delAllShpdlvs"://第二画面専用
+          case "delAllShpacts"://第二画面専用
+                    params= {...params,buttonflg:buttonflg,disableFilters:true,screenFlg:ownProps.screenFlg}
+                    return  dispatch(SecondConfirmAllRequest(params,null)) //
+
           case "confirmShpacts"://第二画面専用
                     params= {...params,buttonflg:"confirmShpacts",disableFilters:true,screenFlg:ownProps.screenFlg}
                     return  dispatch(SecondConfirmAllRequest(params,null)) //
     
+    
 
-          case "confirmShpinsts":  //第二画面専用
-                  params= {...params,buttonflg:"confirmShpinsts",disableFilters:true,screenFlg:ownProps.screenFlg}
+          case "confirmShpdlvs":  //第二画面専用
+                  params= {...params,buttonflg:"confirmShpdlvs",disableFilters:true,screenFlg:ownProps.screenFlg}
                   return  dispatch(SecondConfirmAllRequest(params,null)) //
 
           case "ganttchart":
                   if(typeof(params.index)==="number"){
                       if(params.index < 0){alert("please select")}
                       else{
-                        params= { ...params,linedata:data[params.index],viewMode:"Day",buttonflg:"ganttchart",screenFlg:ownProps.screenFlg}
+                        params= { ...params,lineData:data[params.index],viewMode:"Day",buttonflg:"ganttchart",screenFlg:ownProps.screenFlg}
                           if(ownProps.screenFlg==="first"){return  dispatch(GanttChartRequest(params))}
                           else{alert("GanttChart not support second screen  ")}
                         }
@@ -167,7 +172,7 @@ const mapDispatchToProps = (dispatch,ownProps ) => ({
                     if(typeof(params.index)==="number"){
                       if(params.index < 0){alert("please select")}
                       else{
-                              params= { ...params,linedata:data[params.index],viewMode:"Day",buttonflg:"reversechart",}
+                              params= { ...params,lineData:data[params.index],viewMode:"Day",buttonflg:"reversechart",}
                               if(ownProps.screenFlg==="first"){return  dispatch(GanttChartRequest(params,auth))}
                               else{alert("GanttChart not support second screen  ")} 
                             }//
@@ -197,10 +202,11 @@ const mapDispatchToProps = (dispatch,ownProps ) => ({
             return  dispatch(UploadExcelInit(params,auth)) //
 
           case "mkShpords":  //第一画面で選択された親より第二画面表示
-          case "forInstsShpords": //第一画面で選択された親より第二画面表示
+          case "fordlvShpords": //第一画面で選択された親より第二画面表示
           case "ref_shpords": //第一画面で選択された親より第二画面表示
-          case "foractShpinsts": //第一画面で選択された親より第二画面表示
-          case "refShpacts":  //第一画面で選択された親より第二画面表示
+          case "ref_shpdlvs":  //第一画面で選択された親より第二画面表示
+          case "ref_shpacts":  //第一画面で選択された親より第二画面表示
+          case "foractShpdlvs": //第一画面で選択された親より第二画面表示
           case "prdDvsords":  //第一画面で選択された親より第二画面表示
           case "prdDvsinsts":  //第一画面で選択された親より第二画面表示
           case "prdDvsacts":  //第一画面で選択された親より第二画面表示
@@ -210,7 +216,7 @@ const mapDispatchToProps = (dispatch,ownProps ) => ({
           case "MkCalendars":
               clickIndex = params.clickIndex
               if(clickIndex.length > 0){    //if(params.clickIndex.length===0)  ---> error
-                  params= {...params,linedata:{},buttonflg:buttonflg,disableFilters:false,screenFlg:ownProps.screenFlg}
+                  params= {...params,lineData:{},buttonflg:buttonflg,disableFilters:false,screenFlg:ownProps.screenFlg}
                   return  dispatch(ScreenRequest(params,null))
                 }
               else{
@@ -219,12 +225,15 @@ const mapDispatchToProps = (dispatch,ownProps ) => ({
           case "rejections":  //第一画面で選択された親より第二画面表示
               clickIndex = params.clickIndex
               if(clickIndex.length===1){    //if(params.clickIndex.length===0)  ---> error
-                  params= {...params,linedata:{},buttonflg:buttonflg,disableFilters:false,screenFlg:ownProps.screenFlg}
+                  params= {...params,lineData:{},buttonflg:buttonflg,disableFilters:false,screenFlg:ownProps.screenFlg}
                   return  dispatch(ScreenRequest(params,null))
                 }
               else{
                 return  dispatch(ScreenFailure( "please  select Order or please  select only one record",""))    
               }//
+          case "samplePdf":  //
+                  params = {...params,listNamePdf:"sampleList",buttonflg:buttonflg}
+                  return  dispatch(PdfRequest(params,auth))
           case "crt_tbl_view_screen":
                 data.map((row,index)=>{Object.keys(row).map((field,idx)=>
                         {

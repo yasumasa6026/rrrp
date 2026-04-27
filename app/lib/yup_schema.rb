@@ -36,7 +36,7 @@ extend self
                 end   
                 case rec["pobject_code_sfd"]
                   when "loca_zip"
-                    str<< %Q%.matches(/[0-9]{3}\-[0-9]{4}/, { message: 'post code error --> xxx-xxxx' })%
+                    str<< %Q%.matches(/[0-9]{3}\-[0-9]{4}/, { message: 'loca_zip code error --> xxx-xxxx' })%
                   else 
                     if rec["screenfield_indisp"] == '0'
                       str << %Q%.nullable()% 

@@ -6,7 +6,7 @@ import {LOGIN_REQUEST,SIGNUP_REQUEST,LOGOUT_REQUEST,CHANGEPASSWORD_REQUEST,
         SCREENINIT_REQUEST,SCREEN_REQUEST,UPLOADEXCEL_REQUEST,
         SCREEN_CONFIRM7,SECOND_CONFIRM7,SECOND_CONFIRMALL_REQUEST,SECOND_REQUEST,
         GANTTCHART_REQUEST,BUTTONLIST_REQUEST,
-        DOWNLOAD_REQUEST, YUP_REQUEST,TBLFIELD_REQUEST,
+        DOWNLOAD_REQUEST, YUP_REQUEST,TBLFIELD_REQUEST,PDF_REQUEST,
         INPUTFIELDPROTECT_REQUEST, UPDATENDITM_REQUEST, UPDATEALLOC_REQUEST,
       } from  '../../actions'
 
@@ -23,6 +23,7 @@ import {GanttChartSaga} from './ganttchart'
 import {TblfieldSaga} from './tblfield'
 import {UploadExcelSaga} from './uploadexcel'
 import {ProtectSaga} from './protect'
+import {PdfSaga} from './pdf'
 
 export function * sagas () {
   yield takeEvery(LOGIN_REQUEST,LoginSaga)
@@ -47,4 +48,5 @@ export function * sagas () {
   yield takeEvery(UPDATEALLOC_REQUEST,GanttChartSaga)
   yield takeEvery(UPLOADEXCEL_REQUEST,UploadExcelSaga)
   yield takeEvery(INPUTFIELDPROTECT_REQUEST,ProtectSaga)
+  yield takeEvery(PDF_REQUEST,PdfSaga)
 }

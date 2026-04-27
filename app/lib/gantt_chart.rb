@@ -201,7 +201,7 @@ module GanttChart
 							n0 = {}
 							until treeTables.size == 0   ###子部品の展開
 								tree = treeTables.shift
-									strsql =	%Q&
+								strsql =	%Q&
 										select  max(trn.itms_id_trn) itms_id_trn,max(s.locas_id_shelfno) locas_id_trn,max(trn.orgtblname) orgtblname,
 											max(trn.orgtblid) orgtblid,max(trn.paretblname) paretblname,max(trn.paretblid) paretblid,
 											max(trn.tblname) linktblname,max(trn.tblid) linktblid,
@@ -210,14 +210,15 @@ module GanttChart
 											min(trn.starttime_trn) starttime_trn,max(trn.duedate_trn) duedate_trn,
 											sum(a.qty_linkto_alloctbl) qty_src,max(trn.id) trngantts_id ,max(trn.key) "key"
 										from trngantts trn
-										inner join alloctbls a  on a.trngantts_id = trn.id  and a.qty_linkto_alloctbl > 0 
+										inner join alloctbls a  on a.trngantts_id = trn.id 
 										inner join shelfnos s on s.id = trn.shelfnos_id_trn 
 										where a.srctblname = '#{tree["tbl"]}' and a.srctblid = #{tree["id"]}  
 										and trn.id in (#{tree["trngantts_id"].join(",")})
 										group by a.srctblname ,a.srctblid 
 									&
 						  	trn =	ActiveRecord::Base.connection.select_one(strsql)
-							  				n0 = {:itms_id=>trn["itms_id_trn"],:locas_id=>trn["locas_id_trn"],:type=>"task",
+								break if trn.nil?
+							  n0 = {:itms_id=>trn["itms_id_trn"],:locas_id=>trn["locas_id_trn"],:type=>"task",
 															:depend => [],
 															:linktblname=>trn["linktblname"],:linktblid=>trn["linktblid"],
 															:tblname=>trn["tblname"],:tblid=>trn["tblid"],:trngantts_id=>trn["trngantts_id"],

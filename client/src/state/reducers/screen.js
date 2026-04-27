@@ -82,7 +82,7 @@ return {...state,
         loading:true,
         params:actions.payload.params,
         data:actions.payload.data,
-        baseData:actions.payload.data,
+        //baseData:actions.payload.data,
         screenFlg:"first",
         // editableflg:actions.payload.editableflg
 }
@@ -92,7 +92,7 @@ return {...state,
   loading:false,
   disabled:false,
   data: actions.payload.data.data,
-  baseData: actions.payload.data.data,
+  //baseData: actions.payload.data.data,
   params: actions.payload.params,
   status: actions.payload.data.status,
   grid_columns_info:actions.payload.data.grid_columns_info,
@@ -106,7 +106,7 @@ case SCREEN_CONFIRM7_SUCCESS:
   return {...state,
         params:actions.payload.params,
         data:data,
-        baseData:data,
+        //baseData:data,
         loading:false,
         screenFlg:"first",
       }
@@ -118,7 +118,7 @@ case SECOND_CONFIRM7_SUCCESS:
         data = state.data.map((row,idx)=>{if(actions.payload.index===idx){row = {...row,...lineData}}
                                           return row }) 
         return {...state,
-            data:data,baseData:data
+            //data:data,baseData:data
         } 
     }
     else{
@@ -167,7 +167,7 @@ case FETCH_RESULT:
           return {...state,
             params:actions.payload.params,  
             data:data,
-            baseData:data,
+            //baseData:data,
             loading:false,
     }
 

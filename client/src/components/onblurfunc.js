@@ -201,19 +201,19 @@ export function   onFieldValite (lineData, field, screenCode) {  // yupでは　
 }
 
 
-export function fetchCheck(lineData,id,fetch_check) {
+export function fetchCheck(lineData,id,fetchOrCheck) {
     let fetchCheckFlg 
     let idKeys=[]
     //
-    if(fetch_check.fetchCode[id]){
-        let flg = true
-        Object.keys(fetch_check.fetchCode).map((key,idx)=>{  //複数key対応
-            if(fetch_check.fetchCode[id]===fetch_check.fetchCode[key]){
+    if(fetchOrCheck.fetchCode[id]){
+        let flg = true  //fetchOrCheck.fetchCode= {field code:view name,....}
+        Object.keys(fetchOrCheck.fetchCode).map((key,idx)=>{  //複数key対応
+            if(fetchOrCheck.fetchCode[id]===fetchOrCheck.fetchCode[key]){
                 if(lineData[key]===""||lineData[key]===undefined){
                     flg = false
                 return  idKeys
                 }
-                else(idKeys.push({[key]:lineData[key]}))
+                else{idKeys.push({[key]:lineData[key]})}
             }
             return idKeys
         })
@@ -221,8 +221,8 @@ export function fetchCheck(lineData,id,fetch_check) {
         fetchCheckFlg = "fetch_request"
         }else{}//未入力keyがある。  
     }
-    if(fetch_check.checkCode[id]){
-            fetchCheckFlg = fetchCheckFlg === "fetch_request"?fetchCheckFlg+",check_request":"check_request"
+    if(fetchOrCheck.checkCode[id]){   //if check item set
+            fetchCheckFlg = (fetchCheckFlg === "fetch_request"?fetchCheckFlg+",check_request":"check_request")
             }
     return {fetchCheckFlg,idKeys}
 }

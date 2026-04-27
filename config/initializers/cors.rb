@@ -24,7 +24,7 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
       resource '/api/*',
         headers:  :any, ## 追加
         methods: [:get, :post, :put, :patch, :delete, :options, :head],
-        expose: ['access-token', 'client', 'uid', 'expiry', 'token-type', 'authorization'], 
+        expose: ['access-token', 'client', 'uid', 'expiry', 'token-type', 'authorization','Content-Disposition', 'X-File-Name'], 
         # Expose devise_token_auth headers
         credentials: true # Allow cookies or credentials if needed
     end

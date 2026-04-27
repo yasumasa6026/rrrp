@@ -1,4 +1,5 @@
-import {  UPLOADEXCEL_REQUEST,UPLOADEXCEL_FAILURE,UPLOADEXCEL_SUCCESS,LOGOUT_REQUEST} from '../../actions'
+import {  UPLOADEXCEL_REQUEST,UPLOADEXCEL_FAILURE,UPLOADEXCEL_SUCCESS,
+                UPLOADEXCEL_INIT,LOGOUT_REQUEST} from '../../actions'
         const initialValues = {
         isEditable:false,
         isUpload:false,
@@ -11,6 +12,20 @@ import {  UPLOADEXCEL_REQUEST,UPLOADEXCEL_FAILURE,UPLOADEXCEL_SUCCESS,LOGOUT_REQ
 const uploadreducer =  (state= initialValues , actions) =>{
 switch (actions.type) {
    
+    
+    case UPLOADEXCEL_INIT:
+            return {...state,
+                excelfile: null,
+                params: actions.payload.params,
+                auth: actions.payload.auth,
+                nameToCode: null,
+                errMessage:"",
+                formatError:null,
+                uploadErrorCheckMaster:false,
+                normalEnd:false,
+                loading : false,
+                idx:null,
+            }
 
     case UPLOADEXCEL_REQUEST:
             return {...state,

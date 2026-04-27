@@ -9,13 +9,13 @@ import { yupErrCheck } from './yuperrcheck'
 import "../index.css"
 import { TableGridStyles } from '../styles/tablegridstyles'
 const ToSubForm  = ({params, data, subFormInfo,dropDownList,screenCode,index,
-                    handleScreenRequest, handleFetchRequest,fetch_check}) => {
+                    handleScreenRequest, handleFetchRequest,fetchOrCheck}) => {
         //const {  handleSubmit,register, getValues} = useForm({resolver: yupResolver(yupschema), })
     const {  handleSubmit,register, getValues,setValue} = useForm()
         
     const [lineNo,setLineNo] =  useState(index<0?0:index)
     useEffect(()=>setLineNo((index) => index<0?0:index ))
-    const [linedata,setLinedata] = useState(data[lineNo])
+    const [lineData,setLinedata] = useState(data[lineNo])
     useEffect(()=>{setLinedata(lineNo)
                     pageChange(lineNo)})
     const pageChange = ((cnt) =>{
@@ -28,18 +28,18 @@ const ToSubForm  = ({params, data, subFormInfo,dropDownList,screenCode,index,
     )
     let errormsg
           
-    const TdInput = ({linedata,fld,}) => {
+    const TdInput = ({lineData,fld,}) => {
             const ftypeValue = getValues("fieldcode_ftype") 
             const typeValue = getValues("screenfield_type")
             switch(true){   
                 case /^Editable/.test(fld.className):
-                            return(<input  {...register(fld.id , {onBlur: (e) => setFormFieldByonBlur(e,fld),value:linedata[fld.id] })}
-                                    className={setClassFunc(fld.id,linedata,fld.className,params.buttonflg)}
+                            return(<input  {...register(fld.id , {onBlur: (e) => setFormFieldByonBlur(e,fld),value:lineData[fld.id] })}
+                                    className={setClassFunc(fld.id,lineData,fld.className,params.buttonflg)}
                                     readOnly={ftypeValue?(setProtectFunc(fld.id,ftypeValue)):
                                                 typeValue?(setProtectFunc(fld.id,typeValue)):false}
                                 />)
                 case /SelectEditable/.test(fld.className):
-                           return(<select   {...register(fld.id,{value:linedata[fld.id]})}   > 
+                           return(<select   {...register(fld.id,{value:lineData[fld.id]})}   > 
                                 {typeof(dropDownList[fld.id])!=="undefined"&&JSON.parse(dropDownList[fld.id]).map((option, i) => (
                                     <option key={i+"op1"} value={option.value}>
                                             {option.label}
@@ -47,11 +47,11 @@ const ToSubForm  = ({params, data, subFormInfo,dropDownList,screenCode,index,
                                 ))}
                             </select>) 
                 case /CheckEditable/.test(fld.className):
-                            return(<input  type="checkbox"   {...register(fld.id,{value:linedata[fld.id]})}  />)
+                            return(<input  type="checkbox"   {...register(fld.id,{value:lineData[fld.id]})}  />)
                 case /^NonEditable/.test(fld.className):
-                            return(<input    {...register(fld.id ,{value:linedata[fld.id]})}  readOnly style={{ visibility: fld.hideflg}} />)
+                            return(<input    {...register(fld.id ,{value:lineData[fld.id]})}  readOnly style={{ visibility: fld.hideflg}} />)
                 case /SelectNonEditable/.test(fld.className):
-                            return(<select  value={linedata[fld.id]} disabled >
+                            return(<select  value={lineData[fld.id]} disabled >
                                 {
                                     typeof(dropDownList[fld.id])!=="undefined"&&JSON.parse(dropDownList[fld.id]).map((option, i) => (
                                         <option key={i+"op2"} value={option.value} >
@@ -61,38 +61,38 @@ const ToSubForm  = ({params, data, subFormInfo,dropDownList,screenCode,index,
                                 }
                             </select>)
                 case /CheckNonEditable/.test(fld.className):
-                            return(<input  value={linedata[fld.id]}  type="checkbox" readOnly />)
+                            return(<input  value={lineData[fld.id]}  type="checkbox" readOnly />)
                 default:
-                            return(<input  value={linedata[fld.id]}  style={{ visibility: fld.hideflg}} readOnly />)
+                            return(<input  value={lineData[fld.id]}  style={{ visibility: fld.hideflg}} readOnly />)
             }    
         }
       
         const setFormFieldByonBlur = (e,fld) => {
-            let tmpline = {...linedata,[fld.id]: e.target.value}  //[id] idの内容
-            let msg_id = `${linedata[fld.id]}_gridmessage`
-            tmpline[`${linedata[fld.id]}_gridmessage`] = "ok"
+            let tmpline = {...lineData,[fld.id]: e.target.value}  //[id] idの内容
+            let msg_id = `${lineData[fld.id]}_gridmessage`
+            tmpline[`${lineData[fld.id]}_gridmessage`] = "ok"
             //let autoAddFields = {}
             tmpline = onFieldValite(tmpline, fld.id, screenCode)  //clientでのチェック
             if(tmpline[msg_id]==="ok"){
-                tmpline = onBlurFunc7(screenCode, tmpline, linedata[fld.id])
+                tmpline = onBlurFunc7(screenCode, tmpline, lineData[fld.id])
             }
             if ( tmpline[msg_id] === "ok") {
-                const {fetchCheckFlg,idKeys} = fetchCheck( tmpline,fld.id,fetch_check)
+                const {fetchCheckFlg,idKeys} = fetchCheck( tmpline,fld.id,fetchOrCheck)
                 params = {...params,fetchCode: JSON.stringify(idKeys),
-                                        checkCode: JSON.stringify({ [fld.id]: fetch_check.checkCode[fld.id] }),
-                                        linedata: JSON.stringify(newRow),
-                                        fetchview: fetchCheckFlg==="fetch_request"?fetch_check.fetchCode[fld.id]:"",
+                                        checkCode: JSON.stringify({ [fld.id]: fetchOrCheck.checkCode[fld.id] }),
+                                        lineData: JSON.stringify(newRow),
+                                        fetchview: fetchCheckFlg==="fetch_request"?fetchOrCheck.fetchCode[fld.id]:"",
                                         index: lineNo,buttonflg: fetchCheckFlg}
                 
               if(fetchCheckFlg){handleFetchRequest(params)}
                      else{Object.keys(autoAddFields).map((field)=>{if(tmpline[field]===""||tmpline[field]===undefined)
-                                                              { tmpline[field] =  linedata[field]}
+                                                              { tmpline[field] =  lineData[field]}
                                                             }
                                                   )
                         setLinedata({...tmpline}) }
             }else{return(errormsg=tmpline[msg_id])
             }
-            data[lineNo] = {...linedata}
+            data[lineNo] = {...lineData}
         }    
     
         const onFormValite = () => {
@@ -100,15 +100,15 @@ const ToSubForm  = ({params, data, subFormInfo,dropDownList,screenCode,index,
             let screenSchema = Yup.object().shape(yupschema[params.screenCode])
             let checkFields = {}
             Object.keys(screenSchema.fields).map((field) => {
-                checkFields[field] = linedata[field] 
+                checkFields[field] = lineData[field] 
                 return checkFields  //更新可能項目のみをセレクト
             })  
             checkFields = yupErrCheck(screenSchema,"confirm",checkFields)
-            Object.keys(checkFields).map((field)=>linedata[field] = checkFields[field])
-            if (linedata["confirm_gridmessage"] === "doing") {
-                params = {...params,linedata: JSON.stringify(linedata),  index: lineNo ,
+            Object.keys(checkFields).map((field)=>lineData[field] = checkFields[field])
+            if (lineData["confirm_gridmessage"] === "doing") {
+                params = {...params,lineData: JSON.stringify(lineData),  index: lineNo ,
                          buttonflg: "confirm7" }
-                data[lineNo] = {...linedata}
+                data[lineNo] = {...lineData}
                 handleScreenRequest(params,data)
             }
         }
@@ -156,7 +156,7 @@ const ToSubForm  = ({params, data, subFormInfo,dropDownList,screenCode,index,
                                 <React.Fragment>  
                                 <td  key={idx+"td1"} className="subformtdlabel" style={{ visibility: fld.hideflg}} >{fld.label}</td>
                                 <td rowSpan={fld.edoptrow}  key={idx+"td2"}>
-                                    <TdInput linedata={linedata} fld={fld}  />  
+                                    <TdInput lineData={lineData} fld={fld}  />  
                                 </td>  
                                 </React.Fragment> 
                             )
@@ -189,7 +189,7 @@ const mapDispatchToProps = dispatch => ({
     params:state.screen.params,
     index:state.screen.params.index,  //params.indexではuseEffectが効かない。
     screenCode: state.screen.params.screenCode,
-    fetch_check: state.screen.grid_columns_info.fetch_check,
+    fetchOrCheck: state.screen.grid_columns_info.fetchOrCheck,
     dropDownList: state.screen.grid_columns_info.dropDownList, 
     subFormInfo: state.screen.grid_columns_info.subform_info,   
   })

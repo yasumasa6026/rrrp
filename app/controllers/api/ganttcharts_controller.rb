@@ -9,7 +9,7 @@ module Api
       when /ganttchart|reversechart/
                     tasks = []
                     tblcode = params[:screenCode].split("_")[1]
-                    parse_linedata = JSON.parse(params[:linedata])   ###最後にclickされた行のみ有効
+                    parse_linedata = JSON.parse(params[:lineData])   ###最後にclickされた行のみ有効
                     case params[:screenCode]
                     when /itms|opeitms|nditms/
                         ### 第三パラメータ　gantt_xxx-->順方向　reverse-->逆方向
@@ -129,7 +129,7 @@ module Api
                                                 ""
                                             end
                                 tasks << {"id"=>ganttdata[:id],
-                                "name"=>"#{ganttdata[:sno]}" + 
+                                "name"=>"#{ganttdata[:sno]}" + "," +
                                             "#{ganttdata[:itm_code]}:#{ganttdata[:itm_name]},#{ganttdata[:processseq]},#{ganttdata[:loca_code]}:#{ganttdata[:loca_name]}," +
                                             str_qty + 
                                             " ,",

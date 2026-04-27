@@ -81,6 +81,10 @@ const Login = ({isAuthenticated ,onSubmit,error,}) => {
             <p>－－－＞ヘッダーの項目をCtrl+クリック</p>
           <h3>・・grid内での GroupBy</h3>
             <p>－－－＞ヘッダーの項目をAlt+クリック</p>
+          <h3>・・grid明細の全件選択</h3>
+            <p>ーーー＞明細項目をCtrl+クリック</p>
+          <h3>・・ボタンの説明</h3>
+            <p>ーーー＞ボタンをShift+クリック</p>
           <h2>rails</h2>
             <h3>activereord</h3>
               <p>model機能、crud機能は使用してない。</p>

@@ -31,14 +31,13 @@ export  function yupErrCheckBatch(lines,screenCode)
                     batchField = fd
                     row = dataCheck7(screenSchema,fd,row) //row:_gridmessageを含む
                     if(row[`${fd}_gridmessage`] !== "ok"){
-                          row[`${tblnamechop}_confirm_gridmessage`] = `error x ${fd} field:${fd} ` + row[`${fd}_gridmessage`]
+                          line[`${tblnamechop}_confirm_gridmessage`] = `error x ${fd} field:${fd} ` + row[`${fd}_gridmessage`]
                           uploadErrorCheckMaster = true
-                          row[`confirm`] = false
-                          row = {...row,[fd]:row[fd]}
+                          line[`confirm`] = false
                         }else{
                             row = onBlurFunc7(screenCode,row,fd)
+                            line = {...line,...row}
                         }
-                        return {...line,row}
                     }
                 )
             }      
@@ -46,6 +45,7 @@ export  function yupErrCheckBatch(lines,screenCode)
                 line[`${tblnamechop}_confirm_gridmessage`] = `error y ${err} field:${batchField} ` + line[`${tblnamechop}_confirm_gridmessage`]
                 line[`confirm`] = false
                 uploadErrorCheckMaster = true
+                return line = {...line,...row}
             }
         }else{
             if(line["aud"]==="aud"){
@@ -56,7 +56,7 @@ export  function yupErrCheckBatch(lines,screenCode)
             }   
         }  
         uploadexcel.push(line) 
-        return {uploadexcel,uploadErrorCheckMaster}
+        //return {uploadexcel,uploadErrorCheckMaster}
     })
     return {uploadexcel,uploadErrorCheckMaster}
 }  

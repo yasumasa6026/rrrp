@@ -45,7 +45,10 @@ loading:false,
 case UPLOADEXCEL_REQUEST:
   return {...state,
     buttonflg:"upload", 
+    params:actions.payload.params,
     complete:false,
+    excelData:null,
+    totalCount:null,
           // editableflg:action.payload.editableflg
 }
 

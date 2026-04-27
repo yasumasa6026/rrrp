@@ -19,8 +19,8 @@ class CreateOtherTableRecordJob < ApplicationJob
         params[:person_code_chrg] = person["code"]
         ###params[:person_id_upd] = person["id"]
         until processreq.nil? do
-          setParams = params.dup
-          if params[:tbldata] and params[:tbldata].class.to_s == "Hash"
+          reqparams = params.dup
+          if params[:tbldata]
                       tbldata = params[:tbldata]
           else
             if params[:tblname]
@@ -44,8 +44,8 @@ class CreateOtherTableRecordJob < ApplicationJob
 			    else
 				    opeitm = {}
 			    end
-          if setParams[:where_str]
-            setParams[:where_str] = setParams[:where_str].gsub("#!","'")
+          if reqparams[:where_str]
+            reqparams[:where_str] = reqparams[:where_str].gsub("#!","'")
           end
           gantt = params[:gantt].dup
           tblname = gantt["tblname"]
@@ -126,6 +126,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                                         "persons_id_upd" => person["id"] ,"trngantts_id" => params[:trngantts_id],
                                          "chrgs_id" => mst["chrgs_id_payment"],"crrs_id" => tbldata["crrs_id"],
                                         "srctblname" => params[:srctblname],"srctblid" => params[:srctblid]}
+                    ord_tblname = "payords"
                   when "mkbillords"
                     trn_day = tbldata["saledate"].to_date.strftime("%d").to_i
                     duedate =  tbldata["saledate"].to_date
@@ -139,18 +140,24 @@ class CreateOtherTableRecordJob < ApplicationJob
                                         "persons_id_upd" => person["id"] ,"trngantts_id" => params[:trngantts_id],
                                          "chrgs_id" => mst["chrgs_id_bill"],"crrs_id" => tbldata["crrs_id"],
                                         "srctblname" => params[:srctblname],"srctblid" => params[:srctblid]}
+                    ord_tblname = "billords"
                 end
-                ratejsons = JSON.parse(mst["ratejson"]) 
+                ratejsons = JSON.parse(mst["ratejson"])
+                saveDuedate = duedate 
                 mst["termof"].split(",").each_with_index do |termof,id|
                     if trn_day <= termof.to_i
                         ratejsons[id].each do |rate|
                             if rate["+day"]  
-                                duedate =  duedate.since(rate["+day"].day)
-                                duedate = (duedate.strftime("%Y") + "-" + duedate.strftime("%m") + "-" + duedate.strftime("%d"))
+                                duedate =  saveDuedate.since(rate["+day"].day)
                             else 
                               if rate["day"]  
-                                duedate =  duedate.since(rate["duration"].month)
-                                duedate = (duedate.strftime("%Y") + "-" + duedate.strftime("%m") + "-" + rate["day"].to_s)
+                                duedate =  saveDuedate.since(rate["duration"].month)
+                                if rate["day"] < 28
+                                  duedate = (saveDuedate.strftime("%Y") + "-" + saveDuedate.strftime("%m") + "-" + rate["day"].to_s).to_date
+                                else
+                                  duedate =  saveDuedate.since((rate["duration"] + 1).month)
+                                  duedate = (duedate.strftime("%Y") + "-" + duedate.strftime("%m") + "-" + "01").to_date.since(-1.day)
+                                end
                               else
                                 3.times{Rails.logger.debug(%Q%class:#{self},line:#{__LINE__} ,\n mst["ratejson"]:#{mst["ratejson"]},\n termof:#{termof}%)}
                                 raise
@@ -158,19 +165,19 @@ class CreateOtherTableRecordJob < ApplicationJob
                             end
                             ord_tbldata.merge!({"amt_src" => tbldata["amt"].to_f * rate["rate"] / 100,
                                                  "tax" =>  tbldata["tax"].to_f * rate["rate"] / 100,
-                                                 "denomination" => rate["denomination"],"duedate" =>duedate.to_date})
-                            MkordinstLib.proc_create_paybilltbl(params[:gantt]["tblname"],ord_tbldata)
+                                                 "denomination" => rate["denomination"],"duedate" =>duedate})
+                            MkordinstLib.proc_create_paybilltbl(ord_tblname,ord_tbldata)
                           break  
                         end
                     else 
                       if termof.to_i < 1   ###随時
                           JSON.parse(mst["ratejson"])[0].each do |rate|
                             if rate["+day"] 
-                              duedate = (duedate.strftime("%Y") + "-" + duedate.strftime("%m") + "-" + rate["+day"].to_s)
+                              duedate = (saveDuedate.strftime("%Y") + "-" + saveDuedate.strftime("%m") + "-" + rate["+day"].to_s).to_date
                               ord_tbldata.merge!({"amt_src" => tbldata["amt"].to_f * rate["rate"] / 100,
                                                  "tax" =>  tbldata["tax"].to_f * rate["rate"] / 100,
-                                                 "denomination" => rate["denomination"],"duedate" =>duedate.to_date})
-                              MkordinstLib.proc_create_paybilltbl(params[:gantt]["tblname"],ord_tbldata)
+                                                 "denomination" => rate["denomination"],"duedate" =>duedate})
+                              MkordinstLib.proc_create_paybilltbl(ord_tblname,ord_tbldata)
                             else
                                 3.times{Rails.logger.debug(%Q%class:#{self},line:#{__LINE__} ,\n mst["ratejson"]:#{mst["ratejson"]},\n termof:#{termof}%)}
                                 raise
@@ -179,12 +186,12 @@ class CreateOtherTableRecordJob < ApplicationJob
                       else
                           if  mst["termof"].split(",").length == (id + 1)
                             JSON.parse(mst["ratejson"])[0].each do |rate| 
-                              duedate =  duedate.since((rate["duration"] + 1).month)
-                              duedate = (duedate.strftime("%Y") + "-" + duedate.strftime("%m") + "-" + rate["day"].to_s)
+                              duedate =  saveDuedate.since((rate["duration"] + 1).month)
+                              duedate = (saveDuedate.strftime("%Y") + "-" + saveDuedate.strftime("%m") + "-" + rate["day"].to_s).to_date 
                               ord_tbldata.merge!({"amt_src" => tbldata["amt"].to_f * rate["rate"] / 100,
                                                  "tax" =>  tbldata["tax"].to_f * rate["rate"] / 100,
-                                                 "denomination" => rate["denomination"],"duedate" =>duedate.to_date})
-                              MkordinstLib.proc_create_paybilltbl(params[:gantt]["tblname"],ord_tbldata)
+                                                 "denomination" => rate["denomination"],"duedate" =>duedate})
+                              MkordinstLib.proc_create_paybilltbl(ord_tblname,ord_tbldata)
                             end
                           end
                       end
@@ -212,12 +219,12 @@ class CreateOtherTableRecordJob < ApplicationJob
 		              ActiveRecord::Base.connection.execute("lock table #{params[:segment][2..-1]} in  SHARE ROW EXCLUSIVE mode")
                             ### 　parent 未使用
                             mkpayinstparams = {}
-                            mkpayinst = tbldata.dup
                             mkpayinstparams[:incnt] = 0
                             mkpayinstparams[:inamt] = 0
                             mkpayinstparams[:outcnt] = 0
                             mkpayinstparams[:outamt] = 0
-                            mkpayinstparams = MkordinstLib.proc_mkpayinsts params,mkpayinstparams
+                            mkpayinstparams[:person_id_upd] = params[:person_id_upd]
+                            mkpayinstparams = MkordinstLib.proc_mkpayinsts tbldata,mkpayinstparams
                             mkpayinstparams[:remark] = " #{self} line:#{__LINE__} "
                             strsql = %Q%update mkpayinsts set incnt = #{mkpayinstparams[:incnt]},
                                                   inamt = #{mkpayinstparams[:inamt]},outcnt = #{mkpayinstparams[:outcnt]},
@@ -255,18 +262,20 @@ class CreateOtherTableRecordJob < ApplicationJob
               end
               paybill = ActiveRecord::Base.connection.select_one(strsql)
               case params[:segment]
-                when "mkpayschs"        
+                when "mkpayschs","updatepayschs"        
                   sch_tbldata = {"amt_src" =>amt_src,"isudate"=>isudate,"duedate" =>duedate,"tax" =>0,
                                         "payments_id" => paybill["id"],"suppliers_id" => paybill["suppliers_id"],
                                         "persons_id_upd" => person["id"] ,"trngantts_id" => params[:trngantts_id],
                                         "last_duedate" => params[:last_duedate], "chrgs_id" => paybill["chrgs_id_payment"],
                                         "srctblname" => params[:srctblname],"srctblid" => params[:srctblid]}
-                when "mkbillschs"
+                  sch_tblname = "payschs"
+                when "mkbillschs","updatebillschs"
                   sch_tbldata = {"amt_src" =>amt_src,"isudate"=>isudate,"duedate" =>duedate,
                                         "tax" =>0,
                                         "bills_id" =>paybill["id"],"persons_id_upd" => person["id"] ,"trngantts_id" => params[:trngantts_id],
                                         "last_duedate" => params[:last_duedate],"chrgs_id" => paybill["chrgs_id_bill"],
                                         "srctblname" => params[:srctblname],"srctblid" => params[:srctblid]}
+                  sch_tblname = "billschs"
               end
                 trn_day = duedate.strftime("%d").to_i
                 ratejsons = JSON.parse(paybill["ratejson"]) 
@@ -289,7 +298,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                             sch_tbldata.merge!({"amt_src" => tbldata["amt"].to_f * rate["rate"] / 100,
                                                  "tax" =>  tbldata["tax"].to_f * rate["rate"] / 100,
                                                  "denomination" => rate["denomination"],"duedate" =>duedate})
-                            MkordinstLib.proc_create_paybilltbl(params[:segment].sub(/^mk/,""),sch_tbldata)
+                            MkordinstLib.proc_create_paybilltbl(sch_tblname,sch_tbldata)
                             break  
                         end
                     else
@@ -300,7 +309,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                               ord_tbldata.merge!({"amt_src" => tbldata["amt"].to_f * rate["rate"] / 100,
                                                  "tax" =>  tbldata["tax"].to_f * rate["rate"] / 100,
                                                  "denomination" => rate["denomination"],"duedate" =>duedate})
-                              MkordinstLib.proc_create_paybilltbl(params[:gantt]["tblname"],ord_tbldata)
+                              MkordinstLib.proc_create_paybilltbl(sch_tblname,ord_tbldata)
                             else
                                 3.times{Rails.logger.debug(%Q%class:#{self},line:#{__LINE__} ,\n mst["ratejson"]:#{mst["ratejson"]},\n termof:#{termof}%)}
                                 raise
@@ -314,7 +323,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                             sch_tbldata.merge!({"amt_src" => tbldata["amt"].to_f * rate["rate"] / 100,
                                                  "tax" =>  tbldata["tax"].to_f * rate["rate"] / 100,
                                                  "denomination" => rate["denomination"],"duedate" =>duedate})
-                            MkordinstLib.proc_create_paybilltbl(params[:segment].sub(/^mk/,""),sch_tbldata)
+                            MkordinstLib.proc_create_paybilltbl(sch_tblname,sch_tbldata)
                           end
                         end
                       end
@@ -342,7 +351,7 @@ class CreateOtherTableRecordJob < ApplicationJob
               parent["shelfnos_id"] = gantt["shelfnos_id_trn"]
               parent["trngantts_id"] = gantt["trngantts_id"]   ### shpxxxs,conxxxsのtrngantts_idは親のtrngantts_id
               parent["unitofduration"] =  gantt["unitofduration"] 
-              setParams[:parent] = parent.dup
+              reqparams[:parent] = parent.dup
               last_lotstks = []
               ActiveRecord::Base.connection.select_all(ArelCtl.proc_nditmSql(tbldata["opeitms_id"])).each do |nd|
                   trnganttkey += 1
@@ -369,20 +378,20 @@ class CreateOtherTableRecordJob < ApplicationJob
                       gantt["starttime_trn"] =  command_c["#{gantt["tblname"].chop}_starttime"]
                       ###作業場所の稼働日考慮要
                       gantt["locas_id_trn"] = command_c["shelfno_loca_id_shelfno"]
-                      setParams[:mkprdpurords_id] = 0
+                      reqparams[:mkprdpurords_id] = 0
                       gantt["tblid"] = command_c["id"]
-                      command_c["#{gantt["tblname"].chop}_person_id_upd"] = gantt["persons_id_upd"] = setParams[:person_id_upd]
-                      setParams[:gantt] =  gantt.dup
-                      setParams = blk.proc_private_aud_rec(setParams,command_c) ###create pur,prdschs
+                      command_c["#{gantt["tblname"].chop}_person_id_upd"] = gantt["persons_id_upd"] = reqparams[:person_id_upd]
+                      reqparams[:gantt] =  gantt.dup
+                      reqparams = blk.proc_private_aud_rec(reqparams,command_c) ###create pur,prdschs
                       if gantt["consumtype"] == "CON"  ###出庫 消費と金型・設備の使用
-                        setParams[:child] =  nd.dup
-                        setParams[:screenCode] = "r_conschs"
-                        last_lotstks <<  Shipment.proc_create_consume(setParams)   ###自身の消費を作成
+                        reqparams[:child] =  nd.dup
+                        reqparams[:screenCode] = "r_conschs"
+                        last_lotstks <<  Shipment.proc_create_consume(reqparams)   ###自身の消費を作成
                       end
                   when "run"
-                      setParams[:child] =  nd.dup
-                      setParams[:screenCode] = "r_conschs"
-                      last_lotstks <<  Shipment.proc_create_consume(setParams)   ###自身の消費を作成
+                      reqparams[:child] =  nd.dup
+                      reqparams[:screenCode] = "r_conschs"
+                      last_lotstks <<  Shipment.proc_create_consume(reqparams)   ###自身の消費を作成
                       ###
                       # gantt 作成
                       ###
@@ -390,7 +399,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                           gantt["tblname"] = "conschs"
                           gantt["consumtype"] = "CON"
                       end
-                      consume_tbldata = setParams[:tbldata].dup
+                      consume_tbldata = reqparams[:tbldata].dup
                       gantt["duedate_trn"] = gantt["toduedate_trn"] = consume_tbldata["duedate"]
                       gantt["qty_require"] = gantt["qty_handover"] = 0
                       gantt["qty_sch"] = consume_tbldata["qty_sch"]
@@ -400,11 +409,11 @@ class CreateOtherTableRecordJob < ApplicationJob
                       starttime,message = CtlFields.proc_calculate_working_day("run",consume_tbldata["duedate"].to_date,1,"-",locas_id_shelfno)
                       gantt["starttime_trn"] =  starttime
                       ###作業場所の稼働日考慮要
-                      setParams[:mkprdpurords_id] = 0
+                      reqparams[:mkprdpurords_id] = 0
                       gantt["tblid"] = consume_tbldata["id"]
-                      gantt["persons_id_upd"] = setParams[:person_id_upd]
-                      setParams[:gantt] =  gantt.dup
-                      ope = Operation::OpeClass.new(setParams)
+                      gantt["persons_id_upd"] = reqparams[:person_id_upd]
+                      reqparams[:gantt] =  gantt.dup
+                      ope = Operation::OpeClass.new(reqparams)
                       ope.proc_trngantts_insert() 
                       ###
                       # runner gateの作成
@@ -418,7 +427,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                       nd["locas_id"] = 0
                       case nd["classlist_code"]
                       when "apparatus"  ###
-                           dvsParams = setParams.dup
+                           dvsParams = reqparams.dup
                            dvsParams[:gantt] = gantt.dup
                            dvsParams[:child] = nd.dup
                            dvsParams[:gantt] = gantt.dup
@@ -427,12 +436,12 @@ class CreateOtherTableRecordJob < ApplicationJob
                            dvs.proc_add_dvs_data(nd)
                            dvs.proc_add_erc_data(nd)
                       when "mold","ITool"       ###金型 ###工具
-                          setParams[:mkprdpurords_id] = 0
+                          reqparams[:mkprdpurords_id] = 0
                           gantt["consumtype"] = (nd["consumtype"]||="mold")
-                          setParams[:gantt] = gantt.dup
-                          setParams[:child] = nd.dup
-                          setParams[:gantt] = gantt.dup
-                          setParams[:child]["units_id_case_shp"] = nd["units_id"]
+                          reqparams[:gantt] = gantt.dup
+                          reqparams[:child] = nd.dup
+                          reqparams[:gantt] = gantt.dup
+                          reqparams[:child]["units_id_case_shp"] = nd["units_id"]
                           strsql = %Q&
                                       select l.shelfnos_id from lotstkhists l 
                                                   inner join shelfnos s on s.id = l.shelfnos_id
@@ -440,13 +449,13 @@ class CreateOtherTableRecordJob < ApplicationJob
                                                   order by l.starttime desc
                               &
                           shelfnos_id = ActiveRecord::Base.connection.select_value(strsql)
-                          setParams[:child]["shelfnos_id_to"] = (shelfnos_id ||= "0")
-                          last_lotstks_parts = Shipment.proc_create_shpxxxs(setParams) do  ###
+                          reqparams[:child]["shelfnos_id_to"] = (shelfnos_id ||= "0")
+                          last_lotstks_parts = Shipment.proc_create_shpxxxs(reqparams) do  ###
                               "shpest"
                           end
                           last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
                       when "installationCharge"   ###設置
-                           ercParams = setParams.dup
+                           ercParams = reqparams.dup
                            ercParams[:gantt] = gantt.dup
                            ercParams[:child] = nd.dup
                            ercParams[:gantt] = gantt.dup
@@ -472,7 +481,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                           gantt["processseq_trn"] = command_c["#{gantt["tblname"].chop}_processseq"] = 999
                           gantt["toduedate_trn"] = command_c["#{gantt["tblname"].chop}_toduedate"]
                           gantt["qty_sch"] = command_c["#{gantt["tblname"].chop}_qty_sch"]
-                          command_c["#{gantt["tblname"].chop}_person_id_upd"] = gantt["persons_id_upd"] = setParams[:person_id_upd]
+                          command_c["#{gantt["tblname"].chop}_person_id_upd"] = gantt["persons_id_upd"] = reqparams[:person_id_upd]
                           command_c["#{gantt["tblname"].chop}_created_at"] = Time.now
                           gantt["starttime_trn"] =  command_c["#{gantt["tblname"].chop}_starttime"]
                           trnganttkey += 1
@@ -485,14 +494,14 @@ class CreateOtherTableRecordJob < ApplicationJob
                           gantt["chilnum"] = nd["chilnum"]
                           gantt["parenum"] = nd["parenum"]
                           ###作業場所の稼働日考慮要
-                          setParams[:mkprdpurords_id] = 0
-                          setParams[:gantt] = gantt.dup
-                          setParams[:child] = nd.dup
-                          setParams = blk.proc_private_aud_rec(setParams,command_c) ###create pur,prdschs
+                          reqparams[:mkprdpurords_id] = 0
+                          reqparams[:gantt] = gantt.dup
+                          reqparams[:child] = nd.dup
+                          reqparams = blk.proc_private_aud_rec(reqparams,command_c) ###create pur,prdschs
                           if gantt["consumtype"] == "CON"  ###出庫 消費と金型・設備の使用
-                            setParams[:child] =  nd.dup
-                            setParams[:screenCode] = "r_conschs"
-                            last_lotstks << Shipment.proc_create_consume(setParams)
+                            reqparams[:child] =  nd.dup
+                            reqparams[:screenCode] = "r_conschs"
+                            last_lotstks << Shipment.proc_create_consume(reqparams)
                           end
                       end
                   end
@@ -501,65 +510,65 @@ class CreateOtherTableRecordJob < ApplicationJob
                 ArelCtl.proc_add_update_lotstkhists(last_lotstks,params[:person_id_upd])
               end
             when "mkShpschConord"  ### prd,purordsの時shpschs,conordsを作成
-                            ### purords,prdordsでshpordsを作成しないのは xxxinsts等でshpordsを作成したいため
-                            parent = tbldata.dup
-                            parent["duedate"] = parent["duedate"].to_time
-                            parent["starttime"] = parent["starttime"].to_time
-                            parent["tblname"] = gantt["tblname"]
-                            parent["tblid"] = gantt["tblid"]
-                            parent["trngantts_id"] = gantt["trngantts_id"]  ### shpxxxs,conxxxsのtrngantts_idは親のtrngantts_id
-                            child = {}
-                            last_lotstks = []
-                            ActiveRecord::Base.connection.select_all(ArelCtl.proc_pareChildTrnsSqlGroupByChildItem(parent)).each do |nd|
-                                setParams[:mkprdpurords_id] = 0
-                                child = nd.dup
-                                case child["consumtype"]
-                                when "CON"  ###出庫 消費 
-                                    child["packno"] = ""
-                                    child["lotno"] = ""   ### shpschs,shpordsの時はlotnoは""  
-                                    setParams[:parent] = parent.dup
-                                    setParams[:child] = child.dup
-                                    if child["shpordauto"] != "M" and nd["pare_shelfnos_id"] != nd["shelfnos_id_to"]  ###手動出荷ではない、親の作業場所!=部品の保管場所
-                                      setParams[:screenCode] = "r_shpschs"    
-                                      last_lotstks_parts =  Shipment.proc_create_shpxxxs(setParams) do  ###prd,purordsによる自動作成 
+                  ### purords,prdordsでshpordsを作成しないのは xxxinsts等でshpordsを作成したいため
+                  parent = tbldata.dup
+                  parent["duedate"] = parent["duedate"].to_time
+                  parent["starttime"] = parent["starttime"].to_time
+                  parent["tblname"] = gantt["tblname"]
+                  parent["tblid"] = gantt["tblid"]
+                  parent["trngantts_id"] = gantt["trngantts_id"]  ### shpxxxs,conxxxsのtrngantts_idは親のtrngantts_id
+                  child = {}
+                  last_lotstks = []
+                  ActiveRecord::Base.connection.select_all(ArelCtl.proc_pareChildTrnsSqlGroupByChildItem(parent)).each do |nd|
+                  reqparams[:mkprdpurords_id] = 0
+                  child = nd.dup
+                  case child["consumtype"]
+                    when "CON"  ###出庫 消費 
+                        child["packno"] = ""
+                        child["lotno"] = ""   ### shpschs,shpordsの時はlotnoは""  
+                        reqparams[:parent] = parent.dup
+                        reqparams[:child] = child.dup
+                        if child["shpordauto"] != "M" and nd["pare_shelfnos_id"] != nd["shelfnos_id_to"]  ###手動出荷ではない、親の作業場所!=部品の保管場所
+                            reqparams[:screenCode] = "r_shpschs"    
+                            last_lotstks_parts =  Shipment.proc_create_shpxxxs(reqparams) do  ###prd,purordsによる自動作成 
                                             "shpsch"
-                                      end
-                                      last_lotstks.concat last_lotstks_parts  if last_lotstks_parts.size > 0  ###nilを避ける
-                                    end
-                                    if child["consumauto"] != "M"  ###自動の時
-                                      setParams[:screenCode] = "r_conords"    
-                                      last_lotstks <<  Shipment.proc_create_consume(setParams)
-                                    end
-                                when "mold","ITool"  ###出庫 金型・工具の使用
-                                    child["packno"] = ""
-                                    child["lotno"] = ""   ### shpschs,shpordsの時はlotnoは""  
-                                    setParams[:parent] = parent.dup
-                                    setParams[:child] = child.dup
-                                    if child["shpordauto"] != "M"
-                                      setParams[:screenCode] = "r_shpschs"  
-                                      last_lotstks_parts =  Shipment.proc_create_shpxxxs(setParams) do  ###prd,purordsによる自動作成 
-                                            "shpsch"
-                                        end
-                                      last_lotstks.concat last_lotstks_parts  if last_lotstks_parts.size > 0  ###nilを避ける
-                                    end    
-                                when "BYP" ,"run"  ###副産物,runner
-                                    ###消費はない
-                                    child["packno"] = ""
-                                    child["lotno"] = ""   ### shpschs,shpordsの時はlotnoは""  
-                                    setParams[:parent] = parent.dup
-                                    setParams[:child] = child.dup
-                                    setParams[:screenCode] = "r_shpschs"  
-                                    last_lotstks_parts =  Shipment.proc_create_shpxxxs(setParams) do  ###prd,purordsによる自動作成 
-                                            "shpsch"
-                                    end
-                                    last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
-                                when "apparatus"  ###設備の使用
-                                    next
-                                end
-                            end 
-                            if !last_lotstks.empty?
-                              ArelCtl.proc_add_update_lotstkhists(last_lotstks,params[:person_id_upd])
                             end
+                            last_lotstks.concat last_lotstks_parts  if last_lotstks_parts.size > 0  ###nilを避ける
+                        end
+                        if child["consumauto"] != "M"  ###自動の時
+                            reqparams[:screenCode] = "r_conords"    
+                            last_lotstks <<  Shipment.proc_create_consume(reqparams)
+                        end
+                    when "mold","ITool"  ###出庫 金型・工具の使用
+                        child["packno"] = ""
+                        child["lotno"] = ""   ### shpschs,shpordsの時はlotnoは""  
+                        reqparams[:parent] = parent.dup
+                        reqparams[:child] = child.dup
+                        if child["shpordauto"] != "M"
+                            reqparams[:screenCode] = "r_shpschs"  
+                            last_lotstks_parts =  Shipment.proc_create_shpxxxs(reqparams) do  ###prd,purordsによる自動作成 
+                                  "shpsch"
+                            end
+                            last_lotstks.concat last_lotstks_parts  if last_lotstks_parts.size > 0  ###nilを避ける
+                        end    
+                    when "BYP" ,"run"  ###副産物,runner
+                        ###消費はない
+                        child["packno"] = ""
+                        child["lotno"] = ""   ### shpschs,shpordsの時はlotnoは""  
+                        reqparams[:parent] = parent.dup
+                        reqparams[:child] = child.dup
+                        reqparams[:screenCode] = "r_shpschs"  
+                        last_lotstks_parts =  Shipment.proc_create_shpxxxs(reqparams) do  ###prd,purordsによる自動作成 
+                          "shpsch"
+                        end
+                        last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
+                    when "apparatus"  ###設備の使用
+                            next
+                    end
+                  end 
+                  if !last_lotstks.empty?
+                            ArelCtl.proc_add_update_lotstkhists(last_lotstks,params[:person_id_upd])
+                  end
             when "mkprdpurchildFromCustxxxs"  ### custxxxsからpur,purschsに変更"custord_crr_id_custord" 
                             ###　parent 未使用
                             gantt = params[:gantt].dup
@@ -607,15 +616,15 @@ class CreateOtherTableRecordJob < ApplicationJob
                                                     updated_at = current_timestamp
                                                     where id = #{sch["link_id"]}
                                             &
-                                    ActiveRecord::Base.connection.update(update_sql) ###引き当ったcustschsの減gantt = setParams[:gantt].dup
-                                    src = {"tblname" => "custschs","tblid" => sch["srctblid"],"trngantts_id" => sch["trngantts_id"]}
-                                    base = {"tblname" => "custords","tblid" => gantt["orgtblid"],"qty_src" => qty_src,"amt_src" => 0,"persons_id_upd" => setParams[:person_id_upd]}
+                                    ActiveRecord::Base.connection.update(update_sql) ###引き当ったcustschsの減gantt = reqparams[:gantt].dup
+                                    src = {"tblname" => "custschs","tblid" => sch["srctblid"],"trngantts_id" => sch["trngantts_id"],"remark" => "#{self},line:#{__LINE__} "}
+                                    base = {"tblname" => "custords","tblid" => gantt["orgtblid"],"qty_src" => qty_src,"amt_src" => 0,"persons_id_upd" => reqparams[:person_id_upd]}
                                     ArelCtl.proc_insert_linkcusts(src,base)  ###
                                     last_lotstks << {"tblname" => "custschs","tblid" => sch["srctblid"],"qty_src" => qty_src}
                                 end
                                 gantt["qty_handover"] = tbldata["qty_handover"] =  gantt["qty_sch"] = qty
                                 update_sql = %Q&  --- custords free 引当後
-                                        update linkcusts set qty_src = #{qty},remark = ' #{self} line:#{__LINE__} '||left(remark,3000),
+                                        update linkcusts set qty_src = #{qty},remark = ' #{self} line:#{__LINE__} '||left(remark,100),
                                                 updated_at = current_timestamp
                                                 where tblid = #{gantt["tblid"]} and srctblid = #{gantt["tblid"]} and trngantts_id = #{gantt["trngantts_id"]}
                                                 and tblname = 'custords' and srctblname = 'custords'
@@ -642,20 +651,19 @@ class CreateOtherTableRecordJob < ApplicationJob
                             child.merge!(opeitm)
                             blk = RorBlkCtl::BlkClass.new("r_"+ opeitm["prdpur"]+"schs")
                             command_c = blk.command_init
-                            command_c["#{opeitm["prdpur"]}sch_person_id_upd"] = setParams[:person_id_upd]
+                            command_c["#{opeitm["prdpur"]}sch_person_id_upd"] = reqparams[:person_id_upd]
                             command_c["#{opeitm["prdpur"]}sch_duedate"] = tbldata["starttime"].to_time.strftime("%Y-%m-%d") + " 16:00:00"
                             command_c,qty_require = add_update_prdpur_table_from_nditm(child,tbldata,paretblname,command_c)  ###tbldata--->parent
                             command_c["#{opeitm["prdpur"]}sch_created_at"] = Time.now
-                            setParams[:gantt] = gantt.dup
-                            setParams = blk.proc_private_aud_rec(setParams,command_c)   
+                            reqparams[:gantt] = gantt.dup
+                            reqparams = blk.proc_private_aud_rec(reqparams,command_c)   
                             result_f = '1'
                             if !last_lotstks.empty?
                               ArelCtl.proc_add_update_lotstkhists(last_lotstks,params[:person_id_upd])
                             end
             else  
                         result_f = '6'
-                        3.times{Rails.logger.debug" class:#{self},line:#{__LINE__}  program(segment) nothing  "}  
-                        3.times{Rails.logger.debug" setParams:#{setParams}"}
+                        3.times{Rails.logger.debug" class:#{self},line:#{__LINE__}  program(segment) nothing  \n reqparams:#{reqparams}"}  
                     end ## process   
                     strsql = %Q%update processreqs set result_f = '#{result_f}',remark = '#{remark}' where id = #{processreq["id"]}
                             %
@@ -828,7 +836,6 @@ class CreateOtherTableRecordJob < ApplicationJob
                 gantt["qty_handover"] = gantt["qty_sch"] = command_c["prdsch_qty_sch"]
                 gantt["remark"] = "runner main class:#{self} ,line:#{__LINE__} "
                 gateParams[:gantt] = gantt.dup
-					Rails.logger.debug"class:#{self},line:#{__LINE__},gateParams[:gantt]:#{gateParams[:gantt]}"
                 gateParams = blk.proc_private_aud_rec(gateParams,command_c) ###
                 return   ### trnganttsの作成は不要
           end
@@ -933,12 +940,12 @@ class CreateOtherTableRecordJob < ApplicationJob
     ###  
     #
     # ###     
-    # def mk_ercschsords(nd,setParams,erctblname)
+    # def mk_ercschsords(nd,reqparams,erctblname)
     #     prdtblname = erctblname.sub("erc","prd")
     #     dvstblname = erctblname.sub("erc","dvs")
-    #     gantt = setParams[:gantt].dup
-    #     parent = setParams[:tbldata].dup
-    #     setParams[:mkprdpurords_id] = 0
+    #     gantt = reqparams[:gantt].dup
+    #     parent = reqparams[:tbldata].dup
+    #     reqparams[:mkprdpurords_id] = 0
     #     gantt["tblname"] = erctblname
     #     gantt["qty_require"] = 1
     #     gantt["qty_handover"] = 0
@@ -967,7 +974,7 @@ class CreateOtherTableRecordJob < ApplicationJob
     #             command_c = blk.command_init
     #             command_c["#{erctblname.chop}_#{prdtblname.chop}_id_#{erctblname.chop}"] = parent["#{prdtblname}_id_#{dvstblname.chop}"]
     #             command_c["#{erctblname.chop}_created_at"] = Time.now
-    #             command_c["#{erctblname.chop}_person_id_upd"] = gantt["persons_id_upd"] = setParams[:person_id_upd]
+    #             command_c["#{erctblname.chop}_person_id_upd"] = gantt["persons_id_upd"] = reqparams[:person_id_upd]
     #             command_c["#{erctblname.chop}_processname"] = "changeover"
     #             command_c,qty_require,err = add_update_prdpur_table_from_nditm(nd,parent,prdtblname,command_c)  ###tblname = paretblname(prdschs)
     #             next if 
@@ -976,10 +983,10 @@ class CreateOtherTableRecordJob < ApplicationJob
     #             command_c["#{erctblname.chop}_duedate"] = command_c["#{erctblname.chop}_duedate"].to_time.strftime("%Y-%m-%d %H:%M:%S")
     #             gantt["starttime_trn"] = command_c["#{erctblname.chop}_starttime"]
     #             gantt["duedate_trn"] = command_c["#{erctblname.chop}_duedate"]
-    #             setParams[:gantt] = gantt.dup
-    #             setParams[:child] = nd.dup
-    #             setParams[:gantt] = gantt.dup
-    #             setParams = blk.proc_private_aud_rec(setParams,command_c) ###
+    #             reqparams[:gantt] = gantt.dup
+    #             reqparams[:child] = nd.dup
+    #             reqparams[:gantt] = gantt.dup
+    #             reqparams = blk.proc_private_aud_rec(reqparams,command_c) ###
     #         end
     #     end
     #     if nd["durationfacility"].to_f > 0 and nd["requireop"].to_i > 0
@@ -991,16 +998,16 @@ class CreateOtherTableRecordJob < ApplicationJob
     #             command_c = blk.command_init
     #             command_c["#{erctblname.chop}_#{prdtblname.chop}_id_#{erctblname.chop}"] = parent["#{prdtblname}_id_#{dvstblname.chop}"]
     #             command_c["#{erctblname.chop}_created_at"] = Time.now
-    #             command_c["#{erctblname.chop}_person_id_upd"] = gantt["persons_id_upd"] = setParams[:person_id_upd]
+    #             command_c["#{erctblname.chop}_person_id_upd"] = gantt["persons_id_upd"] = reqparams[:person_id_upd]
     #             command_c["#{erctblname.chop}_processname"] = "require"
     #             command_c,qty_require,err = add_update_prdpur_table_from_nditm(nd,parent,prdtblname,command_c)  ###tblname = paretblname
     #             next if err
     #             gantt["starttime_trn"] = command_c["#{erctblname.chop}_starttime"]
     #             gantt["duedate_trn"] = command_c["#{erctblname.chop}_duedate"]
-    #             setParams[:gantt] = gantt.dup
-    #             setParams[:child] = nd.dup
-    #             setParams[:gantt] = gantt.dup
-    #             setParams = blk.proc_private_aud_rec(setParams,command_c) ###
+    #             reqparams[:gantt] = gantt.dup
+    #             reqparams[:child] = nd.dup
+    #             reqparams[:gantt] = gantt.dup
+    #             reqparams = blk.proc_private_aud_rec(reqparams,command_c) ###
     #         end
     #     end
     #     if nd["postprocessinglt"].to_f > 0 and nd["postprocessingop"].to_i > 0
@@ -1012,15 +1019,15 @@ class CreateOtherTableRecordJob < ApplicationJob
     #             command_c = blk.command_init
     #             command_c["#{erctblname.chop}_#{prdtblname.chop}_id_#{erctblname.chop}"] = parent["#{prdtblname}_id_#{dvstblname.chop}"]
     #             command_c["#{erctblname.chop}_created_at"] = Time.now
-    #             command_c["#{erctblname.chop}_person_id_upd"] = gantt["persons_id_upd"] = setParams[:person_id_upd]
+    #             command_c["#{erctblname.chop}_person_id_upd"] = gantt["persons_id_upd"] = reqparams[:person_id_upd]
     #             command_c["#{erctblname.chop}_processname"] = "postprocess"
     #             command_c,qty_require,err = add_update_prdpur_table_from_nditm(nd,parent,prdtblname,command_c)  ###tblname = paretblname
     #             next if err
     #             gantt["starttime_trn"] = command_c["#{erctblname.chop}_starttime"]
     #             gantt["duedate_trn"] = command_c["#{erctblname.chop}_duedate"]
-    #             setParams[:gantt] = gantt.dup
-    #             setParams[:child] = nd.dup
-    #             setParams = blk.proc_private_aud_rec(setParams,command_c) ###
+    #             reqparams[:gantt] = gantt.dup
+    #             reqparams[:child] = nd.dup
+    #             reqparams = blk.proc_private_aud_rec(reqparams,command_c) ###
     #         end
     #     end
     #end

@@ -23,20 +23,19 @@ custord.expiredate  custinst_expiredate,
   cust.loca_name_cust  loca_name_cust ,
 custord.amt  custinst_amt,
 custord.qty  custord_qty,
-(case when func_get_custxxxs_qty_bal('custords',custord.id) is null then custord.qty else
-					func_get_custxxxs_qty_bal('custords',custord.id) - custord.qty  end) custinst_qty,
-(case when func_get_custxxxs_qty_bal('custords',custord.id) is null then custord.qty else
-					func_get_custxxxs_qty_bal('custords',custord.id) - custord.qty  end) custord_qty_bal ,
+coalesce(func_get_custords_qty_bal(custord.id),0)  custinst_qty,
+coalesce(func_get_custords_qty_bal(custord.id),0)  custord_qty_bal,
+CEIL(coalesce(func_get_custords_qty_bal(custord.id),0) / opeitm_packqty) custinst_qty_case,
 lotpackno.lotno custinst_lotno,
 lotpackno.packno custinst_packno,
-lotpackno.qty_stk  custinst_qty_stk,
+coalesce(lotpackno.qty_stk,0)  custinst_qty_stk,
 (lotpackno.qty_stk * custord.taxrate * custord.price / 100) custinst_tax  ,
 custord.taxrate  custinst_taxrate,
 current_date  custinst_isudate,
   cust.loca_code_cust  loca_code_cust ,
   custrcvplc.loca_code_custrcvplc  loca_code_custrcvplc ,
   custrcvplc.loca_name_custrcvplc  loca_name_custrcvplc ,
-null id,
+null id,  --- for add
 custord.custs_id   custinst_cust_id,
 custord.sno  custinst_sno_custord,
 custord.id  custord_id,
@@ -44,7 +43,7 @@ custord.id  custord_id,
   prjno.prjno_name  prjno_name ,
   person_upd.code  person_code_upd ,
   person_upd.name  person_name_upd ,
-custord.cno  custinst_cno,
+custord.cno  custinst_cno_custord,
   prjno.prjno_code  prjno_code ,
 custord.prjnos_id   custinst_prjno_id,
 ''  custinst_gno,
@@ -118,7 +117,7 @@ custord.crrs_id   custinst_crr_id,
           ,sio_search varchar(10)
           ,sio_sidx varchar(256)
 ,custinst_isudate   timestamp(6) 
-,custinst_cno  varchar (40) 
+,custinst_cno_custord  varchar (40) 
 ,loca_code_cust  varchar (50) 
 ,loca_name_cust  varchar (100) 
 ,itm_code  varchar (50) 
@@ -128,12 +127,13 @@ custord.crrs_id   custinst_crr_id,
 ,custinst_itm_code_client  varchar (50) 
 ,custinst_duedate   timestamp(6) 
 ,custord_qty  numeric (18,4)
+,custinst_qty  numeric (18,4)
 ,custord_qty_bal  numeric (18,4)
 ,custinst_qty_stk numeric (18,4)
-,custinst_qty numeric (18,4)
+,custinst_qty_case numeric (22,0)
 ,custinst_tax numeric (18,4)
 ,custinst_taxrate numeric (18,4)
-,custinst_price  numeric (22,0)
+,custinst_price  numeric (18,4)
 ,custinst_contractprice  varchar (1) 
 ,custinst_amt  numeric (18,4)
 ,loca_code_bill  varchar (50) 

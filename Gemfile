@@ -88,6 +88,9 @@ gem 'solid_queue', '~> 1.2.1'
 gem "ruby-lsp"
 gem "rubocop"
 
+gem 'prawn'
+gem 'prawn-table'
+
 gem "rubocop-packaging"
 gem "rubocop-performance"
 gem "rubocop-rspec"

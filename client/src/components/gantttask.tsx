@@ -1,7 +1,8 @@
 //https://react-redux.js.org/using-react-redux/usage-with-typescript
+// typescript 7.0 未対応
 import React,{useEffect, useState} from "react"
 import { connect,ConnectedProps} from 'react-redux'
-import { Gantt, Task,  ViewMode,  } from 'gantt-task-react'
+import { Gantt, Task,  ViewMode, } from 'gantt-task-react'
 import "gantt-task-react/dist/index.css"
 import  {ViewSwitcher} from "./gantttaskview"
 //import {UpdateNditmRequest} from '../actions'

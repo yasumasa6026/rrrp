@@ -33,3 +33,14 @@ to_timestamp('2000/01/0 0:0:0','yyyy/mm/dd hh24:mi:ss'),0, to_timestamp('2000/01
 '','999','','dummy','2099/12/31', to_timestamp('2099/12/31','yyyy/mm/dd hh24:mi:ss'),0,0,0,0,0,0,0,0,0,'sno_pare','remark',
 to_timestamp('2000/01/01 0:0:0','yyyy/mm/dd hh24:mi:ss'),'',0);
 
+INSERT INTO public.bills
+(id, contents, personname, locas_id_bill, expiredate, remark, persons_id_upd, update_ip, created_at, updated_at, chrgs_id_bill, crrs_id_bill, termof, amtround, "period", ratejson)
+VALUES(0, '', NULL, 0, '2099-12-31', NULL, 0, NULL, '2020-01-28 00:00:00.000', '2026-01-20 20:36:04.000', 0, 0, '30', '2', -30, '[[{"rate":100,"duration":1,"denomination":"deposit","day":10}]]');
+
+
+
+INSERT INTO public.payments
+(id, personname, locas_id_payment, chrgs_id_payment, expiredate, contents, remark, persons_id_upd, update_ip, created_at, updated_at, crrs_id_payment, termof, "period", ratejson, amtround)
+VALUES(0, '', 0, 0, '2099-12-31', '', '', 0, '', '2026-02-10 20:56:41.000', '2026-02-10 20:56:41.000', 0, '10', 0, '[[{"rate":100,"duration":1,"denomination":"deposit","day":1}]]', '0');
+
+

@@ -13,7 +13,7 @@ function ButtonListGetApi({auth}) {
                     uid:auth.uid,
                     authorization:auth.authorization,
                     'Content-Type' : 'application/json'}
-  const params =  {buttonflg:'bottunlistreq'}
+  const params =  {buttonflg:'buttonlistreq'}
 
   const options ={method:'POST',
                   params: params,

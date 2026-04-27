@@ -10,7 +10,7 @@ const Download = ({screenName,filtered,totalCount,}) => {
            <p>DownLoad ScreenName:{screenName}</p>
            <p>select condition </p>
            {filtered.length===0?<p>all data selected </p>: filtered.map((val,idx) =>{
-                                                    return <p key={idx}>{val.id} : {val.value}</p>
+                                                    return <p key={idx}>{JSON.parse(val).id} : {JSON.parse(val).value}</p>
            })}
            <p>total record count {totalCount}</p>
         </form> 
@@ -22,9 +22,8 @@ const Download = ({screenName,filtered,totalCount,}) => {
       button:state.button,
       screenCode:state.screen.params.screenCode,
       screenName:state.screen.params.screenName,
-      filtered:state.button.filtered?state.download.filtered:[], 
+      filtered:state.screen.params.filtered?state.screen.params.filtered:[], 
       totalCount:state.button.totalCount,
-      errors:state.button.errors,
     })
     
     const mapDispatchToProps = () => ({

@@ -24,6 +24,7 @@ const Menus7 = ({ isAuthenticated ,menuListData,getScreen,loadingOrg,loadingOrgS
     const [subTabIndex, setSubTabIndex] = useState(0)
     const loading = useMemo(()=>loadingOrg,[loadingOrg])
     const loadingSecond = useMemo(()=>loadingOrgSecond,[loadingOrgSecond])
+    const [contents,setContents] = useState(null)
     //useEffect(()=>{   setLoading(loadingOrg)},[loadingOrg])
     if (isAuthenticated) {
       if(menuListData)
@@ -64,21 +65,26 @@ const Menus7 = ({ isAuthenticated ,menuListData,getScreen,loadingOrg,loadingOrgS
                     tmpgrpscr[tabIndex]===val.grp_name&&
                     <Tab key={idx} >
                       <Button   type="submit"
-                      onClick ={() => { 
-                                        titleNameSet(val.scr_name)   // cromeのtab表示
-                                        getScreen(val.screen_code,val.scr_name,val.view_name,auth)
+                      onClick ={(e) => { if(e.shiftKey){setContents(val.contents)}
+                                        else{setContents(null)
+                                          titleNameSet(val.scr_name)   // cromeのtab表示
+                                        getScreen(val.screen_code,val.scr_name,val.view_name,auth)}
                                       }
-                      }>
+                      }
+                      
+                      
+                      >
                       {val.scr_name}       
                       </Button>             
                     </Tab>)}
                 </TabList>
-                  {menuListData.map((val,idx) => 
+                 {menuListData.map((val,idx) => 
                     tmpgrpscr[tabIndex]===val.grp_name&&
                     <TabPanel  key={idx}> 
-                      {val.contents?val.contents:" "}
-                    </TabPanel>)}
+                      <p></p>
+                    </TabPanel>)} 
                 </Tabs>
+                {contents&&(<div>{contents}</div>)}
               {firstView&&<div> <ScreenGrid7 screenFlg = "first" /></div>}
               { 
                   //  第一画面  

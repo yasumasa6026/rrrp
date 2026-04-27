@@ -31,5 +31,7 @@ module Rrrp
     # config.middleware.use ActionDispatch::Session::CookieStore, key: '_rrrp_session'
     config.middleware.use ActionDispatch::Session::CacheStore
     config.active_record.default_timezone = :local
+    # pdf
+    config.eager_load_paths += %W(#{Rails.root}/app/assets/pdfs)
   end
 end

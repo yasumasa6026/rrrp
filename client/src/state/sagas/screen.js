@@ -88,13 +88,22 @@ export function* ScreenSaga({ payload: {params}  }) {
                     {return yield put({type:SECOND_CONFIRM7_SUCCESS,payload:{data:data,params:params,message:"",headers:response.headers} })}
                   else
                     {return yield put({type:SCREEN_CONFIRM7_SUCCESS,payload:{data:data,params:params,message:"",headers:response.headers} })} 
+
             case "mkShpords":  //
               message = "out count : " + response.data.outcnt
               message = message + ",shortage count : " + response.data.shortcnt
               return yield put({ type: MKSHPORDS_SUCCESS, payload:{message:message,headers:response.headers}})       
-           
+
+            case "delAllShpords":  //
+            case "delAllShpdlvs":  //
+            case "delAllShpacts":  //
+              message = "del count : " + response.data.outcnt
+              return yield put({ type: MKSHPORDS_SUCCESS, payload:{message:message,headers:response.headers}})       
+     
               
-           case "confirmAll":  //
+           case "confirmAll":  
+           case "confirmShpdlvs" :
+           case "confirmShpacts" :
            //case "adddetail":  //
               params = response.data.params
               if(params.err==""||params.err===null){
@@ -104,7 +113,7 @@ export function* ScreenSaga({ payload: {params}  }) {
                 return yield put({ type: CONFIRMALL_SUCCESS, payload:{message:message,headers:response.headers}})
               }
               else{
-                  hostError = `error ${response.status}: Screen Something went wrong 。。。。${params.err} `
+                  hostError = `error1 ${response.status}: Screen Something went wrong 。。。。${params.err} `
                   if(params.screenFlg==="second"){
                       return  yield put({type:SECOND_FAILURE,payload:{message:"",hostError:hostError,}})   
                   }else{  
@@ -119,7 +128,7 @@ export function* ScreenSaga({ payload: {params}  }) {
                   return yield put({ type: CONFIRMALL_SUCCESS, payload:{message:message,headers:response.headers}})   
               }
               else{
-                  hostError = `error ${response.status}: Screen Something went wrong 。。。。${params.err} `
+                  hostError = `error2 ${response.status}: Screen Something went wrong 。。。。${params.err} `
                   if(params.screenFlg==="second"){
                       return  yield put({type:SECOND_FAILURE,payload:{message:"",hostError:hostError,}})   
                   }else{  
@@ -138,11 +147,8 @@ export function* ScreenSaga({ payload: {params}  }) {
               lineData  = response.data.params.parse_linedata
               params = {...params,screenFlg:response.data.params.screenFlg,
                           screenCode:response.data.params.screenCode,err:response.data.params.err,index:parseInt(params.index)}
-              yield put({type:SCREEN_CONFIRM7_SUCCESS,payload:{lineData:lineData,index:parseInt(params.index),params:params,message:message,headers:response.headers} })
+              return yield put({type:SCREEN_CONFIRM7_SUCCESS,payload:{lineData:lineData,index:parseInt(params.index),params:params,message:message,headers:response.headers} })
               
-            case "confirmAllSecond":  //second画面専用
-              message = "out count : " + response.data.outcnt
-              return yield put({ type: SECOND_CONFIRMALL_SUCCESS, payload:{message:message,headers:response.headers}})     
             default:
                             }
             break       
@@ -161,7 +167,6 @@ export function* ScreenSaga({ payload: {params}  }) {
                     }else{  
                       return  yield put({type:SCREEN_FAILURE,payload:{message:"",hostError:params.err,}})   
                     }
-                    break
         case 202:
               params = response.data.params
               if(params.screenFlg==="second"){
@@ -177,7 +182,7 @@ export function* ScreenSaga({ payload: {params}  }) {
                   return  yield put({type:SCREEN_FAILURE,payload:{message:"",hostError: "No Content",params:params,}})   
               }
         default:
-                  hostError = `error ${response.status}: Screen Something went wrong ${params.err} `
+                  hostError = `error3 ${response.status}: Screen Something went wrong ${params.err} `
                     break      
       }
       if(params.screenFlg==="second"){

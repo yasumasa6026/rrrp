@@ -25,13 +25,13 @@ class TblClass
 		begin
 			ActiveRecord::Base.connection.begin_db_transaction()
 			params["data"].each do |lineData|
-				linedata = JSON.parse(lineData)
-				if @checktbls[linedata["pobject_code_tbl"]] ###該当テーブル処理済
+				parse_linedata = JSON.parse(lineData)
+				if @checktbls[parse_linedata["pobject_code_tbl"]] ###該当テーブル処理済
 					next
 				else
-			    	@checktbls[linedata["pobject_code_tbl"]]="done"
-					if skip_tblnames.find {|n| n== linedata["pobject_code_tbl"]}  ###自己参照のため使用できない。
-						@messages << " #{linedata["pobject_code_tbl"]} can not use create view program "
+			    	@checktbls[parse_linedata["pobject_code_tbl"]]="done"
+					if skip_tblnames.find {|n| n== parse_linedata["pobject_code_tbl"]}  ###自己参照のため使用できない。
+						@messages << " #{parse_linedata["pobject_code_tbl"]} can not use create view program "
 						return 	@messages,@modifysql
 					end
 					strsql = %Q&
@@ -50,45 +50,45 @@ class TblClass
 			 						inner join (select b.id,p.code from blktbs b inner join  pobjects p  
 																	on b.pobjects_id_tbl = p.id and p.objecttype = 'tbl' ) tbl								
 										on t.blktbs_id = tbl.id 
-			 				where  tbl.code = '#{linedata["pobject_code_tbl"]}'	and t.expiredate > current_date  
+			 				where  tbl.code = '#{parse_linedata["pobject_code_tbl"]}'	and t.expiredate > current_date  
 					&
 					recs = ActiveRecord::Base.connection.select_all(strsql)  ###画面から依頼されたテーブル、項目の登録変更依頼データ	
 
 					strsql = "select 	* from 	information_schema.columns 
 									where 	table_catalog='#{ActiveRecord::Base.connection_db_config.configuration_hash[:database]}' 
 									and  table_schema = '#{ActiveRecord::Base.connection_db_config.configuration_hash[:schema_search_path]}'
-									and table_name='#{linedata["pobject_code_tbl"]}' "
+									and table_name='#{parse_linedata["pobject_code_tbl"]}' "
 					columns = {}
 					ActiveRecord::Base.connection.select_all(strsql).each do |column|  ###postgresqlに登録分
 						columns[column["column_name"]] = column
 					end
 
 					if recs.empty?
-						@messages << "table #{linedata["pobject_code_tbl"]} has not field "	
+						@messages << "table #{parse_linedata["pobject_code_tbl"]} has not field "	
 						ActiveRecord::Base.connection.rollback_db_transaction()
 						return @messages,@modifysql
 					else
-						@tblsfields[linedata["pobject_code_tbl"]] = {}  ###@tblsfields = {tblname =>{field =>tblrecOfField}}
+						@tblsfields[parse_linedata["pobject_code_tbl"]] = {}  ###@tblsfields = {tblname =>{field =>tblrecOfField}}
 						recs.each do |rec|
-							@tblsfields[linedata["pobject_code_tbl"]][rec["pobject_code_fld"]] = rec
+							@tblsfields[parse_linedata["pobject_code_tbl"]][rec["pobject_code_fld"]] = rec
 						end
 						if columns.empty?
-							###create_tbl_view_screenfields linedata["pobject_code_tbl"]
-							create_tbl_and_add_view_screenfields_id @tblsfields[linedata["pobject_code_tbl"]]
+							###create_tbl_view_screenfields parse_linedata["pobject_code_tbl"]
+							create_tbl_and_add_view_screenfields_id @tblsfields[parse_linedata["pobject_code_tbl"]]
 						else
-							###modify_tblfield_and_view_screenfields linedata["pobject_code_tbl"]
-							modify_tblfield_and_for_view_screenfields @tblsfields[linedata["pobject_code_tbl"]],columns
-							delete_tblfields @tblsfields[linedata["pobject_code_tbl"]],columns  ###テーブルの削除はない。
+							###modify_tblfield_and_view_screenfields parse_linedata["pobject_code_tbl"]
+							modify_tblfield_and_for_view_screenfields @tblsfields[parse_linedata["pobject_code_tbl"]],columns
+							delete_tblfields @tblsfields[parse_linedata["pobject_code_tbl"]],columns  ###テーブルの削除はない。
 						end
 					end
 
-					if @tblsfields[linedata["pobject_code_tbl"]].nil?
-						@messages << "table #{linedata["pobject_code_tbl"]} not exists "
+					if @tblsfields[parse_linedata["pobject_code_tbl"]].nil?
+						@messages << "table #{parse_linedata["pobject_code_tbl"]} not exists "
 						ActiveRecord::Base.connection.rollback_db_transaction()
 						return @messages,@modifysql
 					else
-						if @tblsfields[linedata["pobject_code_tbl"]]["id"].nil?
-							@messages << "table #{linedata["pobject_code_tbl"]} has not id "
+						if @tblsfields[parse_linedata["pobject_code_tbl"]]["id"].nil?
+							@messages << "table #{parse_linedata["pobject_code_tbl"]} has not id "
 							ActiveRecord::Base.connection.rollback_db_transaction()
 							return @messages,@modifysql
 						end
@@ -483,7 +483,7 @@ class TblClass
 					tmpstrsql    <<  if field["fieldcode_dataprecision"] == 0  or field["fieldcode_dataprecision"].nil? 
 								 "(22,0) "
 							else
-								 "(" + field["fieldcode_dataprecision"].to_i + "," + (field["fieldcode_datascale"]||0).to_i + " )  "
+								 "(" + field["fieldcode_dataprecision"].to_i.to_s + "," + (field["fieldcode_datascale"]||0).to_i.to_s + " )  "
 							end 
 				else
 					tmpstrsql     <<     " "
@@ -544,7 +544,7 @@ class TblClass
 		command_r["pobject_person_id_upd"] = @tblsfields["persons_id_upd"]
 		command_r["id"] = ArelCtl.proc_get_nextval("pobjects_seq")
 		command_r["pobject_created_at"] = Time.now
-		setParams = blk.proc_private_aud_rec({},command_r)
+		reqparams = blk.proc_private_aud_rec({},command_r)
 		if command_r["sio_result_f"] ==   "9"
 		 	@messages <<  "error  add_pobject_record #{screenfield}\n"
 			@messages  << command_r["sio_message_contents"][0..200] + "\n"
@@ -564,7 +564,7 @@ class TblClass
 		command_r["pobject_objecttype"] = "view_field"
 		command_r["pobject_expiredate"] = '2099/12/31'
 		command_r["pobject_person_id_upd"] = @tblsfields["persons_id_upd"]
-		setParams = blk.proc_private_aud_rec({},command_r)
+		reqparams = blk.proc_private_aud_rec({},command_r)
 		if command_r["sio_result_f"] ==   "9"
 		 	@messages <<  "error  update_pobject_record #{screenfield}\n"
 			 @messages  << command_r["sio_message_contents"][0..200] + "\n"
@@ -712,7 +712,7 @@ class TblClass
 		
 		command_r["id"] = ArelCtl.proc_get_nextval("screenfields_seq")	
 		command_r["screenfield_created_at"] = Time.now	
-		setParams = blk.proc_private_aud_rec({},command_r)
+		reqparams = blk.proc_private_aud_rec({},command_r)
 		if command_r["sio_result_f"] ==   "9"
 				@messages  << command_r["sio_message_contents"][0..200] + "\n"
 			 	@messages  << command_r["sio_errline"][0..200] 

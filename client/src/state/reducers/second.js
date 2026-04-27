@@ -4,7 +4,7 @@ import {LOGIN_REQUEST,LOGOUT_REQUEST,LOGIN_SUCCESS,  //SECONDSCREEN_REQUEST,
         SECOND_CONFIRM7,SECOND_CONFIRM7_SUCCESS,
         SECOND_FAILURE, SECONDFETCH_REQUEST,SECOND_SUBFORM,
         SECOND_REQUEST,SECONDFETCH_RESULT,
-        GANTTCHART_REQUEST,GANTTCHART_SUCCESS,
+        GANTTCHART_REQUEST,GANTTCHART_SUCCESS,MKSHPORDS_SUCCESS,
         TBLFIELD_REQUEST,TBLFIELD_SUCCESS, UPLOADEXCEL_INIT,
         SECONDTBLFIELD_REQUEST,SECONDTBLFIELD_SUCCESS,SCREEN_CONFIRM7_SUCCESS,
         SCREENINIT_REQUEST, SCREEN_SUCCESS7,SCREEN_REQUEST,} from '../../actions'
@@ -35,7 +35,7 @@ const secondreducer =  (state = initialValues , actions) =>{
             data:actions.payload.data,
             screenFlg:"second",
             loading:true,
-            baseData:actions.payload.data,
+            //baseData:actions.payload.data,
              // editableflg:actions.payload.editableflg
          }
 
@@ -61,7 +61,7 @@ const secondreducer =  (state = initialValues , actions) =>{
             loading:false,
             disabled:false,
             data: actions.payload.data.data,
-            baseData: actions.payload.data.data,
+            //baseData: actions.payload.data.data,
             params: actions.payload.params,
             status: actions.payload.data.status,
             grid_columns_info:actions.payload.data.grid_columns_info,
@@ -73,7 +73,7 @@ const secondreducer =  (state = initialValues , actions) =>{
                                               return row }) 
         return {...state,
             data:data,
-            baseData:data,
+            //baseData:data,
             params:actions.payload.params,
             loading:false,
             message:data[actions.payload.index].confirm_message&&`${date.toJSON()} confirmed line ${actions.payload.index}`,
@@ -101,7 +101,7 @@ const secondreducer =  (state = initialValues , actions) =>{
         return {...state,
             params:actions.payload.params,  
             data:data,
-            baseData:data,
+            //baseData:data,
             loading:false,
         }
 
@@ -174,6 +174,10 @@ const secondreducer =  (state = initialValues , actions) =>{
                 disabled:false,
                 loading:false,
                 }
+    case MKSHPORDS_SUCCESS:
+        return {...state,
+                loading:false,
+    }    
 
   case  LOGIN_REQUEST:
   case  LOGIN_SUCCESS:
