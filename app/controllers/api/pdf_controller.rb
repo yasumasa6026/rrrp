@@ -13,11 +13,14 @@ class PdfController < ApplicationController
                 show_pdf = SamplePdf.new(rec).render
             end
 
+            ## レスポンスヘッダーからcharsetを削除し、バイナリとして扱う
+            response.headers['Content-Type'] = 'application/pdf'
+            response.headers['Content-Disposition'] = 'attachment; filename="sample.pdf"'
+  
             send_data show_pdf,
-            filename: "sample.pdf",
-            type: 'application/pdf', ####,
-            disposition: "attachment"
-            ###disposition: 'inline' # 外すとアクセス時に自動ダウンロードされるようになる
+              filename: "sample.pdf",
+              type: 'application/pdf',
+              disposition: "attachment"
     end
 end
 end

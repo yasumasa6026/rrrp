@@ -88,7 +88,9 @@ gem 'solid_queue', '~> 1.2.1'
 gem "ruby-lsp"
 gem "rubocop"
 
-gem 'prawn'
+gem 'prawn', '~> 2.4.0'   
+gem 'ttfunk', '~> 1.7.0'       # ← これを追加（1.8系を強制的に除外）
+gem 'matrix'                   # ← これを追加（必須！）
 gem 'prawn-table'
 
 gem "rubocop-packaging"

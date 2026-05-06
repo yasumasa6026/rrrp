@@ -16,7 +16,7 @@ function pdfApi({params,auth}) {
                     'Content-Type' : 'application/pdf'}
   const options ={method:'POST',
     params: params,
-    headers:headers,
+    headers:headers,responseType: 'blob', // これが必須です
     url,}
     return (axios(options))
 }
@@ -29,7 +29,7 @@ export function * PdfSaga({payload:{params,auth}}) {
           yield put({ type: PDF_SUCCESS, payload:{params:params}})   
           let dayoptions = { year: 'numeric', month: 'long', day: 'numeric' ,hour:'numeric',minute:'numeric',second:'numeric'}
           let wtime = (new Date()).toLocaleDateString('ja-JA', dayoptions).replace(/:/g,"-")
-          const blob = new Blob([response.data], {type: "pdf"})
+          const blob = new Blob([response.data], {type: "application/pdf"})
           const fileExtension = '.pdf'
           let fileName = params.listNamePdf + "_" + wtime 
           saveAs(blob, fileName + fileExtension)
