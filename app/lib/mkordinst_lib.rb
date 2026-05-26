@@ -240,8 +240,8 @@ module MkordinstLib
 
   def getDuedateFromParentStarttime(prev_cal_rec)
       case prev_cal_rec["tblname"]
-        when /^prd/   
-          tblnamechop = "prdord"
+        when /^prd|^con/   
+          tblnamechop = prev_cal_rec["tblname"][0..2] + "ord"
           strsql = %Q&
                   select ope.duration,ope.unitofduration from opeitms ope
                         where ope.itms_id = #{prev_cal_rec["itms_id_trn"]} and ope.processseq = #{prev_cal_rec["processseq_trn"]}
@@ -308,7 +308,7 @@ module MkordinstLib
       ### base_optfixodateまとめれる納期範囲　maxqtyでの分割納期のほうが優先される
       base_starttime = base_duedate =  base_optfixodate = Constants::EndDate.to_date
       cal_recs.each do |cal_rec|  
-        next if cal_rec["tblname"] !~ /prd|pur/ ###conschs未検討
+        next if cal_rec["tblname"] !~ /prd|pur|con/ ###
         tmp_qty_handover = 0
         @incnt += cal_rec["incnt"]
         @inqty += cal_rec["qty_sch"]
@@ -510,8 +510,8 @@ module MkordinstLib
 		      reqparams = blk.proc_private_aud_rec(reqparams,command_c)
           @incnt +=  choice_rec["incnt"]   ###prdord_amtは0
           @inqty +=  choice_rec["qty_sch"]   
-          @outamt +=  command_c["purord_amt"]   ###prdord_amtは0
-          @outqty +=  command_c["purord_qty"]   
+          @outamt +=  command_c["purord_amt"].to_f   ###prdord_amtは0
+          @outqty +=  command_c["purord_qty"].to_f   
        when "prdord"  ###製造
             command_c.merge!({"prdord_shelfno_id" => choice_rec["shelfnos_id_trn"],
                                 "prdord_shelfno_id_to" => choice_rec["shelfnos_id_to_trn"],
@@ -852,7 +852,7 @@ module MkordinstLib
           @last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
           ###schsの消費の取り消し
           prev = {"id" => sch_trn["tblid"],"qty_sch" => sch_trn["qty_linkto_alloctbl"]}
-          new_prev = {"id" => sch_trn["tblid"],"qty_src" => sch_qty,"persons_id_upd" => 0}
+          new_prev = {"id" => sch_trn["tblid"],"qty_sch" => sch_qty,"persons_id_upd" => 0}
           last_lotstks_parts = Shipment.proc_update_consume(sch_trn["tblname"],new_prev,prev,true)  ###:true 消費の取り消し
           @last_lotstks.concat last_lotstks_parts  if last_lotstks_parts.size > 0
           ###

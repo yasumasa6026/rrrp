@@ -1019,9 +1019,6 @@ module ScreenLib
 		def proc_confirm_screen(params,parse_linedata)
 			reqparams = params.dup
       reqparams[:gantt] = JSON.parse(params[:gantt]) if params[:gantt]
-			if parse_linedata.nil?  ###when fmcustXXXX_custYYYs,set parse_linedata
-      		parse_linedata = JSON.parse(params[:lineData])
-			end	
 			tblnamechop = screenCode.split("_")[1].chop
 			yup_fetch_code = grid_columns_info[:fetchOrCheck][:fetchCode]
 			yup_check_code = grid_columns_info[:fetchOrCheck][:checkCode]
@@ -1065,13 +1062,12 @@ module ScreenLib
 							if command_c[:errPath].nil? 
 								  command_c[:errPath] = command_c[(field+"_gridmessage").to_sym]
 						  end
-							 break
+							break
 				  	end
 					end
         else
 					Rails.logger.debug " class:#{self} ,line:#{__LINE__}, reqparams[:err]:#{reqparams[:err]} "
 				end 
-				###parse_linedata[field] = val    
 			end	
 			### cannot use parse_linedata
 			### セカンドkeyのユニークチェック
@@ -1516,7 +1512,9 @@ module ScreenLib
 					#     command_custact["custact_duedate_custord"] = val  ##custact_duedate_custord
           #   end
           # else
-					  command_custact[key.sub("#{prev["tblname"].chop}","custact")] = val
+						if !fields.grep(key.sub("#{prev["tblname"].chop}","custact")).empty?
+					  	command_custact[key.sub("#{prev["tblname"].chop}","custact")] = val
+						end
           # end
 				end
 

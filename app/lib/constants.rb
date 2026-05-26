@@ -34,7 +34,7 @@ module Constants
 
     NilOpeitmsId = "99999999"  ###opeitms.idがなっかった場合の値
     MaxSplitCnt = 10  ###最大分割数
-    MaxCnt = 100  ###最大数
+    MaxCnt = 200  ###最大数
 
     OderConfirmDefult = 1 ###0：仮　 1:確定　　mkprdpurordsでorderを作成した時の規定値
 end

@@ -65,13 +65,14 @@ module RorBlkCtl
         when /^cust/
           @str_shelfnos_id = "sio.#{@tblname.chop}_shelfno_id_fm shelfnos_id_fm"
           @str_suppliers_id = " 0 suppliers_id"
+          @str_shelfnos_id_to = ""
         when /^prd/
           @str_shelfnos_id = "sio.#{@tblname.chop}_shelfno_id shelfnos_id"
-          @str_shelfnos_id_to = "sio.#{@tblname.chop}_shelfno_id_to shelfnos_id_to"
+          @str_shelfnos_id_to = "sio.#{@tblname.chop}_shelfno_id_to shelfnos_id_to,"
           @str_suppliers_id = " 0 suppliers_id"
         when /^pur/ 
           @str_shelfnos_id = "0 shelfnos_id_fm"
-          @str_shelfnos_id_to = "sio.#{@tblname.chop}_shelfno_id_to shelfnos_id_to"
+          @str_shelfnos_id_to = "sio.#{@tblname.chop}_shelfno_id_to shelfnos_id_to,"
           @str_suppliers_id = "sio.#{@tblname.chop}_supplier_id suppliers_id"
       end
 
@@ -86,6 +87,9 @@ module RorBlkCtl
         @command_init
     end
 
+		def tbldata
+				@tbldata	
+		end
 
 		def proc_create_tbldata(command_c) ##
         @tbldata = {}
@@ -1391,11 +1395,19 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
 					### @tbldata["qty"], @tbldata["qty_stk"]どちらかはnil(nil.to_f=>0)
 					###ここでは引当済をセットするのみ
 					ActiveRecord::Base.connection.select_all(sql_get_src_alloc).each do |src|
+						case src["tblname"]
+						when /schs$/
+							strqty = "qty_sch"
+						when /dlvs$|acts$|rets$/
+							strqty = "qty_stk"
+						else
+							strqty = "qty"					
+						end
             save_alloc_qty = src["qty_linkto_alloctbl"].to_f
             if link_strsql != ""  ###消費の取り消し
               ActiveRecord::Base.connection.select_all(link_strsql).each do |link|
-                prev = {"id" => link["srctblid"],src_qty => save_alloc_qty}
-                new_prev = {"id" => link["srctblid"],src_qty => if save_alloc_qty > src_qty then save_alloc_qty - src_qty else 0 end,
+                prev = {"id" => link["srctblid"],strqty => save_alloc_qty}
+                new_prev = {"id" => link["srctblid"],strqty => if save_alloc_qty > src_qty then save_alloc_qty - src_qty else 0 end,
 														"persons_id_upd" => reqparams[:person_id_upd]}
                 last_lotstks_parts = Shipment.proc_update_consume(link["srctblname"],new_prev,prev,true)  ###:true 消費の取り消し
                 last_lotstks.concat last_lotstks_parts  if last_lotstks_parts.size > 0
@@ -1520,7 +1532,7 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
 									&
 					  when /cust.*_custacts/
 					 		link_strsql = %Q&
-					 					select 'custdlvs' tblname,dlv.id tblid,dlv.price,link.id link_id,link.trngantts_id 
+					 					select 'custdlvs' tblname,dlv.id tblid,dlv.price,link.id link_id,link.trngantts_id ,link.qty_src
                                 from custdlvs  dlv
                                 inner join linkcusts link on link.tblid = dlv.id  
                                 where dlv.packinglistno = '#{@tbldata["packinglistno_custdlv"]}'
@@ -1727,7 +1739,7 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
 					    sio.#{@tblname.chop}_#{@str_qty} #{@str_qty},
 					    sio.#{@tblname.chop}_prjno_id prjnos_id,
 					    #{@str_shelfnos_id},
-					    #{@str_shelfnos_id_to},
+					    #{@str_shelfnos_id_to}   ---@str_shelfnos_id_to  custxxxxsのときない
               #{@str_suppliers_id},  ---prd,pur @str_shelfnos_id_to_to = shelfnos_id_to;custxxxs=shelfnos_id_fm
 							#{if @tblname =~ /dlvs|acts|rets/ then  "sio.#{@tblname.chop}_lotno lotno,sio.#{@tblname.chop}_packno packno," else "" end}
               sio.*

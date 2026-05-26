@@ -118,7 +118,8 @@ module Api
                 params[:err] = nil
                 screen = ScreenLib::ScreenClass.new(params)
                 reqparams = params.dup   ### 　
-                reqparams = screen.proc_confirm_screen(reqparams,nil)
+      		    parse_linedata = JSON.parse(params[:lineData])
+                reqparams = screen.proc_confirm_screen(reqparams,parse_linedata)
                 if reqparams[:err]
                     render json: {:params=>reqparams}
                 else

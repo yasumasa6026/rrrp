@@ -234,9 +234,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                                   %
                             ActiveRecord::Base.connection.update(strsql)
             when /mkpayschs|mkbillschs|mkbillests|updatepayschs|updatebillschs/
-              if params[:segment] =~ /^mk/
-		              ActiveRecord::Base.connection.execute("lock table #{params[:segment][2..-1]} in  SHARE ROW EXCLUSIVE mode")
-              end
+		          ActiveRecord::Base.connection.execute("lock table #{params[:segment][2..-1]} in  SHARE ROW EXCLUSIVE mode")
               ### 　parent 未使用
               if params[:segment] == "updatepayschs" or params[:segment] == "updatebillschs"
                 delete_paybillschs(params[:segment],params)

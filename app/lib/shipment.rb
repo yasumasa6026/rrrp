@@ -841,8 +841,6 @@ module Shipment
 						&
 			ActiveRecord::Base.connection.update(strsql)
 		end
-		# stkinout["srctblname"] = "lotstkhists"
-		# proc_check_inoutlotstk(stkinout)
 		###
 		###未来の推定在庫を変更する。
 		###
@@ -871,29 +869,6 @@ module Shipment
 		return stkinout
 	end
 
-	def check_inoutlotstk(stkinout)   ###
-		# strsql = %Q&
-		# 	select   * from inoutlotstks  
-		# 				where 	 tblid = #{stkinout["tblid"]} and tblname = '#{stkinout["tblname"]}'
-		# 				and trngantts_id = #{stkinout["trngantts_id"]}
-		# &
-		# inoutlotstk = ActiveRecord::Base.connection.select_one(strsql)
-		# if inoutlotstk
-		# 		stkinout["remark"] = "  #{self} line:#{__LINE__}"
-		# 		update_sql = %Q&
-		# 			update inoutlotstks set qty_sch = #{stkinout["qty_sch"]},
-		# 								qty = #{stkinout["qty"]},
-		# 								qty_stk =  #{stkinout["qty_stk"]},
-		# 								updated_at = to_timestamp('#{Time.now.strftime("%Y/%m/%d %H:%M:%S")}','yyyy/mm/dd hh24:mi:ss'),
-		# 								remark = '#{stkinout["remark"]}'||remark
-		# 				where id = #{inoutlotstk["id"]}				 
-		# 		& 
-		# 		ActiveRecord::Base.connection.update(update_sql)
-		# else
-		# 		stkinout["remark"] = "  #{self} line:#{__LINE__}" + (stkinout["remark"]||="") 
-		# 		proc_insert_inoutlotstk_sql(stkinout)
-		# end
-	end
 
 	def insert_lotstkhists_sql stkinout
 		 %Q&insert into lotstkhists(id,

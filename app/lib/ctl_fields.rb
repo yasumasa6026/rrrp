@@ -591,7 +591,6 @@ module CtlFields
 	#  nditms 子どものopeitmsへの存在チェック
 	### 
 	def proc_judge_check_code params,sfd,checkCode,parse_linedata  ###
-		parseLineData = parse_linedata.dup
 		err = nil
 		params[:err] = nil
 		if params[:errFields]
@@ -602,7 +601,7 @@ module CtlFields
 			params[:errFields] = {}
 		end
 		checkCode.split(",").each do |chk|
-			parseLineData,err = __send__("proc_judge_check_#{chk}",parseLineData,sfd,params[:index],params[:screenCode])  ###[1]: nil all,add,updateは画面側で判断
+			chkLineData,err = __send__("proc_judge_check_#{chk}",parse_linedata,sfd,params[:index],params[:screenCode])  ###[1]: nil all,add,updateは画面側で判断
       if err
 					if params[:errFields].select{|k,v| k == chk }.empty?
 									params[:errFields][chk] = err
@@ -620,6 +619,7 @@ module CtlFields
 							params[:errFields].delete(chk)			
 					end 			
       end
+			parse_linedata = chkLineData.dup
 		end
 		params[:errFields].each do |k,v|
 				next if v == nil or v == ""
@@ -629,36 +629,11 @@ module CtlFields
 					params[:err] =  v + ","
 				end	
 		end
-		params[:parse_linedata] = parseLineData.dup
+		params[:parse_linedata] = parse_linedata.dup
 		return params 
 	end	
 
-	# def proc_judge_check_opeitm_loca parseLineData,sfd,index,screenCode
-	# 	case parseLineData["opeitm_prdpur"]
-	# 	when "pur"
-	# 		strsql = %Q&
-	# 					select 1 from r_suppliers where loca_code_supplier = '#{parseLineData["loca_code_shelfno_opeitm"]}'
-	# 		&
-	# 	when "prd","dvs"
-	# 		strsql = %Q&
-	# 					select 1 from r_custs where loca_code_cust = '#{parseLineData["loca_code_shelfno_opeitm"]}'
-	# 		&
-	# 	else
-	# 		strsql = %Q&
-	# 					select 1
-	# 		&
-	# 	end
-	# 	rec = ActiveRecord::Base.connection.select_value(strsql)
-	# 	if rec
-	# 		err = nil
-	# 	else
-	# 		err =  "error5 1   --->view or field  #{parseLineData["loca_code_shelfno_opeitm"]}　not find line:#{index} "
-	# 	end
-	# 	return parseLineData,err
-	# end
-
-	def proc_judge_check_paragraph parse_linedata,item,index,screenCode ### proc_judge_check_codeからcallされる。
-		parseLineData = parse_linedata.dup
+	def proc_judge_check_paragraph parseLineData,item,index,screenCode ### proc_judge_check_codeからcallされる。
 		tblname = screenCode.split("_")[1]
 		if parseLineData["screenfield_paragraph"] == ""
 			if parseLineData["pobject_code_sfd"] =~ /_code/ and tblname.chop == parseLineData["pobject_code_sfd"].split("_")[0]
@@ -736,8 +711,7 @@ module CtlFields
 		return parseLineData,err
 	end	
 
-	def proc_judge_check_strorder parse_linedata,item,index,screenCode   ###　r_screens(screens)のみで有効
-		parseLineData = parse_linedata.dup
+	def proc_judge_check_strorder parseLineData,item,index,screenCode   ###　r_screens(screens)のみで有効
 		if parseLineData["screen_strorder"] and parseLineData["screen_strorder"] != ""
 			ary_select_fields = parseLineData.keys
 			sort_info = {}
@@ -770,8 +744,7 @@ module CtlFields
 	end
 
 	###社内用　loca_codeは社外で使用できない。
-	def proc_judge_check_workplace_loca_code_not_used_suppliers_custwhs parse_ineData,item,index,screenCode
-		parseLineData = parse_linedata.dup
+	def proc_judge_check_workplace_loca_code_not_used_suppliers_custwhs parseLineData,item,index,screenCode
 		if parseLineData[item] 
 			case screenCode
 			when /workplaces/
@@ -797,8 +770,7 @@ module CtlFields
 	end
 
 	
-	def proc_judge_check_workplaces parse_linedata,item,index,screenCode
-		parseLineData = parse_linedata.dup
+	def proc_judge_check_workplaces parseLineData,item,index,screenCode
 		if parseLineData["loca_code_workplace"] 
 			strsql = %Q%
 				select id from r_workplaces where loca_code_workplace = '#{parseLineData[item]}'
@@ -813,8 +785,7 @@ module CtlFields
 		return parseLineData,err
 	end
 	
-	def proc_judge_check_suppliers parse_linedata,item,index,screenCode
-		parseLineData = parse_linedata.dup
+	def proc_judge_check_suppliers parseLineData,item,index,screenCode
     err = nil
 		if parseLineData["loca_code_supplier"] 
 			strsql = %Q%
@@ -831,8 +802,7 @@ module CtlFields
 	end
 
 	
-	def proc_judge_check_prdpur parse_linedata,item,index,screenCode
-		parseLineData = parse_linedata.dup
+	def proc_judge_check_prdpur parseLineData,item,index,screenCode
     ### shelfnos_idの妥当性チェック prd:workingplaces pur:suppliers その他:制限なし
 		case parseLineData["loca_code_supplier"]
 		when "pur"
@@ -901,8 +871,7 @@ module CtlFields
 	 	return parse_linedata,err   ###err= nil
 	end	
 	
-	def proc_judge_check_consumtype parse_linedata,item,index,screenCode
-		parseLineData = parse_linedata.dup
+	def proc_judge_check_consumtype pparseLineData,item,index,screenCode
 		classlist = ""
     err = nil
 		case screenCode
@@ -926,8 +895,7 @@ module CtlFields
 	 	return parseLineData,err   ###err= nil
 	end	
 
-	 def proc_judge_check_loca_code_to parse_linedata,item,index,screenCode
-		parseLineData = parse_linedata.dup
+	 def proc_judge_check_loca_code_to parseLineData,item,index,screenCode
 	 	tblname =  screenCode.split("_")[1]
 	 	id = parseLineData["#{tblname.chop}_id"]
     err = nil
@@ -954,8 +922,7 @@ module CtlFields
 	 	return parseLineData,err
 	 end	
 
-	def proc_judge_check_already_used parse_linedata,item,index,screenCode  ###あるidで登録されたcodeが別のテーブルに既に登録されているとき、codeの変更は不可
-		parseLineData = parse_linedata.dup
+	def proc_judge_check_already_used parseLineData,item,index,screenCode  ###あるidで登録されたcodeが別のテーブルに既に登録されているとき、codeの変更は不可
 		if parseLineData["id"] and parseLineData["id"] != ""  ###変更の時 
       err = nil
 			case screenCode
@@ -995,14 +962,12 @@ module CtlFields
 		return parseLineData,err	
 	end
 
-	def proc_judge_check_same_loca_code_bill parse_linedata,item,index,screenCode  ###MkInvoiveNoの時のみ
-		parseLineData = parse_linedata.dup
+	def proc_judge_check_same_loca_code_bill parseLineData,item,index,screenCode  ###MkInvoiveNoの時のみ
 		err = nil
 		return parseLineData,err
 	end
 
-	def proc_judge_check_duedate parse_linedata,item,index,screenCode  ###
-		parseLineData = parse_linedata.dup
+	def proc_judge_check_duedate parseLineData,item,index,screenCode  ###
     err = nil
 		tblnamechop = screenCode.split("_")[1].chop
 		parent = {"starttime" => parseLineData[(tblnamechop+"_starttime")],"duedate" => parseLineData[(tblnamechop+"_duedate")]}
@@ -1013,10 +978,10 @@ module CtlFields
 	end
 	
 	def proc_judge_check_supplierprice parse_linedata,item,index,screenCode  ###M
-		parseLineData = parse_linedata.dup
+		dupLineData = parse_linedata.dup
 		err = nil
-		# if parseLineData["purord_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
-		# 	return parseLineData,err
+		# if dupLineData["purord_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
+		# 	return dupLineData,err
 		# end
 		ex_date = nil
 		case screenCode
@@ -1058,35 +1023,35 @@ module CtlFields
 		strshpsql = ""
 		case screenCode
 		when /pursch|purord/
-			case parseLineData[strcontractpricesym]
+			case dupLineData[strcontractpricesym]
 			when "1"
-				ex_date = "expiredate >= to_date('#{parseLineData[strisudatesym]}','yyyy/mm/dd')
-										 and opeitms_id = #{parseLineData[stropeitmsym]}	" 
+				ex_date = "expiredate >= to_date('#{dupLineData[strisudatesym]}','yyyy/mm/dd')
+										 and opeitms_id = #{dupLineData[stropeitmsym]}	" 
 			when "2","3"
-				ex_date = "expiredate >= to_date('#{parseLineData[strduedatesym]}','yyyy/mm/dd')
-											 and opeitms_id = #{parseLineData[stropeitmsym]}"
+				ex_date = "expiredate >= to_date('#{dupLineData[strduedatesym]}','yyyy/mm/dd')
+											 and opeitms_id = #{dupLineData[stropeitmsym]}"
 			when "A"
 				ex_date = nil
 			when "B"
 				ex_date = nil
 			else
 				ex_date = nil
-				parseLineData[strcontractpricesym] = "C"
-				parseLineData[strmasterpricesym] = parseLineData[strpricesym]  = parseLineData[stramtsym]  = 0
+				dupLineData[strcontractpricesym] = parse_linedata[strcontractpricesym] = "C"
+				dupLineData[strmasterpricesym] = dupLineData[strpricesym]  = dupLineData[stramtsym]  = 0
 			end
 		when /purdlv/ 
-			ex_date = case parseLineData[strcontractpricesym] 
+			ex_date = case dupLineData[strcontractpricesym] 
 						when "1"
-							"s.expiredate >= to_date('#{parseLineData["purdlv_depdate"]}','yyyy/mm/dd')
-										 and s.opeitms_id = #{parseLineData[stropeitmsym]}"
+							"s.expiredate >= to_date('#{dupLineData["purdlv_depdate"]}','yyyy/mm/dd')
+										 and s.opeitms_id = #{dupLineData[stropeitmsym]}"
 						else
 							nil
 						end
 		when /puract/ 
-			ex_date = case parseLineData[strcontractpricesym] 
+			ex_date = case dupLineData[strcontractpricesym] 
 						when "2","3"
-							"s.expiredate >= to_date('#{parseLineData["puract_rcptdate"]}','yyyy/mm/dd')
-										 and s.opeitms_id = #{parseLineData[stropeitmsym]}"
+							"s.expiredate >= to_date('#{dupLineData["puract_rcptdate"]}','yyyy/mm/dd')
+										 and s.opeitms_id = #{dupLineData[stropeitmsym]}"
 						else
 							nil
 						end						
@@ -1095,105 +1060,111 @@ module CtlFields
 		if ex_date
 			strsql = %Q&
 						select s.* from supplierprices s #{strshpsql}
-									where s.suppliers_id = #{parseLineData[strsuppliersym]}
-									and s.maxqty >= #{parseLineData[strqtysym].to_i}
-									and s.minqty < #{parseLineData[strqtysym].to_i}
+									where s.suppliers_id = #{dupLineData[strsuppliersym]}
+									and s.maxqty >= #{dupLineData[strqtysym].to_i}
+									and s.minqty < #{dupLineData[strqtysym].to_i}
 									and #{ex_date}
 									order by s.maxqty,s.expiredate limit 1
 				&								
 			price = ActiveRecord::Base.connection.select_one(strsql)	
 			if price
-				parseLineData[strpricesym] = parseLineData[strmasterpricesym] = price["price"].to_f
-				###parseLineData["pursch_contractprice"] = supplier["contractprice"]
-				parseLineData[stramtsym] = parseLineData[strqtysym].to_f * price["price"].to_f
-				case parseLineData["itm_taxflg"]
+				dupLineData[strpricesym] = dupLineData[strmasterpricesym] = price["price"]
+				###dupLineData["pursch_contractprice"] = supplier["contractprice"]
+				dupLineData[stramtsym] = dupLineData[strqtysym].to_f * price["price"]
+				case parse_linedata["itm_taxflg"]
 				when "0","1","9"
-					base_date =  parseLineData[strduedatesym]
+					base_date =  dupLineData[strduedatesym]
 				when "A"
-					base_date =   parseLineData[strisudatesym]
+					base_date =   dupLineData[strisudatesym]
 				else
-					base_date =  parseLineData[strduedatesym]
+					base_date =  dupLineData[strduedatesym]
 				end
 				strsql = %Q&
-							select taxrate from taxtbls where taxflg = '#{parseLineData["itm_taxflg"]}' 
+							select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
 														and expiredate >= to_date('#{base_date}','yyyy/mm/dd')
 														order by expiredate limit 1
 				&
-				parseLineData[strtaxratesym] = ActiveRecord::Base.connection.select_value(strsql)
-				parseLineData[strtaxratesym] ||= 0
-				parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100)
-				if parseLineData[strcrrsym]
+				dupLineData[strtaxratesym] = ActiveRecord::Base.connection.select_value(strsql)
+				dupLineData[strtaxratesym] ||= 0
+				dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym] / 100)
+				if dupLineData[strcrrsym]
 					strsql = %Q&
-							select decimal from crrs where id = #{parseLineData[strcrrsym]}
+							select decimal from crrs where id = #{dupLineData[strcrrsym]}
 					&
 					decimal = ActiveRecord::Base.connection.select_value(strsql)
-					case parseLineData["supplier_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
+					case dupLineData["supplier_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
 					when "1"
-						parseLineData[stramtsym] = parseLineData[stramtsym].floor(decimal.to_i )
-						parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).floor(decimal.to_i )
+						dupLineData[stramtsym] = dupLineData[stramtsym].floor(decimal.to_i )
+						dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).floor(decimal.to_i )
 					when "2"
-						parseLineData[stramtsym] = parseLineData[stramtsym].round(decimal.to_i + 1)
-						parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).round(decimal.to_i )
+						dupLineData[stramtsym] = dupLineData[stramtsym].round(decimal.to_i + 1)
+						dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).round(decimal.to_i )
 					when "3"
-						parseLineData[stramtsym] = parseLineData[stramtsym].ceil(decimal.to_i )
-						parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).ceil(decimal.to_i )
+						dupLineData[stramtsym] = dupLineData[stramtsym].ceil(decimal.to_i )
+						dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).ceil(decimal.to_i )
 					end
 				else
 					###
 				end
 			else
-				parseLineData[strcontractpricesym] = "C"
-				parseLineData[strmasterpricesym] = parseLineData[strpricesym]  = parseLineData[stramtsym]  = 0
-				parseLineData[strtaxsym] = parseLineData[strtaxratesym]  = 0
+				dupLineData[strcontractpricesym] = "C"
+				dupLineData[strmasterpricesym] = dupLineData[strpricesym]  = dupLineData[stramtsym]  = 0
+				dupLineData[strtaxsym] = dupLineData[strtaxratesym]  = 0
 			end
 		else
-			###parseLineData[strmasterpricesym] =  parseLineData[strpricesym]  = 0
-			parseLineData[stramtsym] = parseLineData[strqtysym].to_f * parseLineData[strpricesym].to_f 
-			case parseLineData["itm_taxflg"]
+			###dupLineData[strmasterpricesym] =  dupLineData[strpricesym]  = 0
+			dupLineData[stramtsym] = dupLineData[strqtysym].to_f * dupLineData[strpricesym].to_f 
+			case dupLineData["itm_taxflg"]
 			when "0","1","9"
-				base_date =  parseLineData[strduedatesym]
+				base_date =  dupLineData[strduedatesym]
 			when "A"
-				base_date =   parseLineData[strisudatesym]
+				base_date =   dupLineData[strisudatesym]
 			else
-				base_date =  parseLineData[strduedatesym]
+				base_date =  dupLineData[strduedatesym]
 			end
 			strsql = %Q&
-						select taxrate from taxtbls where taxflg = '#{parseLineData["itm_taxflg"]}' 
+						select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
 													and expiredate >= to_date('#{base_date}','yyyy/mm/dd')
 													order by expiredate limit 1
 			&
-			parseLineData[strtaxratesym] = ActiveRecord::Base.connection.select_value(strsql)
-			parseLineData[strtaxratesym] ||= 0
-			parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100)
-			if parseLineData[strcrrsym]
+			dupLineData[strtaxratesym] = ActiveRecord::Base.connection.select_value(strsql)
+			dupLineData[strtaxratesym] ||= 0
+			dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100)
+			if dupLineData[strcrrsym]
 				strsql = %Q&
-						select decimal from crrs where id = #{parseLineData[strcrrsym]}
+						select decimal from crrs where id = #{dupLineData[strcrrsym]}
 				&
 				decimal = ActiveRecord::Base.connection.select_value(strsql)
-				case parseLineData["supplier_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
+				case dupLineData["supplier_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
 				when "1"
-					parseLineData[stramtsym] = parseLineData[stramtsym].floor(decimal.to_i )
-					parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).floor(decimal.to_i )
+					dupLineData[stramtsym] = dupLineData[stramtsym].floor(decimal.to_i )
+					dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).floor(decimal.to_i )
 				when "2"
-					parseLineData[stramtsym] = parseLineData[stramtsym].round(decimal.to_i + 1)
-					parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).round(decimal.to_i )
+					dupLineData[stramtsym] = dupLineData[stramtsym].round(decimal.to_i + 1)
+					dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).round(decimal.to_i )
 				when "3"
-					parseLineData[stramtsym] = parseLineData[stramtsym].ceil(decimal.to_i )
-					parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).ceil(decimal.to_i )
+					dupLineData[stramtsym] = dupLineData[stramtsym].ceil(decimal.to_i )
+					dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).ceil(decimal.to_i )
 				end
 			else
 				###
 			end
 		end
-		return parseLineData,err
+			parse_linedata[stramtsym] = dupLineData[stramtsym].to_s
+			parse_linedata[strqtysym] = dupLineData[strqtysym].to_s
+			parse_linedata[strtaxsym] = dupLineData[strtaxsym].to_s
+			parse_linedata[strmasterpricesym] =	dupLineData[strmasterpricesym].to_s
+			parse_linedata[strpricesym] =	dupLineData[strpricesym].to_s
+			parse_linedata[strtaxratesym] = dupLineData[strtaxratesym].to_s
+		return parse_linedata,err
 	end
 
 
 	def proc_judge_check_paidsupplierprice parse_linedata,item,index,screenCode  ###M
-		parseLineData = parse_linedata.dup
+		dupLineData = parse_linedata.dup
 		err = nil
-		# if parseLineData["purord_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
-		# 	return parseLineData,err
+		# if dupLineData["purord_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
+		# 	return dupLineData,err
 		# end
 		err = false 
 		ex_date = nil
@@ -1220,16 +1191,16 @@ module CtlFields
 		strsuppliersym = "#{strpur}_supplier_id"
 		strshpsql = ""
 			strshpsql = %Q%inner join (select p.id from opeitms p
-																			where p.itms_id = #{parseLineData["#{strpur}_itm_id"]}
-																			and p.processseq = #{parseLineData["#{strpur}_processseq"]}
-																			and p.shelfnos_id_opeitm = #{parseLineData["#{strpur}_shelfno_id_to"]}) ope
+																			where p.itms_id = #{dupLineData["#{strpur}_itm_id"]}
+																			and p.processseq = #{dupLineData["#{strpur}_processseq"]}
+																			and p.shelfnos_id_opeitm = #{dupLineData["#{strpur}_shelfno_id_to"]}) ope
 																on s.opeitms_id = ope.id%
-			ex_date = case parseLineData[strcontractpricesym] 
+			ex_date = case dupLineData[strcontractpricesym] 
 						when "1"
-							"s.expiredate >= to_date('#{parseLineData["#{strpur}_isudate"]}','yyyy/mm/dd')"
+							"s.expiredate >= to_date('#{dupLineData["#{strpur}_isudate"]}','yyyy/mm/dd')"
 						when "2","3"
 							if strpur == "shpact"
-								"s.expiredate >= to_date('#{parseLineData["#{strpur}_rcptdate"]}','yyyy/mm/dd')"
+								"s.expiredate >= to_date('#{dupLineData["#{strpur}_rcptdate"]}','yyyy/mm/dd')"
 							else
 									nil
 							end
@@ -1241,292 +1212,321 @@ module CtlFields
 			strsql = %Q&
 						select s.* from paidsupplierprices s #{strshpsql}
 									inner join opeitms o on o.id = s.opeitms_id
-									where s.suppliers_id = #{parseLineData[strsuppliersym]}
-									and o.itms_id = #{parseLineData["#{strpur}_itm_id"]}
-									and o.processseq = #{parseLineData["#{strpur}_processseq"]}
-									and s.maxqty >= #{parseLineData[strqtysym]}
-									and s.minqty < #{parseLineData[strqtysym]}
+									where s.suppliers_id = #{dupLineData[strsuppliersym]}
+									and o.itms_id = #{dupLineData["#{strpur}_itm_id"]}
+									and o.processseq = #{dupLineData["#{strpur}_processseq"]}
+									and s.maxqty >= #{dupLineData[strqtysym]}
+									and s.minqty < #{dupLineData[strqtysym]}
 									and #{ex_date}
 									order by s.expiredate limit 1
 				&								
 			price = ActiveRecord::Base.connection.select_one(strsql)	
 			if price
-				parseLineData[strpricesym] = parseLineData[strmasterpricesym] = price["price"].to_f
-				###parseLineData["pursch_contractprice"] = supplier["contractprice"]
-				parseLineData[stramtsym] = parseLineData[strqtysym].to_f * price["price"].to_f
-				case parseLineData["itm_taxflg"]
+				dupLineData[strpricesym] = dupLineData[strmasterpricesym] = price["price"].to_f
+				###dupLineData["pursch_contractprice"] = supplier["contractprice"]
+				dupLineData[stramtsym] = dupLineData[strqtysym].to_f * price["price"].to_f
+				case dupLineData["itm_taxflg"]
 				when "0","1","9"
-					base_date =  parseLineData[strduedatesym]
+					base_date =  dupLineData[strduedatesym]
 				when "A"
-					base_date =   parseLineData[strisudatesym]
+					base_date =   dupLineData[strisudatesym]
 				else
-					base_date =  parseLineData[strduedatesym]
+					base_date =  dupLineData[strduedatesym]
 				end
 				strsql = %Q&
-							select taxrate from taxtbls where taxflg = '#{parseLineData["itm_taxflg"]}' 
+							select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
 														and expiredate >= to_date('#{base_date}','yyyy/mm/dd')
 														order by expiredate limit 1
 				&
-				parseLineData[strtaxratesym] = ActiveRecord::Base.connection.select_value(strsql)
-				parseLineData[strtaxratesym] ||= 0
-				parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100)
-				if parseLineData[strcrrsym]
+				dupLineData[strtaxratesym] = ActiveRecord::Base.connection.select_value(strsql)
+				dupLineData[strtaxratesym] ||= 0
+				dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100)
+				if dupLineData[strcrrsym]
 					strsql = %Q&
-							select decimal from crrs where id = #{parseLineData[strcrrsym]}
+							select decimal from crrs where id = #{dupLineData[strcrrsym]}
 					&
 					decimal = ActiveRecord::Base.connection.select_value(strsql)
-					case parseLineData["supplier_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
+					case dupLineData["supplier_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
 					when "1"
-						parseLineData[stramtsym] = parseLineData[stramtsym].floor(decimal.to_i )
-						parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).floor(decimal.to_i )
+						dupLineData[stramtsym] = dupLineData[stramtsym].floor(decimal.to_i )
+						dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).floor(decimal.to_i )
 					when "2"
-						parseLineData[stramtsym] = parseLineData[stramtsym].round(decimal.to_i + 1)
-						parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).round(decimal.to_i )
+						dupLineData[stramtsym] = dupLineData[stramtsym].round(decimal.to_i + 1)
+						dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).round(decimal.to_i )
 					when "3"
-						parseLineData[stramtsym] = parseLineData[stramtsym].ceil(decimal.to_i )
-						parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).ceil(decimal.to_i )
+						dupLineData[stramtsym] = dupLineData[stramtsym].ceil(decimal.to_i )
+						dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).ceil(decimal.to_i )
 					end
 				else
 					###
 				end
 			else
-				parseLineData[strcontractpricesym] = "C"
-				parseLineData[strmasterpricesym] = parseLineData[strpricesym]  = parseLineData[stramtsym]  = 0
-				parseLineData[strtaxsym] = parseLineData[strtaxratesym]  = 0
+				dupLineData[strcontractpricesym] = "C"
+				dupLineData[strmasterpricesym] = dupLineData[strpricesym]  = dupLineData[stramtsym]  = 0
+				dupLineData[strtaxsym] = dupLineData[strtaxratesym]  = 0
 				err = true
 			end
 		else
-			###parseLineData[strmasterpricesym] =  parseLineData[strpricesym]  = 0
-			parseLineData[stramtsym] = parseLineData[strqtysym].to_f * parseLineData[strpricesym].to_f 
-			case parseLineData["itm_taxflg"]
+			###dupLineData[strmasterpricesym] =  dupLineData[strpricesym]  = 0
+			dupLineData[stramtsym] = dupLineData[strqtysym].to_f * dupLineData[strpricesym].to_f 
+			case dupLineData["itm_taxflg"]
 			when "0","1","9"
-				base_date =  parseLineData[strduedatesym]
+				base_date =  dupLineData[strduedatesym]
 			when "A"
-				base_date =   parseLineData[strisudatesym]
+				base_date =   dupLineData[strisudatesym]
 			else
-				base_date =  parseLineData[strduedatesym]
+				base_date =  dupLineData[strduedatesym]
 			end
 			strsql = %Q&
-						select taxrate from taxtbls where taxflg = '#{parseLineData["itm_taxflg"]}' 
+						select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
 													and expiredate >= to_date('#{base_date}','yyyy/mm/dd')
 													order by expiredate limit 1
 			&
-			parseLineData[strtaxratesym] = ActiveRecord::Base.connection.select_value(strsql)
-			parseLineData[strtaxratesym] ||= 0
-			parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100)
-			if parseLineData[strcrrsym]
+			dupLineData[strtaxratesym] = ActiveRecord::Base.connection.select_value(strsql)
+			dupLineData[strtaxratesym] ||= 0
+			dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100)
+			if dupLineData[strcrrsym]
 				strsql = %Q&
-						select decimal from crrs where id = #{parseLineData[strcrrsym]}
+						select decimal from crrs where id = #{dupLineData[strcrrsym]}
 				&
 				decimal = ActiveRecord::Base.connection.select_value(strsql)
-				case parseLineData["supplier_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
+				case dupLineData["supplier_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
 				when "1"
-					parseLineData[stramtsym] = parseLineData[stramtsym].floor(decimal.to_i )
-					parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).floor(decimal.to_i )
+					dupLineData[stramtsym] = dupLineData[stramtsym].floor(decimal.to_i )
+					dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).floor(decimal.to_i )
 				when "2"
-					parseLineData[stramtsym] = parseLineData[stramtsym].round(decimal.to_i + 1)
-					parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).round(decimal.to_i )
+					dupLineData[stramtsym] = dupLineData[stramtsym].round(decimal.to_i + 1)
+					dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).round(decimal.to_i )
 				when "3"
-					parseLineData[stramtsym] = parseLineData[stramtsym].ceil(decimal.to_i )
-					parseLineData[strtaxsym] = (parseLineData[stramtsym] * parseLineData[strtaxratesym].to_f / 100).ceil(decimal.to_i )
+					dupLineData[stramtsym] = dupLineData[stramtsym].ceil(decimal.to_i )
+					dupLineData[strtaxsym] = (dupLineData[stramtsym] * dupLineData[strtaxratesym].to_f / 100).ceil(decimal.to_i )
 				end
 			else
 				###
 				err = true
 			end
 		end
-		return parseLineData,err
+			parse_linedata[stramtsym] = dupLineData[stramtsym].to_s
+			parse_linedata[strqtysym] = dupLineData[strqtysym].to_s
+			parse_linedata[strtaxsym] = dupLineData[strtaxsym].to_s
+			parse_linedata[strmasterpricesym] =	dupLineData[strmasterpricesym].to_s
+			parse_linedata[strpricesym] =	dupLineData[strpricesym].to_s
+			parse_linedata[strtaxratesym] = dupLineData[strtaxratesym].to_s
+		return parse_linedata,err
 	end
 
 
 	def proc_judge_check_custprice parse_linedata,item,index,screenCode  ###M
-		parseLineData = parse_linedata.dup
+		dupLineData = parse_linedata.dup
 		err = nil
 		case screenCode
 		when /custschs/
-			if parseLineData["custsch_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
-				return parseLineData,err
+			if parse_linedata["custsch_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
+				return parse_linedata,err
 			end
 			strsql = %Q&
 						select * from custprices 
-									where custs_id = #{parseLineData[":custsch_cust_id"]} and opeitms_id = #{parseLineData["custsch_opeitm_id"]}
-									and crrs_id_custprice = #{parseLineData["custsch_crr_id"]}
-									and maxqty >= #{parseLineData["custsch_qty_sch"]}
-									and minqty < #{parseLineData["custsch_qty_sch"]}
-									and #{case parseLineData["custsch_contractprice"]
+									where custs_id = #{dupLineData[":custsch_cust_id"]} and opeitms_id = #{dupLineData["custsch_opeitm_id"]}
+									and crrs_id_custprice = #{dupLineData["custsch_crr_id"]}
+									and maxqty >= #{dupLineData["custsch_qty_sch"]}
+									and minqty < #{dupLineData["custsch_qty_sch"]}
+									and #{case dupLineData["custsch_contractprice"]
 											when "1"
-												"expiredate >= to_date('#{parseLineData["custsch_isudate"]}','yyyy/mm/dd')" 
+												"expiredate >= to_date('#{dupLineData["custsch_isudate"]}','yyyy/mm/dd')" 
 											when "2"
-												"expiredate >= to_date('#{parseLineData["custsch_duedate"]}','yyyy/mm/dd')"
+												"expiredate >= to_date('#{dupLineData["custsch_duedate"]}','yyyy/mm/dd')"
 											when "3"
-												"expiredate >= to_date('#{parseLineData["custsch_duedate"]}','yyyy/mm/dd')"
+												"expiredate >= to_date('#{dupLineData["custsch_duedate"]}','yyyy/mm/dd')"
 											else
-												"expiredate >= to_date('#{parseLineData["custsch_isudate"]}','yyyy/mm/dd')"
+												"expiredate >= to_date('#{dupLineData["custsch_isudate"]}','yyyy/mm/dd')"
 											end											
 											}
 									order by maxqty,expiredate limit 1
 			&
 			price = ActiveRecord::Base.connection.select_one(strsql)
 			if price
-				parseLineData["custsch_price"] =  parseLineData["custsch_masterprice"] = price["price"].to_f
-				parseLineData["custsch_amt_sch"] = parseLineData["custsch_qty_sch"].to_f * price["price"].to_f
-				if parseLineData["custsch_crr_id"]
+				dupLineData["custsch_price"] =  dupLineData["custsch_masterprice"] = price["price"]
+				dupLineData["custsch_amt_sch"] = parse_linedata["custsch_qty_sch"].to_f * price["price"]
+				if dupLineData["custsch_crr_id"]
           ###税率の取得
-          case parseLineData["itm_taxflg"]
+          case dupLineData["itm_taxflg"]
           when "0","1","9"
-            base_date =  parseLineData["custsch_duedate"]
+            base_date =  dupLineData["custsch_duedate"]
           when "A"
-            base_date =   parseLineData["custsch_isudate"]
+            base_date =   dupLineData["custsch_isudate"]
           else
-            base_date =  parseLineData["custsch_duedate"]
+            base_date =  dupLineData["custsch_duedate"]
           end
           strsql = %Q&
-              select taxrate from taxtbls where taxflg = '#{parseLineData["itm_taxflg"]}' 
+              select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
                             and expiredate >= to_date('#{base_date}','yyyy/mm/dd')
                             order by expiredate limit 1
           &
-          parseLineData["custsch_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
-          parseLineData["custsch_taxrate"] ||= 0
-          parseLineData["custsch_tax"] = (parseLineData["custsch_amt_sch"] * parseLineData["custsch_taxrate"].to_f / 100)
+          dupLineData["custsch_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
+          dupLineData["custsch_taxrate"] ||= 0
+          dupLineData["custsch_tax"] = (dupLineData["custsch_amt_sch"].to_f * dupLineData["custsch_taxrate"] / 100)
           ###通貨の小数点以下の桁数を取得
 					strsql = %Q&
-							select decimal from crrs where id = #{parseLineData["custsch_crr_id"]}
+							select decimal from crrs where id = #{dupLineData["custsch_crr_id"]}
 					&
 					decimal = ActiveRecord::Base.connection.select_value(strsql)
-					case parseLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
+					case dupLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
 					when "1"
-						parseLineData["custsch_amt_sch"] = parseLineData["custsch_amt_sch"].floor(decimal.to_i )
-						parseLineData["custsch_tax"] = (parseLineData["custsch_amt_sch"] * parseLineData["custsch_taxrate"].to_f / 100).floor(decimal.to_i )
+						dupLineData["custsch_amt_sch"] = dupLineData["custsch_amt_sch"].floor(decimal.to_i )
+						dupLineData["custsch_tax"] = (dupLineData["custsch_amt_sch"] * dupLineData["custsch_taxrate"] / 100).floor(decimal.to_i )
 					when "2"
-						parseLineData["custsch_amt_sch"] = parseLineData["custsch_amt_sch"].round(decimal.to_i )
-						parseLineData["custsch_tax"] = (parseLineData["custsch_amt_sch"] * parseLineData["custsch_taxrate"].to_f / 100).round(decimal.to_i )
+						dupLineData["custsch_amt_sch"] = dupLineData["custsch_amt_sch"].round(decimal.to_i )
+						dupLineData["custsch_tax"] = (dupLineData["custsch_amt_sch"] * dupLineData["custsch_taxrate"] / 100).round(decimal.to_i )
 					when "3"
-						parseLineData["custsch_amt_sch"] = parseLineData["custsch_amt_sch"].ceil(decimal.to_i )
-						parseLineData["custsch_tax"] = (parseLineData["custsch_amt_sch"] * parseLineData["custsch_taxrate"].to_f / 100).ceil(decimal.to_i )
+						dupLineData["custsch_amt_sch"] = dupLineData["custsch_amt_sch"].ceil(decimal.to_i )
+						dupLineData["custsch_tax"] = (dupLineData["custsch_amt_sch"] * dupLineData["custsch_taxrate"] / 100).ceil(decimal.to_i )
 					else
-						parseLineData["custsch_tax"] = (parseLineData["custsch_amt_sch"] * parseLineData["custsch_taxrate"].to_f / 100)
+						dupLineData["custsch_tax"] = (dupLineData["custsch_amt_sch"] * dupLineData["custsch_taxrate"] / 100)
 					end
 				else
 				end
 			else
-				parseLineData["custsch_price"] = parseLineData["custsch_masterprice"] = 0
-				parseLineData["custsch_amt_sch"] = 0
-				parseLineData["custsch_contractprice"] = "C"  ###C:マスター単価無
+				dupLineData["custsch_price"] = dupLineData["custsch_masterprice"] = 0
+				dupLineData["custsch_amt_sch"] = 0
+				parse_linedata["custsch_contractprice"] = "C"  ###C:マスター単価無
 			end
+				parse_linedata["custsch_price"] = dupLineData["custsch_price"].to_s 
+				parse_linedata["custsch_masterprice"] = dupLineData["custsch_masterprice"].to_s
+				parse_linedata["custsch_amt_sch"] = dupLineData["custsch_amt_sch"].to_s
+				parse_linedata["custsch_tax"] = dupLineData["custsch_tax"].to_s
+				parse_linedata["custsch_taxrate"] = dupLineData["custsch_taxrate"].to_s
 		when /custords/
-			if parseLineData["custord_contractprice"] =~ /[A-Z]|[a-z]/ ###数字の時マスター単価
-				return parseLineData,err
+			if parse_linedata["custord_contractprice"] =~ /[A-Z]|[a-z]/ ###数字の時マスター単価
+				return parse_linedata,err
 			end
 			strsql = %Q&
 						select * from custprices 
-									where custs_id = #{parseLineData["custord_cust_id"]} and opeitms_id = #{parseLineData["custord_opeitm_id"]}
-									and crrs_id_custprice = #{parseLineData["custord_crr_id"]}
-									and maxqty >= #{parseLineData["custord_qty"]}
-									#{if parseLineData["custord_qty"].to_f == 0 then  "" else " and minqty < #{parseLineData["custord_qty"]}" end}
-									and #{case parseLineData["custord_contractprice"]
+									where custs_id = #{dupLineData["custord_cust_id"]} and opeitms_id = #{dupLineData["custord_opeitm_id"]}
+									and crrs_id_custprice = #{dupLineData["custord_crr_id"]}
+									and maxqty >= #{dupLineData["custord_qty"]}
+									#{if dupLineData["custord_qty"].to_f == 0 then  "" else " and minqty < #{dupLineData["custord_qty"]}" end}
+									and #{case dupLineData["custord_contractprice"]
 											when "1"
-												"expiredate >= to_date('#{parseLineData["custord_isudate"]}','yyyy/mm/dd')" 
+												"expiredate >= to_date('#{dupLineData["custord_isudate"]}','yyyy/mm/dd')" 
 											when "2"
-												"expiredate >= to_date('#{parseLineData["custord_duedate"]}','yyyy/mm/dd')"
+												"expiredate >= to_date('#{dupLineData["custord_duedate"]}','yyyy/mm/dd')"
 											when "3"
-												"expiredate >= to_date('#{parseLineData["custord_duedate"]}','yyyy/mm/dd')"
+												"expiredate >= to_date('#{dupLineData["custord_duedate"]}','yyyy/mm/dd')"
 											else
-												"expiredate >= to_date('#{parseLineData["custord_isudate"]}','yyyy/mm/dd')"
+												"expiredate >= to_date('#{dupLineData["custord_isudate"]}','yyyy/mm/dd')"
 											end											
 											}
 									order by maxqty,expiredate limit 1
 			&
 			price = ActiveRecord::Base.connection.select_one(strsql)
 			if price
-				parseLineData["custord_price"] =  parseLineData["custord_masterprice"] = price["price"].to_f
-				parseLineData["custord_amt"] = parseLineData["custord_qty"].to_f * price["price"].to_f
-				if parseLineData["custord_crr_id"]
+				dupLineData["custord_price"] =  dupLineData["custord_masterprice"] = price["price"]
+				dupLineData["custord_amt"] = parse_linedata["custord_qty"].to_f * price["price"]
+				if dupLineData["custord_crr_id"]
 					strsql = %Q&
-							select decimal from crrs where id = #{parseLineData["custord_crr_id"]}
+							select decimal from crrs where id = #{dupLineData["custord_crr_id"]}
 					&
 					decimal = ActiveRecord::Base.connection.select_value(strsql)
-					case parseLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
+					case dupLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
 					when "1"
-						parseLineData["custord_amt"] = parseLineData["custord_amt"].floor(decimal.to_i )
-						parseLineData["custord_tax"] = (parseLineData["custord_amt"] * parseLineData["custord_taxrate"].to_f / 100).floor(decimal.to_i )
+						dupLineData["custord_amt"] = dupLineData["custord_amt"].floor(decimal.to_i )
+						dupLineData["custord_tax"] = (dupLineData["custord_amt"] * parse_linedata["custord_taxrate"].to_f / 100).floor(decimal.to_i )
 					when "2"
-						parseLineData["custord_amt"] = parseLineData["custord_amt"].round(decimal.to_i )
-						parseLineData["custord_tax"] = (parseLineData["custord_amt"] * parseLineData["custord_taxrate"].to_f / 100).round(decimal.to_i )
+						dupLineData["custord_amt"] = dupLineData["custord_amt"].round(decimal.to_i )
+						dupLineData["custord_tax"] = (dupLineData["custord_amt"] * parse_linedata["custord_taxrate"].to_f / 100).round(decimal.to_i )
 					when "3"
-						parseLineData["custord_amt"] = parseLineData["custord_amt"].ceil(decimal.to_i )
-						parseLineData["custord_tax"] = (parseLineData["custord_amt"] * parseLineData["custord_taxrate"].to_f / 100).ceil(decimal.to_i )
+						dupLineData["custord_amt"] = dupLineData["custord_amt"].ceil(decimal.to_i )
+						dupLineData["custord_tax"] = (dupLineData["custord_amt"] * parse_linedata["custord_taxrate"].to_f / 100).ceil(decimal.to_i )
 					end
 				else
 				end
 			else
-				parseLineData["custord_price"] = parseLineData["custord_masterprice"] = 0.0
-				parseLineData["custord_amt"] = parseLineData["custord_tax"] = 0.0
-				parseLineData["custord_contractprice"] = "C"  ###C:マスター単価無
+				dupLineData["custord_price"] = dupLineData["custord_masterprice"] = 0.0
+				dupLineData["custord_amt"] = dupLineData["custord_tax"] = 0.0
+				parse_linedata["custord_contractprice"] = "C"    ###C:マスター単価無
 			end
+				parse_linedata["custord_price"] = dupLineData["custord_price"].to_s 
+				parse_linedata["custord_masterprice"] = dupLineData["custord_masterprice"].to_s
+				parse_linedata["custord_price"] = dupLineData["custord_price"].to_s
+				parse_linedata["custord_amt"] = dupLineData["custord_amt"].to_s
+				parse_linedata["custord_tax"] = dupLineData["custord_tax"].to_s
+				parse_linedata["custord_taxrate"] = dupLineData["custord_taxrate"].to_s
 		when /custdlvs/  ###1:発注日ベース　2:仕入れ先きの出荷日ベース　3:検収ベース
 			if params[:custdlv_contractprice]  == "2"  ###出荷日ベース　
 				strsql = %Q&
 							select * from custprices 
-										where custs_id = #{parseLineData["custdlv_cust_id"]} and opeitms_id = #{parseLineData["custdlv_opeitm_id"]}
-										and crrs_id_custprice = #{parseLineData["custdlv_crr_id"]}
-										and maxqty >= #{parseLineData["custdlv_qty"]}
-										and minqty < #{parseLineData["custdlv_qty"]}
-										and  expiredate >= to_date('#{parseLineData["custdlv_depdate"]}','yyyy/mm/dd')
+										where custs_id = #{dupLineData["custdlv_cust_id"]} and opeitms_id = #{dupLineData["custdlv_opeitm_id"]}
+										and crrs_id_custprice = #{dupLineData["custdlv_crr_id"]}
+										and maxqty >= #{dupLineData["custdlv_qty"]}
+										and minqty < #{dupLineData["custdlv_qty"]}
+										and  expiredate >= to_date('#{dupLineData["custdlv_depdate"]}','yyyy/mm/dd')
 										order by maxqty,expiredate limit 1
 				&
 				price = ActiveRecord::Base.connection.select_one(strsql)
 				if price
-					decimal = parseLineData["crr_decimal"].to_i
-					parseLineData["custdlv_amt"] = parseLineData["custdlv_qty"].to_f * price["price"].to_f
-					case parseLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
+					decimal = dupLineData["crr_decimal"].to_i
+					dupLineData["custdlv_price"] = dupLineData["custdlv_masterprice"] = price["price"]
+					dupLineData["custdlv_amt"] = parse_linedata["custdlv_qty"].to_f * price["price"]
+					case dupLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
 					when "1"
-						parseLineData["custdlv_amt"] = parseLineData["custdlv_amt"].floor(decimal + 1)
-						parseLineData["custdlv_tax"] = (parseLineData["custdlv_amt"] * parseLineData["custdlv_taxrate"].to_f  / 100).floor(decimal)
+						dupLineData["custdlv_amt"] = dupLineData["custdlv_amt"].floor(decimal + 1)
+						dupLineData["custdlv_tax"] = (dupLineData["custdlv_amt"] * parse_linedata["custdlv_taxrate"].to_f  / 100).floor(decimal)
 					when "2"
-						parseLineData["custdlv_amt"] = parseLineData["custdlv_amt"].round(decimal + 1)
-						parseLineData["custdlv_tax"] = (parseLineData["custdlv_amt"] * parseLineData["custdlv_taxrate"].to_f  / 100).round(decimal + 1)
+						dupLineData["custdlv_amt"] = dupLineData["custdlv_amt"].round(decimal + 1)
+						dupLineData["custdlv_tax"] = (dupLineData["custdlv_amt"] * parse_linedata["custdlv_taxrate"].to_f  / 100).round(decimal + 1)
 					when "3"
-						parseLineData["custdlv_amt"] = parseLineData["custdlv_amt"].ceil(decimal + 1)
-						parseLineData["custdlv_tax"] = (parseLineData["custdlv_amt"] * parseLineData["custdlv_taxrate"].to_f / 100).ceil(decimal + 1)
+						dupLineData["custdlv_amt"] = dupLineData["custdlv_amt"].ceil(decimal + 1)
+						dupLineData["custdlv_tax"] = (dupLineData["custdlv_amt"] * parse_linedata["custdlv_taxrate"].to_f / 100).ceil(decimal + 1)
 					end
 				else
-					parseLineData["custdlv_contractprice"] = "C"  ###C:マスター単価無
+					parse_linedata["custdlv_contractprice"] = "C"  ###C:マスター単価無
+					dupLineData["custdlv_price"] = 0
 				end
+				parse_linedata["custdlv_price"] = dupLineData["custdlv_price"].to_s 
+				parse_linedata["custdlv_masterprice"] = dupLineData["custdlv_masterprice"].to_s
+				parse_linedata["custord_price"] = dupLineData["custord_price"].to_s
+				parse_linedata["custord_amt"] = dupLineData["custord_amt"].to_s
+				parse_linedata["custord_tax"] = dupLineData["custord_tax"].to_s
 			end
 		when /custacts/  ###1:発注日ベース　2:仕入れ先きの出荷日ベース　3:検収ベース
-			if parseLineData["custact_contractprice"]  == "3"
+			if dupLineData["custact_contractprice"]  == "3"
 				strsql = %Q&
 					select * from custprices 
-							where custs_id = #{parseLineData["custact_cust_id"]} and opeitms_id = #{parseLineData["custact_opeitm_id"]}
-							and crrs_id_custprice = #{parseLineData["custact_crr_id"]}
-							and maxqty >= #{parseLineData["custact_qty"]}
-							and minqty < #{parseLineData["custact_qty"]}
-							and  expiredate >= to_date('#{parseLineData["custact_depdate"]}','yyyy/mm/dd')
+							where custs_id = #{dupLineData["custact_cust_id"]} and opeitms_id = #{dupLineData["custact_opeitm_id"]}
+							and crrs_id_custprice = #{dupLineData["custact_crr_id"]}
+							and maxqty >= #{dupLineData["custact_qty"]}
+							and minqty < #{dupLineData["custact_qty"]}
+							and  expiredate >= to_date('#{dupLineData["custact_depdate"]}','yyyy/mm/dd')
 							order by maxqty,expiredate limit 1
 					&
 				price = ActiveRecord::Base.connection.select_one(strsql)
 				if price
-			    decimal = parseLineData["crr_decimal"].to_i
-				  parseLineData["custact_amt"] = parseLineData["custact_qty"].to_f * price["price"].to_f
-				 	case parseLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
+			    decimal = dupLineData["crr_decimal"].to_i
+					dupLineData["custact_price"] = dupLineData["custact_masterprice"] = price["price"]
+				  dupLineData["custact_amt"] = dupLineData["custact_qty"].to_f * price["price"].to_f
+				 	case dupLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
 				 	when "1"
-				  	parseLineData["custact_amt"] = parseLineData["custact_amt"].floor(decimal + 1)
-						parseLineData["custact_tax"] = (parseLineData["custact_amt"] * parseLineData["custact_taxrate"].to_f / 100).floor(decimal )
+				  	dupLineData["custact_amt"] = dupLineData["custact_amt"].floor(decimal + 1)
+						dupLineData["custact_tax"] = (dupLineData["custact_amt"] * parse_linedata["custact_taxrate"].to_f / 100).floor(decimal )
 			   	when "2"
-						parseLineData["custact_amt"] = parseLineData["custact_amt"].round(decimal + 1)
-						parseLineData["custact_tax"] = (parseLineData["custact_amt"] * parseLineData["custact_taxrate"].to_f / 100).round(decimal + 1)
+						dupLineData["custact_amt"] = dupLineData["custact_amt"].round(decimal + 1)
+						dupLineData["custact_tax"] = (dupLineData["custact_amt"] * parse_linedata["custact_taxrate"].to_f / 100).round(decimal + 1)
 			   	when "3"
-						parseLineData["custact_amt"] = parseLineData["custact_amt"].ceil(decimal + 1)
-						parseLineData["custact_tax"] = (parseLineData["custact_amt"] * parseLineData["custact_taxrate"].to_f / 100).ceil(decimal + 1)
+						dupLineData["custact_amt"] = dupLineData["custact_amt"].ceil(decimal + 1)
+						dupLineData["custact_tax"] = (dupLineData["custact_amt"] * parse_linedata["custact_taxrate"].to_f / 100).ceil(decimal + 1)
 			   	end
 				else
-				  parseLineData["custord_price"] = parseLineData["custord_masterprice"] = 0
-				  parseLineData["custord_amt"] = 0
-				  parseLineData["custact_contractprice"] = "C"  ###C:マスター単価無
+				  dupLineData["custord_price"] = dupLineData["custord_masterprice"] = 0
+				  dupLineData["custord_amt"] = 0
+				  parse_linedata["custact_contractprice"] = "C"  ###C:マスター単価無
 				end
 		  end
+			parse_linedata["custact_masterprice"] = dupLineData["custact_masterprice"].to_s
+			parse_linedata["custact_price"] = dupLineData["custact_price"].to_s
+			parse_linedata["custact_amt"] = dupLineData["custact_amt"].to_s
+			parse_linedata["custact_tax"] = dupLineData["custact_tax"].to_s
 		end
-		return parseLineData,err
+		return parse_linedata,err
 	end
 
 	def proc_judge_check_amt parse_linedata,item,index,screenCode  ###M
@@ -1563,11 +1563,12 @@ module CtlFields
 			parseLineData[symamt] = parseLineData[symamt].ceil(decimal.to_i )
 			parseLineData[symtax] = (parseLineData[symamt] * parseLineData[symtaxrate].to_i / 100).ceil(decimal.to_i )
 		end
-		return parseLineData,err
+		parse_linedata[symamt] = parseLineData[symamt]
+		parse_linedata[symtax] = parseLineData[symtax]
+		return parse_linedata,err
 	end
 
-	def proc_judge_check_contractprice parse_linedata,item,index,screenCode  ###M   
-		parseLineData = parse_linedata.dup    
+	def proc_judge_check_contractprice parseLineData,item,index,screenCode  ###M   
     err = nil
     case screenCode
     when /purords/
@@ -1589,24 +1590,23 @@ module CtlFields
           err =  "error price 4 --->  price not decide"
       end
     end 
-		return parseLineData,err
   end
 
 	def proc_judge_check_taxrate parse_linedata,item,index,screenCode  ###MkInvoiveNoの時のみ
-		parseLineData = parse_linedata.dup
+		dupLineData = parse_linedata.dup
 		err = nil
 		case screenCode
 		when /puracts/  ###再度求める
-			case parseLineData["itm_taxflg"]
+			case dupLineData["itm_taxflg"]
 			when "A"
-				if parseLineData["puract_sno_purord"] != "" and !parseLineData["puract_sno_purord"].nil?
+				if dupLineData["puract_sno_purord"] != "" and !dupLineData["puract_sno_purord"].nil?
 					strsql = %Q&
-						select ISUdate from purords where sno = #{parseLineData["puract_sno_purord"]}
+						select isudate from purords where sno = #{dupLineData["puract_sno_purord"]}
 					&
 					base_date =  ActiveRecord::Base.connection.select_value(strsql)
 				else  ###purordsを纏めるとき同一taxrateであること
 					strsql = %Q&
-						select * from linktbls where tblid = #{parseLineData["puract_id"]} and tblname = 'puracts'
+						select * from linktbls where tblid = #{dupLineData["puract_id"]} and tblname = 'puracts'
 					&
 					src =  ActiveRecord::Base.connection.select_one(strsql)
 					case src["srctblname"]
@@ -1682,48 +1682,48 @@ module CtlFields
 					end
 				end
 			when "0","1","9"
-				base_date =  parseLineData["puract_rcptdate"]
+				base_date =  dupLineData["puract_rcptdate"]
 			else
-				raise"taxflg error B paymants_id : #{parseLineData["paymets_id"]} LINE:#{__LINE__} "
+				raise"taxflg error B paymants_id : #{dupLineData["paymets_id"]} LINE:#{__LINE__} "
 			end
 			strsql = %Q&
-						select taxrate from taxtbls where taxflg = '#{parseLineData["itm_taxflg"]}' 
+						select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
 													and expiredate >= cast('#{base_date}' as date)
 													order by expiredate limit 1
 			&
-			parseLineData["puract_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
+			dupLineData["puract_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
 		when /purrets/
 			strsql = %Q&
-				select taxrate from puracts where sno_puract = #{parseLineData["purret_sno_puract"]}
+				select taxrate from puracts where sno_puract = #{dupLineData["purret_sno_puract"]}
 			&
-			parseLineData["puract_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
+			dupLineData["puract_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
 		when /shpschs/  ###shpacts以外は求めて表示するだけ
-			base_date =   parseLineData["shpsch_isudate"]
+			base_date =   dupLineData["shpsch_isudate"]
 			strsql = %Q&
-						select taxrate from taxtbls where taxflg = '#{parseLineData["itm_taxflg"]}' 
+						select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
 													and expiredate >= cast('#{base_date}' as date)
 													order by expiredate limit 1
 			&
-			parseLineData["shpsch_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
+			dupLineData["shpsch_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
 		when /shpacts/  ###shpacts以外は求めて表示するだけ
-			base_date =   parseLineData["shpact_rcptdate"]
+			base_date =   dupLineData["shpact_rcptdate"]
 			strsql = %Q&
-						select taxrate from taxtbls where taxflg = '#{parseLineData["itm_taxflg"]}' 
+						select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
 													and expiredate >= cast('#{base_date}' as date)
 													order by expiredate limit 1
 			&
-			parseLineData["shpsch_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
+			dupLineData["shpsch_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
 		when /custacts/ ###再度求める
-			case parseLineData["itm_taxflg"]  #itms[0:非課税・不課税,1:消費税,9:低減税率,A::請負工事・指定役務]
+			case dupLineData["itm_taxflg"]  #itms[0:非課税・不課税,1:消費税,9:低減税率,A::請負工事・指定役務]
 			when "A"
-				if parseLineData["custact_sno_custord"] != "" and !parseLineData["custact_sno_custord"].nil?
+				if dupLineData["custact_sno_custord"] != "" and !dupLineData["custact_sno_custord"].nil?
 					strsql = %Q&
-						select isudate from custords where sno = #{parseLineData["custact_sno_custord"]}
+						select isudate from custords where sno = #{dupLineData["custact_sno_custord"]}
 					&
 					base_date =  ActiveRecord::Base.connection.select_value(strsql)
 				else  ###purordsを纏めるとき同一taxrateであること
 					strsql = %Q&
-						select * from linkcusts where tblid = #{parseLineData["custact_id"]} and tblname = 'custacts'
+						select * from linkcusts where tblid = #{dupLineData["custact_id"]} and tblname = 'custacts'
 					&
 					src =  ActiveRecord::Base.connection.select_one(strsql)
 					case src["srctblname"]
@@ -1762,54 +1762,56 @@ module CtlFields
 				end
 			when "0","1","9"
 				# strsql = %Q&
-				# 	select saledate from custacts where  id = #{parseLineData["custact_id"]}
+				# 	select saledate from custacts where  id = #{dupLineData["custact_id"]}
 				# &
-				base_date =   parseLineData["custact_saledate"]
+				base_date =   dupLineData["custact_saledate"]
 			else
-				raise"taxflg error C 1 paymants_id : #{parseLineData["paymets_id"]} LINE:#{__LINE__} "
+				raise"taxflg error C 1 paymants_id : #{dupLineData["paymets_id"]} LINE:#{__LINE__} "
 			end
 			strsql = %Q&
-						select taxrate from taxtbls where taxflg = '#{parseLineData["itm_taxflg"]}' 
+						select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
 													and expiredate >= cast('#{base_date}' as date)
 													order by expiredate limit 1
 			&
-			parseLineData["custact_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
+			dupLineData["custact_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
 
 		when /custrets/
 			strsql = %Q&
-				select taxrate from custacts where sno_puract = #{parseLineData["custret_sno_custact"]}
+				select taxrate from custacts where sno_puract = #{dupLineData["custret_sno_custact"]}
 			&
-			parseLineData["custact_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
+			dupLineData["custact_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
 		when /custords/
-			case parseLineData["itm_taxflg"]
+			case dupLineData["itm_taxflg"]
 			when "A"
-				base_date =  parseLineData["custord_duedate"]
+				base_date =  dupLineData["custord_duedate"]
       when "0","1","9"
-        base_date =  parseLineData["custord_isudate"]
+        base_date =  dupLineData["custord_isudate"]
 			else
-				base_date =  parseLineData["custord_isudate"]
+				base_date =  dupLineData["custord_isudate"]
 			end
 			strsql = %Q&
-						select taxrate from taxtbls where taxflg = '#{parseLineData["itm_taxflg"]}' 
+						select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
 													and expiredate >= cast('#{base_date}' as date)
 													order by expiredate limit 1
 			&
-			parseLineData["custord_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
+			dupLineData["custord_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
 		when /custschs/
-			case parseLineData["itm_taxflg"]
+			case dupLineData["itm_taxflg"]
 			when "A"
-				base_date =  parseLineData["custsch_duedate"]
+				base_date =  dupLineData["custsch_duedate"]
 			else
-				base_date =  parseLineData["custsch_isudate"]
+				base_date =  dupLineData["custsch_isudate"]
 			end
 			strsql = %Q&
-						select taxrate from taxtbls where taxflg = '#{parseLineData["itm_taxflg"]}' 
+						select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
 													and expiredate >= cast('#{base_date}' as date)
 													order by expiredate limit 1
 			&
-			parseLineData["custsch_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
+			dupLineData["custsch_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
 		end
-		return parseLineData,err
+		strTaxRate = screenCode.split("_")[1].chop  + "_taxrate"
+		dupLineData[strTaxRate] = dupLineData[strTaxRate].to_s
+		return dupLineData,err
 	end
 
 	def proc_judge_check_mkprdpurord_code(parseLineData,item,index,screenCode)
@@ -1946,8 +1948,7 @@ module CtlFields
 		return parseLineData,err
 	end
 
-	def proc_judge_check_seqnoOfTblfields(parse_linedata,item,index,screenCode)
-		parseLineData = parse_linedata.dup
+	def proc_judge_check_seqnoOfTblfields(parseLineData,item,index,screenCode)
     err = nil
 		case screenCode 
 		when /tblfields/
@@ -2157,13 +2158,13 @@ module CtlFields
 	def proc_field_duedate tblnamechop,command_x,parent,nd
     	message = ""
 		case tblnamechop
-		  when /^pur|^prd|^dymsch|^cust/
+		  when /^pur|^prd|^dymsch|^cust|^con|^run/
         	if parent["shelfnos_id"].to_i  == command_x["#{tblnamechop}_shelfno_id_to"].to_i
           		if parent["unitofduration"] == nd["unitofduration"]
             		if parent["unitofduration"] == "Day "
               			pstarttime = parent["starttime"].to_date
               			case tblnamechop
-                			when /^prd|^shp|^dym|^run/
+                			when /^prd|^shp|^dym|^run|^con/
                     			duedate,message = proc_calculate_working_day(tblnamechop,pstarttime,1,"-",command_x["shelfno_loca_id_shelfno_to"])
                 			when /^cust/
                     			duedate,message = proc_calculate_working_day(tblnamechop,pstarttime,1,"-",command_x["#{tblnamechop}_cust_id"])
@@ -2173,7 +2174,7 @@ module CtlFields
             		else
               			pstarttime = parent["starttime"].to_time  ###3600:1時間
               			case tblnamechop
-                			when /^prd|^shp|^dym|^run/
+                			when /^prd|^shp|^dym|^run|^con/
                   				duedate,message = proc_calculate_working_time(tblnamechop,pstarttime,3600,"-",command_x["shelfno_loca_id_shelfno_to"])
                 			when /^cust/
                   				duedate,message = proc_calculate_working_time(tblnamechop,pstarttime,3600,"-",command_x["#{tblnamechop}_cust_id"])
@@ -2185,7 +2186,7 @@ module CtlFields
             		pstarttime = parent["starttime"].to_time
             		if  nd["unitofduration"] == "Hour"
             		 		case tblnamechop
-              	 			when /^prd|^shp|^dym|^run/
+              	 			when /^prd|^shp|^dym|^run|^con/
                    			duedate,message = proc_calculate_working_time(tblnamechop,pstarttime,1,"-",command_x["shelfno_loca_id_shelfno_to"])
               	 			when /^cust/
                      		duedate,message = proc_calculate_working_time(tblnamechop,pstarttime,1,"-",command_x["#{tblnamechop}_cust_id"])
@@ -2194,7 +2195,7 @@ module CtlFields
             		 		end
 								else
             		 		case tblnamechop
-              	 			when /^prd|^shp|^dym|^run/
+              	 			when /^prd|^shp|^dym|^run|^con/
                    			duedate,message = proc_calculate_working_day(tblnamechop,pstarttime,1,"-",command_x["shelfno_loca_id_shelfno_to"])
               	 			when /^cust/
                      		duedate,message = proc_calculate_working_day(tblnamechop,pstarttime,1,"-",command_x["#{tblnamechop}_cust_id"])
@@ -2206,10 +2207,10 @@ module CtlFields
 								end
             		# if  nd["unitofduration"] == "Hour"
                 		case tblnamechop
-                  			when /^dym|^shp|^run/
+                  			when /^dym|^shp|^run|^con/
                     			strsql = %Q&select effectivetime from hcalendars where locas_id = #{command_x["shelfno_loca_id_shelfno_to"]}&
                     			effectivetime = ActiveRecord::Base.connection.select_value(strsql)
-                  			when /^prd/
+                  			when /^prd|^con/
                     			strsql = %Q&select effectivetime from hcalendars where locas_id =(
                                         select locas_id_calendar from workplaces where locas_id_workplace = #{command_x["shelfno_loca_id_shelfno"]})&
                     			effectivetime = ActiveRecord::Base.connection.select_value(strsql)
@@ -2247,7 +2248,7 @@ module CtlFields
               			# else
                 			pstarttime = parent["starttime"].to_time
                 			case tblnamechop
-                  				when /^prd|^shp|^dym/
+                  				when /^prd|^shp|^dym|^con/
                     				duedate,message = proc_calculate_working_time(tblnamechop,pstarttime,3600,"-",command_x["shelfno_loca_id_shelfno_to"])
                   				when /^cust/
                     				duedate,message = proc_calculate_working_time(tblnamechop,pstarttime,3600,"-",command_x["#{tblnamechop}_cust_id"])
@@ -2262,7 +2263,7 @@ module CtlFields
                   				when /^shp|^dym|^run/
                     				strsql = %Q&select effectivetime from hcalendars where locas_id = #{command_x["shelfno_loca_id_shelfno_to"]}&
                     				effectivetime = ActiveRecord::Base.connection.select_value(strsql)
-                  				when /^prd/
+                  				when /^prd|^con/
                     				strsql = %Q&select effectivetime from hcalendars where locas_id =(
                                         			select locas_id_calendar from workplaces where locas_id_workplace = #{command_x["shelfno_loca_id_shelfno"]})&
                     				effectivetime = ActiveRecord::Base.connection.select_value(strsql)
@@ -2292,7 +2293,7 @@ module CtlFields
               			if duration["unitofduration"] == "Day " and duration["duration"].to_f == duration["duration"].to_i
                 			pstarttime = parent["starttime"].to_date
                 			case tblnamechop
-                  				when /^prd|^shp|^dym|^run/
+                  				when /^prd|^shp|^dym|^run|^con/
                     				duedate,message = proc_calculate_working_day(tblnamechop,pstarttime,duration["duration"].to_i,"-",command_x["shelfno_loca_id_shelfno"])
                   				when /^cust/
                     				duedate,message = proc_calculate_working_day(tblnamechop,pstarttime,duration["duration"].to_i,"-",command_x["#{tblnamechop}_cust_id"])
@@ -2303,7 +2304,7 @@ module CtlFields
                 			pstarttime = parent["starttime"].to_time
                 			duration = duration["duration"].to_f * Constants::Whr * 3600
                 			case tblnamechop
-                  				when /^prd|^shp|^dym/
+                  				when /^prd|^shp|^dym|^con/
                     				duedate,message = proc_calculate_working_time(tblnamechop,pstarttime,duration,"-",command_x["shelfno_loca_id_shelfno"])
                   				when /^cust/
                     				duedate,message = proc_calculate_working_time(tblnamechop,pstarttime,duration,"-",command_x["#{tblnamechop}_cust_id"])
@@ -2314,7 +2315,7 @@ module CtlFields
             		else  ###場所違いでtransportsが設定されていない時
               			pstarttime = parent["starttime"].to_date
               			case tblnamechop
-                			when /^prd|^shp|^dym|^run/
+                			when /^prd|^shp|^dym|^run|^con/
                     			duedate,message = proc_calculate_working_day(tblnamechop,pstarttime,1,"-",command_x["shelfno_loca_id_shelfno"])
                 			when /^cust/
                       			duedate,message = proc_calculate_working_day(tblnamechop,pstarttime,1,"-",command_x["#{tblnamechop}_cust_id"])
@@ -2444,9 +2445,9 @@ module CtlFields
 							&
 							shelfno = ActiveRecord::Base.connection.select_one(strsql)
             	starttime,message  = proc_calculate_working_time("shpsch",cduedate,duration,"-",shelfno["locas_id_shelfno"])
-		      when /prd/
-            	if tblnamechop == "prdsch"
-		 	        		str_qty = command_x["prdsch_qty_sch"].to_f
+		      when /prd|con/
+            	if tblnamechop =~ /sch/
+              		str_qty = command_x["#{tblnamechop}_qty_sch"].to_f
             	else
               		str_qty = command_x["#{tblnamechop}_qty"].to_f
             	end
@@ -2463,24 +2464,24 @@ module CtlFields
 					              &
 			    	appas = ActiveRecord::Base.connection.select_all(strsql)
 			    	appas.each do |appa|	###複数の装置のLTがある時
-				    	if  (appa["durationfacility"].to_f) > 0   ###装置のlt
-					      if (appa["packqtyfacility"].to_f) > 0  ###nd["duration"].nil? --> tbl=dymschs&opeitms無
-                  			tduration = appa["durationfacility"].to_f*qty_sch/appa["packqtyfacility"].to_f    
+				    	if  (appa["durationfacility"]) > 0   ###装置のlt
+					      if (appa["packqtyfacility"]) > 0  ###nd["duration"].nil? --> tbl=dymschs&opeitms無
+                  			tduration = appa["durationfacility"]*str_qty/appa["packqtyfacility"]    
 					      else
-                  			tduration = appa["durationfacility"].to_f
+                  			tduration = appa["durationfacility"]
 					      end
-				    	end
-              		if nd["unitofduration"] ==  "Hour"
+              	if nd["unitofduration"] ==  "Hour"
                 		tduration = tduration * 3600
-              		else
+              	else
                 		tduration = tduration * Constants::Whr * 3600
-              		end
-              
-              		if tduration > duration
+              	end
+								
+              	if tduration > duration
                 		duration = tduration
-              		end
-            	end  
-            	starttime,message = proc_calculate_working_time(tblnamechop,cduedate,duration,"-",command_x["shelfno_loca_id_shelfno"])
+              	end
+				    	end
+            end  
+            starttime,message = proc_calculate_working_time(tblnamechop,cduedate,duration,"-",command_x["shelfno_loca_id_shelfno"])
 		      when /^dvs/  ###親はprdschs
             	# strsql = %Q&
 				    #           select f.shelfnos_id from facilities f 
@@ -2519,11 +2520,11 @@ module CtlFields
 				        starttime =  pstarttime 
 			        when "postprocess"
 				        starttime = pduedate 
-              		else
-                	raise" class:#{self} ,line:#{__LINE__},processname d command_x:#{command_x} "
+              else
+                	raise" class:#{self} ,line:#{__LINE__},processname:#{command_x["#{tblnamechop}_processname"]},command_x:#{command_x} "
 			      end
         	else
-            	raise" class:#{self} ,line:#{__LINE__},  tblnamechop d1 command_x:#{command_x} "
+            	raise" class:#{self} ,line:#{__LINE__},  tblnamechop:#{tblnamechop}, command_x:#{command_x} "
     		end
     else
 		    pstarttime =  parent["starttime"].to_date  ###ercschsの親はdvsschs
@@ -2536,9 +2537,9 @@ module CtlFields
             	starttime,message = proc_calculate_working_day(tblnamechop,cduedate,duration,"-",command_x["shelfno_loca_id_shelfno"])
 		      when /^cust/
             	starttime,message = proc_calculate_working_day(tblnamechop,cduedate,duration,"-",command_x["#{tblnamechop}_cust_id"])
-		      when /^prd/
-            	if tblnamechop== "prdsch"
-		 	        str_qty = command_x["prdsch_qty_sch"].to_f
+		      when /^prd|^con/
+            	if tblnamechop =~ /sch/
+              		str_qty = command_x["#{tblnamechop}_qty_sch"].to_f
             	else
               		str_qty = command_x["#{tblnamechop}_qty"].to_f
             	end
@@ -2557,7 +2558,7 @@ module CtlFields
 			      appas.each do |appa| 		
 				    if  (appa["durationfacility"].to_f) > 0   ###装置のlt
 					      if (appa["packqtyfacility"].to_f) > 0  ###nd["duration"].nil? --> tbl=dymschs&opeitms無
-                  			tduration = (appa["durationfacility"].to_f)*qty_sch/(appa["packqtyfacility"].to_f).ceil    
+                  			tduration = (appa["durationfacility"].to_f)*str_qty/(appa["packqtyfacility"].to_f).ceil    
 					      else
                   			tduration = (appa["durationfacility"].to_f).ceil  
 					      end
