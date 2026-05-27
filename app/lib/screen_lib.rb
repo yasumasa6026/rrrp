@@ -1314,7 +1314,13 @@ module ScreenLib
 							inner join (select id second_id from  #{innerjoinTblName} 
 									where id in #{strselects}
 									) second on main.#{mainTblName.chop}_paretblid = second.second_id
-							where main.#{mainTblName.chop}_paretblname = '#{innerjoinTblName}' #{params[:where_str]}
+							#{params[:where_str]}
+							#{if params[:where_str] == "" 
+									"where" 
+								else
+									"and"
+								end}								
+							main.#{mainTblName.chop}_paretblname = '#{innerjoinTblName}'  
 					& 
 			str_orderby = %Q&order by #{mainTblName.chop}_paretblid,id desc &
       params[:sortBy] = params[:groupBy] = []
