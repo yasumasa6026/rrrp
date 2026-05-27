@@ -1,7 +1,10 @@
 export  function yupErrCheck (schema,field,lineData) {
   let mfield 
   try{
-      if(field==="confirm"){schema.validateSync(lineData)
+      if(field==="confirm"){schema.validateSync(lineData, {
+                                    abortEarly: false, // 最初のエラーだけでなく、すべての一致しないフィールドのエラーを収集する
+                                    stripUnknown: true // スキーマで定義されていない未知のキーを削除する
+            })
             lineData["confirm_gridmessage"] = "doing"
             let dclinedata = {}
             Object.keys(lineData).map((fd)=>{
@@ -28,7 +31,7 @@ export  function yupErrCheck (schema,field,lineData) {
    }      
     catch(err){
         lineData.confirm = false
-        lineData["confirm_gridmessage"] = " error yupErrCheck"
+        lineData["confirm_gridmessage"] = ` error yupErrCheck fields:${err.errors}`
         lineData["errPath"] = []
         err.errors.map((fd) => {
             mfield = fd.split(" ")[0]+"_gridmessage"  //ex:fd:purord_confirm must be a `string` type, but the final value was:..."

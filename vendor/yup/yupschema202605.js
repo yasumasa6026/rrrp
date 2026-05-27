@@ -1886,6 +1886,7 @@ export const yupschema = {
                   shelfno_code_fm:Yup.string().max(50).required(),
            },
           r_custdlvs:{
+                  boxe_code_custdlv:Yup.string().max(50).required(),
                   crr_code:Yup.string().max(50).required(),
                   crr_code_bill_cust:Yup.string().max(50).nullable(),
                   custdlv_amt:Yup.number(14,4).transform((value, originalValue) => {

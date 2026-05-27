@@ -1481,7 +1481,7 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
 						tbl_qty -= link["qty_src"].to_f
 					else
 						strsql = %Q&
-									update linkcusts set qty_src = #{src_qty},remark = ' #{self}, line:(#{__LINE__}) ',
+									update linkcusts set qty_src = #{tbl_qty},remark = ' #{self}, line:(#{__LINE__}) ',
 											updated_at = cast('#{Time.now.strftime("%Y/%m/%d %H:%M:%S")}' as timestamp)
 											where id = #{link["id"]}
 							&
