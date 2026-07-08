@@ -256,49 +256,8 @@ module GanttChart
 							  				end
 												@bgantts[tree["level"]] = n0	
 												@bgantts[tree["level"][0..-4]][:depend] <<  tree["level"] if tree["level"] != "#{@base}"
-									if @buttonflg =~ /gantt/
-														treesql = %Q%
-															select a.srctblname,a.srctblid,a.trngantts_id from trngantts chil
-																	inner join (select alloc.srctblname,alloc.srctblid,alloc.trngantts_id, 
-																										t.tblname,t.tblid from trngantts t
-																									inner join alloctbls alloc on t.id = alloc.trngantts_id  and alloc.qty_linkto_alloctbl > 0
-																							)pare on pare.tblname = chil.paretblname and chil.paretblid = pare.tblid
-																	inner JOIN alloctbls  a  on a.trngantts_id = chil.id  and a.qty_linkto_alloctbl > 0
-															where pare.srctblname = '#{tree["tbl"]}' and pare.srctblid = #{tree["id"]}
-															and a.qty_linkto_alloctbl > 0
-															and pare.trngantts_id in (#{tree["trngantts_id"].join(",")}) and pare.trngantts_id != a.trngantts_id
-															order by a.srctblname,a.srctblid
-														%
-									else 
-													treesql = %Q&
-															select pare.srctblname,pare.srctblid,pare.trngantts_id from trngantts chil
-																	inner join (select alloc.srctblname,alloc.srctblid,alloc.trngantts_id, 
-																										t.tblname,t.tblid from trngantts t
-																									inner join alloctbls alloc on t.id = alloc.trngantts_id  
-																									where  alloc.qty_linkto_alloctbl > 0
-																							)pare on pare.tblname = chil.paretblname and chil.paretblid = pare.tblid
-																	inner JOIN alloctbls  a  on a.trngantts_id = chil.id  and a.qty_linkto_alloctbl > 0
-															where a.srctblname in ('#{tree["tbl"]}') and a.srctblid in (#{tree["id"]}) 
-																and a.qty_linkto_alloctbl > 0
-																and a.trngantts_id in (#{tree["trngantts_id"].join(",")}) and chil.id != pare.trngantts_id 
-													union	---  custords		top								
-														select  pare.orgtblname srctblname,pare.orgtblid srctblid,alloc.trngantts_id 
-																		from trngantts trn
-																		inner join trngantts  pare 
-																		on trn.orgtblname = pare.orgtblname and trn.paretblname = pare.tblname
-																			and trn.orgtblid = pare.orgtblid and trn.paretblid = pare.tblid		
-																		inner join alloctbls alloc on alloc.trngantts_id = trn.id
-																		inner join alloctbls pa on pa.trngantts_id = pare.id
-																		where alloc.srctblname = ('#{tree["tbl"]}') and alloc.srctblid = (#{tree["id"]})
-																			and (trn.tblname != trn.paretblname or trn.tblid != trn.paretblid) and pare.tblname like 'cust%' 
-																			and alloc.qty_linkto_alloctbl > 0 and pa.qty_linkto_alloctbl > 0 
-																			and trn.id != pare.id 
-											 								and alloc.trngantts_id in (#{tree["trngantts_id"].join(",")}) 
-																		order by srctblname ,srctblid 
-						    						& 
-									end
 									treeTable = {"tbl" => nil,"id" => nil,"trngantts_id" => []}
-									ActiveRecord::Base.connection.select_all(treesql).each_with_index do |rec,idx|	
+									ActiveRecord::Base.connection.select_all(getTreeSql(mst_code,tree)).each_with_index do |rec,idx|	
 										if 	treeTable["tbl"]  == rec["srctblname"] and treeTable["id"]  == rec["srctblid"]
 												treeTable["trngantts_id"]  << rec["trngantts_id"]
 										else 
@@ -791,12 +750,12 @@ module GanttChart
 						if n0[:start] < n0[:duedate]
 								n0[:delay] = false
                 n0[:depend].split(",").each do |dep|
-                  if @bgantts[dep] && @bgantts[dep][:duedate] > n0[:start]
+                  if @bgantts[dep] && @bgantts[dep][:duedate] > n0[:start] 
                     @bgantts[dep][:delay] = true
                   end
                 end
 						else
-								n0[:delay] = true
+								n0[:delay] = true if n0[:tblname]  !~ /^dvs|^erc/  ### 　修正要　dvs,ercのstarttime duedateが正しくセットされてない
 						end
 				else
 				end
@@ -869,7 +828,7 @@ module GanttChart
                   when "pursch"  ###カレンダーのlocas_idは専用のloca_idを使用する。
                     suppliers_id = ActiveRecord::Base.connection.select_value(%Q&select id from suppliers where locas_id_supplier = #{contents[:locas_id]}&)
             				starttime,message = CtlFields.proc_calculate_working_day(tblnamechop,n0[:duedate].to_date,rec["duration"],"+",0)  ###場所はsystem"0"を使用
-            				duedate,message = CtlFields.proc_calculate_working_day(tblnamechop,starttime,rec["duration"],"-",supplier_id) 
+            				duedate,message = CtlFields.proc_calculate_working_day(tblnamechop,starttime,rec["duration"],"-",suppliers_id) 
                   when "prdsch"
 										if n0[:locas_id] == rec["locas_id"]  ###親の場所==子の場所
 												starttime = n0[:duedate].to_date
@@ -1106,9 +1065,9 @@ module GanttChart
 								end	
             end
             if  (rec["postprocessinglt"].to_f > 0 )
-              	if @buttonflg =~ /reverse/  ##
+              	if @buttonflg =~ /reverse/  ##	
             			duedate,message = CtlFields.proc_calculate_working_day(tblnamechop,n0[:duedate].to_date,1,"+",facilities_id)  ###場所はsystem"0"を使用
-                	contents[:duedate] = tmp_com["dvssch_duedate"].strftime("%Y-%m-%d")
+                	contents[:duedate] = duedate.strftime("%Y-%m-%d")
 								else
                 	nd =  {"duration"=>(rec["postprocessinglt"]).to_f,"unitofduration"=>(rec["unitofdvs"]||="Day ")}
                 	tmp_com = {"dvssch_duedate" => n0[:duedate],"dvssch_starttime" => n0[:duedate],
@@ -1258,19 +1217,54 @@ module GanttChart
       ope = ActiveRecord::Base.connection.select_one(strsql)
       return ope
     end
+    
+		def getTreeSql(mst_code,tree)
+				if @buttonflg =~ /gantt/
+								%Q%
+															select a.srctblname,a.srctblid,a.trngantts_id from trngantts chil
+																	inner join (select alloc.srctblname,alloc.srctblid,alloc.trngantts_id, 
+																										t.tblname,t.tblid from trngantts t
+																									inner join alloctbls alloc on t.id = alloc.trngantts_id  and alloc.qty_linkto_alloctbl > 0
+																							)pare on pare.tblname = chil.paretblname and chil.paretblid = pare.tblid
+																	inner JOIN alloctbls  a  on a.trngantts_id = chil.id  and a.qty_linkto_alloctbl > 0
+															where pare.srctblname = '#{tree["tbl"]}' and pare.srctblid = #{tree["id"]}
+															and a.qty_linkto_alloctbl > 0
+															and pare.trngantts_id in (#{tree["trngantts_id"].join(",")}) and pare.trngantts_id != a.trngantts_id
+															order by a.srctblname,a.srctblid
+														%
+				else
+					case mst_code
+						when /pur|prd/ 
+								%Q&
+															select pare.srctblname,pare.srctblid,pare.trngantts_id from trngantts chil
+																	inner join (select alloc.srctblname,alloc.srctblid,alloc.trngantts_id, 
+																										t.tblname,t.tblid from trngantts t
+																									inner join alloctbls alloc on t.id = alloc.trngantts_id  
+																									where  alloc.qty_linkto_alloctbl > 0
+																							)pare on pare.tblname = chil.paretblname and chil.paretblid = pare.tblid
+																	inner JOIN alloctbls  a  on a.trngantts_id = chil.id  and a.qty_linkto_alloctbl > 0
+															where a.srctblname in ('#{tree["tbl"]}') and a.srctblid in (#{tree["id"]}) 
+																and a.qty_linkto_alloctbl > 0
+																and a.trngantts_id in (#{tree["trngantts_id"].join(",")}) and chil.id != pare.trngantts_id 
+													union	---  custords		top								
+														select  pare.orgtblname srctblname,pare.orgtblid srctblid,alloc.trngantts_id 
+																		from trngantts trn
+																		inner join trngantts  pare 
+																		on trn.orgtblname = pare.orgtblname and trn.paretblname = pare.tblname
+																			and trn.orgtblid = pare.orgtblid and trn.paretblid = pare.tblid		
+																		inner join alloctbls alloc on alloc.trngantts_id = trn.id
+																		inner join alloctbls pa on pa.trngantts_id = pare.id
+																		where alloc.srctblname = ('#{tree["tbl"]}') and alloc.srctblid = (#{tree["id"]})
+																			and (trn.tblname != trn.paretblname or trn.tblid != trn.paretblid) and pare.tblname like 'cust%' 
+																			and alloc.qty_linkto_alloctbl > 0 and pa.qty_linkto_alloctbl > 0 
+																			and trn.id != pare.id 
+											 								and alloc.trngantts_id in (#{tree["trngantts_id"].join(",")}) 
+																		order by srctblname ,srctblid 
+						    &
+					end
+				end
+		end
 
-    def get_ordtbl_ordid tblname,tblid
-      if tblname =~ /ords$/
-        strsql %Q&select srctblname,srctblid from linktbls 
-                  where tblname = '#{tblname} and tblid = #{tblid}		
-        &
-        ord = ActiveRecord::Base.connection.select_one(strsql)
-        tblid = ord["srctblid"]
-        tblname = ord["srctblname"]
-      end	
-      return tblname,tblid
-    end
-     
     def update_opeitm_from_gantt(copy_opeitm,value ,command_r)
       if copy_opeitm
         copy_opeitm.each do |k,v|

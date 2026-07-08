@@ -416,9 +416,7 @@ module Shipment
 					command_c["#{yield}_gno"] = parent["sno"] 
 					case child["consumtype"]
 					when "CON"
-						qty_sch = CtlFields.proc_cal_qty_sch(parent["qty"].to_f,
-														child["chilnum"].to_f,child["parenum"].to_f,child["packqty"].to_f,child["consumunitqty"].to_f,
-														child["consumminqty"].to_f,child["consumchgoverqty"].to_f)
+						qty_sch = CtlFields.proc_cal_qty_sch(parent["qty"].to_f,child["chilnum"].to_f,child["parenum"].to_f)
 						command_c["#{yield}_duedate"] = command_c["#{yield}_depdate"] = (parent["starttime"].to_time - 24*3600).strftime("%Y-%m-%d %H:%M:%S")   ###稼働日考慮
 					when "mold","ITool"
 						qty_sch = 1
@@ -701,8 +699,7 @@ module Shipment
 		
 		stkinout["qty_sch"] = stkinout["qty"] = stkinout["qty_stk"] =  stkinout["qty_real"] = 0
 		command_c["#{tblnamechop}_#{str_con_qty}"] = CtlFields.proc_cal_qty_sch(parent[str_pare_qty].to_f,
-										                              child["chilnum"].to_f,child["parenum"].to_f,child["packqty"].to_f,
-										                              child["consumunitqty"].to_f,child["consumminqty"].to_f,child["consumchgoverqty"].to_f)
+										                              child["chilnum"].to_f,child["parenum"].to_f)
 		command_c["#{tblnamechop}_person_id_upd"] = reqparams[:person_id_upd]
 		command_c["#{tblnamechop}_created_at"] = Time.now
 		command_c["id"] = ArelCtl.proc_get_nextval("#{tblnamechop}s_seq")
@@ -746,9 +743,7 @@ module Shipment
 															 order by  nd.priority_nditm desc
                        %
         nd = ActiveRecord::Base.connection.select_one(ndsql)
-        new_con_qty = CtlField.proc_cal_qty_sch(tbldata[str_qty].to_f,
-                                 nd["chilnum"],nd["parenum"],
-                                 nd["packqty"],child["consumunitqty"].to_f,nd["consumminqty"],nd["consumchgoverqty"])
+        new_con_qty = CtlField.proc_cal_qty_sch(tbldata[str_qty].to_f, nd["chilnum"],nd["parenum"])
         last_lotstks << {"tblname" => conTblname,"tblid" => consume["id"],"qty_src" =>  new_con_qty - consume[str_qty].to_f,
                           "paretblname" => tblname,"paretblid" => tbldata["id"]}
       end
@@ -1029,7 +1024,6 @@ module Shipment
 												1
 											else
 												(shp["qty"].to_f / shp["packqty"].to_f).ceil
-
 											end
 
 		if shp["paretblname"] =~ /^pur/   ###tblname= 'feepayment'--->有償支給

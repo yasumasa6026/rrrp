@@ -263,7 +263,7 @@ module ArelCtl
 		if link_id   ### xxxordsの数量が減ざれ引き当てが外れ、その後xxxordsがfreeになり再度引き合ったとき
 				strsql = %Q&
 									update linktbls set qty_src = qty_src + #{newsrc["qty_src"]} ,amt_src = amt_src + #{newsrc["amt_src"]} ,
-																			remark = '#{newsrc["remark"]}'||remark
+																			remark = '#{newsrc["remark"]}'||left(remark,1000)
 																			where id = #{link_id}
 				&
 			ActiveRecord::Base.connection.update(strsql)
@@ -420,7 +420,7 @@ module ArelCtl
 		  if alloctbl
 			  strsql = %Q&
 						update alloctbls set qty_linkto_alloctbl = qty_linkto_alloctbl +  #{rec_alloc["qty_linkto_alloctbl"]},
-									remark = '#{rec_alloc["remark"]}'||remark   --- persond_id_upd=0
+									remark = '#{rec_alloc["remark"]}'||left(remark,1000)   --- persond_id_upd=0
 									where id = #{alloctbl["id"]}
 					&
 			  ActiveRecord::Base.connection.update(strsql)
@@ -483,14 +483,14 @@ module ArelCtl
             last_lotstk["qty_src"] = rec_alloc["qty_linkto_alloctbl"]
 			      strsql = %Q&
 						  update alloctbls set qty_linkto_alloctbl = qty_linkto_alloctbl + #{rec_alloc["qty_linkto_alloctbl"]},
-									remark = '#{rec_alloc["remark"]}'||remark   --- persond_id_upd=0
+									remark = '#{rec_alloc["remark"]}'||left(remark,1000)   --- persond_id_upd=0
 									where id = #{alloctbl["id"]}
 					    &
           else
             last_lotstk["qty_src"] = rec_alloc["qty_linkto_alloctbl"].to_f - alloctbl["qty_linkto_alloctbl"].to_f 
 			      strsql = %Q&
 						  update alloctbls set qty_linkto_alloctbl = #{rec_alloc["qty_linkto_alloctbl"]},
-									remark = '#{rec_alloc["remark"]}'||left(remark,100)  --- persond_id_upd=0
+									remark = '#{rec_alloc["remark"]}'||left(remark,1000)  --- persond_id_upd=0
 									where id = #{alloctbl["id"]}&
           end
 		      ActiveRecord::Base.connection.update(strsql)
@@ -503,7 +503,7 @@ module ArelCtl
             last_lotstk = {"tblname" => src["srctblname"],"tblid" => src["srctblid"],"qty_src" => rec_alloc["qty_linkto_alloctbl"],"lotno" => "","packno" => ""}
 			      strsql = %Q&
 						  update alloctbls set qty_linkto_alloctbl = qty_linkto_alloctbl + #{rec_alloc["qty_linkto_alloctbl"]},
-									remark = '#{rec_alloc["remark"]}'||left(remark,100)   --- persond_id_upd=0
+									remark = '#{rec_alloc["remark"]}'||left(remark,1000)   --- persond_id_upd=0
 									where id = #{rec_alloc["id"]}
                   &
         else   ### そのままの数値で更新
@@ -511,7 +511,7 @@ module ArelCtl
             last_lotstk["qty_src"] = rec_alloc["qty_linkto_alloctbl"].to_f - src["qty_linkto_alloctbl"].to_f 
 			      strsql = %Q&
 						  update alloctbls set qty_linkto_alloctbl = #{rec_alloc["qty_linkto_alloctbl"]},
-									remark = '#{rec_alloc["remark"]}'||left(remark,100)   --- persond_id_upd=0
+									remark = '#{rec_alloc["remark"]}'||left(remark,1000)   --- persond_id_upd=0
 									where id = #{rec_alloc["id"]}
 					    &
         end
@@ -665,17 +665,16 @@ module ArelCtl
 		###
 		###  今の関係(linktbls.qty_src)は変更しない。履歴として残している。
 		###
-		###      src["qty_linkto_alloctbl"]=>変化前のqty
 		###      src["tblname"],src["tblid"] =>変化前tbl,id
+		###      src["qty_linkto_alloctbl"]=>変化前のqty
 		###      src["trngantts_id"] => 変化前trngantts_id 
 		###      src["qty_src"] => freeに引き当った数 又はords-->insts,ords--actsへの移動数
 		###
-		###      base["qty_src"]=> 変化先のqty
-		###      base["tblname"],base["tblid"] =>変化先tbl,id
+		###      base["tblname"],base["tblid"] =>変化元tbl,id、変更のときはbase["tblid"] = src["tblid"]
+		###      base["qty_src"]=> 変化元のqty
+		###      base["trngantts_id"] => 引き当て元trngantts_id 
 		###
 		###################################################################   
-		###
-	        
 		###  
     last_lotstks = []
 		if src["qty_linkto_alloctbl"].to_f > base["qty_src"].to_f
@@ -696,14 +695,16 @@ module ArelCtl
 		#
 		if base["tblname"] =~ /schs|ords/ 
 			strsql = %Q%
-								select id from linktbls	where tblid  = srctblid and qty_src >= #{src["qty_src"]}
+								select id from linktbls	where tblid  = srctblid 
+																				and qty_src >= #{src["qty_src"]}
 																				and tblname= '#{base["tblname"]}' and tblid = #{base["tblid"]}
+																				order by qty_src
 					%
 			free_link_id = ActiveRecord::Base.connection.select_value(strsql)
 			if free_link_id 
 				update_sql = %Q%
 									update linktbls set qty_src = qty_src - #{src["qty_src"]}
-																,remark = '#{self} line #{__LINE__}'||remark
+																,remark = '#{self} line #{__LINE__}'||left(remark,1000)
 															where id = #{free_link_id}
 					%
 				ActiveRecord::Base.connection.update(update_sql)
@@ -740,7 +741,7 @@ module ArelCtl
 			 update trngantts set #{str_qty} = #{str_qty}  - #{src["qty_src"]},
 			 						#{new_str_qty} =  #{new_str_qty} + #{src["qty_src"].to_f},
 						 updated_at = cast('#{Time.now.strftime("%Y/%m/%d %H:%M:%S")}' as timestamp),
-						 remark = '#{self} line:(#{__LINE__})'|| left(remark,100)
+						 remark = '#{self} line:(#{__LINE__})'|| left(remark,1000)
 					 where id = #{src["trngantts_id"]} 
 			  &
 		  ActiveRecord::Base.connection.update(strsql)
@@ -750,7 +751,7 @@ module ArelCtl
       strsql = %Q&  ---   tblname=xxxschsのqty,qty_sch
         update trngantts set  #{new_str_qty} =  #{new_str_qty} - #{src["qty_src"].to_f},
               updated_at = cast('#{Time.now.strftime("%Y/%m/%d %H:%M:%S")}' as timestamp),
-              remark = '#{self} line:(#{__LINE__})'||left(remark,100)
+              remark = '#{self} line:(#{__LINE__})'||left(remark,1000)
             where id = #{base["trngantts_id"]} 
          &
       ActiveRecord::Base.connection.update(strsql)
@@ -827,7 +828,7 @@ module ArelCtl
 						# ActiveRecord::Base.connection.update(update_sql)
 						update_sql = %Q%
 									update linktbls set qty_src = qty_src - #{tmp_qty}
-																,remark = '#{self} line #{__LINE__}'||remark
+																,remark = '#{self} line #{__LINE__}'||left(remark,1000)
 															where id = #{free["link_id"]}
 						%
 						ActiveRecord::Base.connection.update(update_sql)
@@ -869,7 +870,7 @@ module ArelCtl
 					end
 					update_sql = %Q%
 									update linktbls set qty_src = qty_src - #{tmp_qty}
-																,remark = '#{self} line #{__LINE__}'||left(remark,100)
+																,remark = '#{self} line #{__LINE__}'||left(remark,1000)
 															where id = #{link["link_id"]}
 					%
 					ActiveRecord::Base.connection.update(update_sql)

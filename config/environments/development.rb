@@ -36,7 +36,7 @@ Rails.application.configure do
   config.action_mailer.perform_caching = false
 
   # Set localhost to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
+  config.action_mailer.default_url_options = { host: "localhost", port: 3001 }
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
@@ -70,4 +70,13 @@ Rails.application.configure do
   config.logger = Logger.new(config.paths['log'].first, 'daily')
   ###config.log_level = :info  
   config.log_level = :debug
+   ## https://devise-token-auth.gitbook.io/devise-token-auth/config/email_auth
+   config.action_mailer.delivery_method = :smtp
+   config.action_mailer.raise_delivery_errors = true
+   config.action_mailer.smtp_settings = {
+     address: 'localhost',
+     ###address: 'MyComputer',
+     ##address: '192.168.10.149',
+     port: '1025',
+   }
 end

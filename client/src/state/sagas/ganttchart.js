@@ -27,7 +27,7 @@ return  {response}
 
 export function* GanttChartSaga({ payload: {params}  }) {
     const auth = yield select(getAuthState) //
-    const headers = {'access-token':auth["access-token"],'client':auth.client,'uid':auth.uid ,
+    const headers = {'access-token':auth["token"],'client':auth.client,'uid':auth.uid ,
                     'expiry':auth.expiry,'token-type':auth["token-type"],
                     'authorization':auth.authorization,contentType: "application/json",}
     let {response,error} = yield call(GanttApi,{params ,headers} )

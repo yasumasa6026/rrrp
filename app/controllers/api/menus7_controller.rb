@@ -32,7 +32,28 @@ module Api
                     end      
                     sgrp_menue = ActiveRecord::Base.connection.select_all(strsql)
                 end
-                render json:  sgrp_menue , status: :ok 
+                menuMessage = ""
+                strsql_locas_id = %Q%
+                            select distinct locas_id from calendars where expiredate > current_date
+                %
+                ActiveRecord::Base.connection.select_values(strsql_locas_id).each do |loca_id|
+                    strsql_missing = %Q%                            
+                            select * from calendars fc  where fc.locas_id = #{loca_id} 
+                                                        and fc.targetdate = current_date + #{Constants::FutureClandarCheckDate}
+                    %
+                    fdate = ActiveRecord::Base.connection.select_value(strsql_missing)
+                    if fdate 
+                        next
+                    else
+                        loca = ActiveRecord::Base.connection.select_one("select code,name from locas where id = #{loca_id}")  
+                        if menuMessage == ""
+                            menuMessage = %Q%Calendars missing date:#{Date.current + Constants::FutureClandarCheckDate},code:#{loca["code"]},name:#{loca["name"]}%    
+                        else
+                            menuMessage << %Q%,code:#{loca["code"]},name:#{loca["name"]}%                          
+                        end
+                    end
+                end
+                render json:  {"sgrp_menue"=>sgrp_menue,"menuMessage"=>menuMessage} , status: :ok 
 
             when 'buttonlistreq'  ###大項目内のメニュー
                 screenList = Rails.cache.fetch('screenList'+params[:email]) do

@@ -23,10 +23,11 @@ module CtlFields
 	end
 	def  detail_fetch_rec(params,fetchview,delm,parse_linedata)
 		params,parseLineData,keyfields,findstatus,mainviewflg,missing = get_fetch_rec(params,fetchview,delm,parse_linedata)
+									Rails.logger.debug(%Q%class:#{self},line:#{__LINE__},findstatus:#{findstatus}%)
 		params[:parse_linedata] = parseLineData.dup
-	  if findstatus
-			if mainviewflg   ##mainviewflg = true 自分自身の登録
-				if 	params[:parse_linedata]["aud"] == "add" or params[:aud] =~ /add/
+	  if findstatus  ###true:record found
+			if mainviewflg   ##mainviewflg = true:自分自身の登録  false:自身の変更また他のview
+				##if 	params[:parse_linedata]["aud"] == "add" or params[:aud] =~ /add/
 					params[:errFields]["error1"] =  "error1 duplicate code:#{keyfields},line:#{params[:index]} "
 					params[:keys] = []
 					keyfields.split(",").each do |key| 
@@ -38,39 +39,39 @@ module CtlFields
 							params[:parse_linedata][:errPath] << key.split(":")[0]+"_gridmessage" 
 						end
 					end  
-				else
-					params[:errFields].delete("error1")
-          viewCode = "#{params[:screenCode].split("_")[1].chop}_code"
-				  params[:parse_linedata].each do |key,val| ###コードが変更されたとき既に使用されている？
-					  if key == viewCode
-              strsql = %Q&
-                          select code from #{params[:screenCode].split("_")[1]}
-                                      where id = #{params[:parse_linedata][:id]}
-              &
-              last_code =ActiveRecord::Base.connection.select_value(strsql)
-              if params[:parse_linedata][viewCode] ==  last_code  ###変更されていない。
-                next
-              else
-                strsql = %Q&
-                          select pobject_code_tbl tblname,pobject_code_fld fld from r_tblfields
-                                  where  pobject_code_fld like '#{params[:screenCode].split("_")[1]}_id%'
-                                  and tblfield_expiredate > current_date
-                  &
-                  ActiveRecord::Base.connection.select_all(strsql).each do |tbl|
-                    strsql = %Q&
-                            select 1 from #{tbl["tblname"]} where #{tbl["fld"]} = #{JSON.parse(params[:lineData])["id"]} 
-                    &  ###params[:lineData] 修正前のデータ
-                    if ActiveRecord::Base.connection.select_value(strsql)  ###既に別tblに登録されている。
-										    params[:errFields]["error22"] = params[:parse_linedata][("#{key}_gridmessage")] =  "error22 cannot change ---> code:#{params[:parse_linedata][viewCode]}"
-                        break
-										else
-											params[:errFields].delete("error22")
-                    end
-                  end
-              end
-					  end
-				  end
-        end		
+				# else
+				# 	params[:errFields].delete("error1")
+        #   viewCode = "#{params[:screenCode].split("_")[1].chop}_code"
+				#   params[:parse_linedata].each do |key,val| ###コードが変更されたとき既に使用されている？
+				# 	  if key == viewCode
+        #       strsql = %Q&
+        #                   select code from #{params[:screenCode].split("_")[1]}
+        #                               where id = #{params[:parse_linedata][:id]}
+        #       &
+        #       last_code =ActiveRecord::Base.connection.select_value(strsql)
+        #       if params[:parse_linedata][viewCode] ==  last_code  ###変更されていない。
+        #         next
+        #       else
+        #         strsql = %Q&
+        #                   select pobject_code_tbl tblname,pobject_code_fld fld from r_tblfields
+        #                           where  pobject_code_fld like '#{params[:screenCode].split("_")[1]}_id%'
+        #                           and tblfield_expiredate > current_date
+        #           &
+        #           ActiveRecord::Base.connection.select_all(strsql).each do |tbl|
+        #             strsql = %Q&
+        #                     select 1 from #{tbl["tblname"]} where #{tbl["fld"]} = #{JSON.parse(params[:lineData])["id"]} 
+        #             &  ###params[:lineData] 修正前のデータ
+        #             if ActiveRecord::Base.connection.select_value(strsql)  ###既に別tblに登録されている。
+				# 						    params[:errFields]["error22"] = params[:parse_linedata][("#{key}_gridmessage")] =  "error22 cannot change ---> code:#{params[:parse_linedata][viewCode]}"
+        #                 break
+				# 						else
+				# 							params[:errFields].delete("error22")
+        #             end
+        #           end
+        #       end
+				# 	  end
+				#   end
+        # end		
 			else
 					keyfields.split(",").each do |key| 
 					  params[:parse_linedata][key.split(":")[0]+"_gridmessage"] = "deteted"
@@ -78,7 +79,7 @@ module CtlFields
 					params[:errFields].delete("error22")
 			end
 			params[:errFields].delete("error29")
-	  else
+	  else   ###not find
 			if mainviewflg   ###自身の登録の時
 				###
 				### r_tblfieldsの登録でr_blktbsがdetectできなかった時エラーにならない。!!!!!!!!!
@@ -93,18 +94,17 @@ module CtlFields
 				end  
 			else
 				params[:errFields].delete("error29")
-				if missing  ###検索に必要な項目まだ未入力
-				else
-					params[:errFields]["error29"] =  "error29  --->not find code:#{keyfields},view:#{fetchview},line:#{params[:index]}  "
-					params[:parse_linedata]["confirm"] = false
-					keyfields.split(",").each do |key| ###コードが変更されたとき既に使用されている？
-						params[:parse_linedata][key.split(":")[0]+"_gridmessage"] = "error 2a not find code #{key} "
-						if params[:parse_linedata][:errPath].nil? 
-							params[:parse_linedata][:errPath] = [key.split(":")[0]+"_gridmessage"]
-						else
-							params[:parse_linedata][:errPath] << key.split(":")[0]+"_gridmessage"
-						end
-					end  
+				if missing  ###検索に必要
+							params[:errFields]["error29"] =  "error29  --->not find code:#{keyfields},view:#{fetchview},line:#{params[:index]}  "
+							params[:parse_linedata]["confirm"] = false
+							keyfields.split(",").each do |key| ###コードが変更されたとき既に使用されている？
+								params[:parse_linedata][key.split(":")[0]+"_gridmessage"] = "error 2a not find code #{key} "
+								if params[:parse_linedata][:errPath].nil? 
+									params[:parse_linedata][:errPath] = [key.split(":")[0]+"_gridmessage"]
+								else
+									params[:parse_linedata][:errPath] << key.split(":")[0]+"_gridmessage"
+								end
+							end 
 				end	  
 			end  
 	  end 
@@ -119,7 +119,7 @@ module CtlFields
 			viewtblnamechop = fetchview.split("_")[1].chop   ### sub table
 			mainviewflg = true  ##自分自身の登録か？
 			findstatus = true
-			if screentblnamechop != viewtblnamechop 
+			if params[:aud] !~ /add|insert/
 					mainviewflg = false
 			else
 				if delm != ""   ###自身のテーブルを参照しいるとき
@@ -199,8 +199,7 @@ module CtlFields
 								if mainTblRec.nil?  ##
 								else
 									###strsql = " select * from #{fetchview}  where " + where_strsql[0..-8] 
-									###rec =  ActiveRecord::Base.connection.select_one(strsql)								
-									Rails.logger.debug(%Q%class:#{self},line:#{__LINE__},currentKeys:#{currentKeys},mainTblRec:#{mainTblRec}%)
+									###rec =  ActiveRecord::Base.connection.select_one(strsql)				
 									currentKeys.each do |k,v|  ###keyが変更されているとき
 										case mainTblRec[k].class.to_s
 											when "BigDecimal","Float" 
@@ -227,7 +226,7 @@ module CtlFields
 											ActiveRecord::Base.connection.select_all(sqlForeignKey).each do |ftbl|
 												ftblRec = ActiveRecord::Base.connection.select_one(%Q% select * from #{ftbl["child_table"]} where #{ftbl["child_column"]} = #{mainTblRec["id"]}%)		
 												if ftblRec
-													### mainviewflg = false  ###keyが変更されているときは、自分自身の登録以外。
+													### ###keyが変更されているときは、自分自身の登録以外。
 													if parseLineData[(screentblnamechop+"_#{k}_gridmessage")]
 														parseLineData[(screentblnamechop+"_#{k}_gridmessage")] << ",#{ftbl["child_table"]}"			
 														params[:errFields]["error39"] = parseLineData[(screentblnamechop+"_#{k}_gridmessage")] 													
@@ -249,13 +248,16 @@ module CtlFields
 						else
 								strsql = " select * from #{fetchview}  where " + where_strsql[0..-8] 
 								rec =  ActiveRecord::Base.connection.select_one(strsql)
-								mainviewflg = false
+								if screentblnamechop != viewtblnamechop
+										mainviewflg = false							
+								end
 						end
 			else
 						rec = nil
 						findstatus = false
 			end
-			if rec  ###viewレコードあり
+									Rails.logger.debug(%Q%class:#{self},line:#{__LINE__},rec:#{rec}%)
+			if rec  ###viewレコードあり				
 					findstatus = true
           fieldsall = rec.keys 
 					allLineKeys = parseLineData.keys
@@ -848,30 +850,48 @@ module CtlFields
     ###pur,prdacts 条件による
 		err = nil
 		tblnamechop = screenCode.split("_")[1].chop
+		if tblnamechop =~ /act|dlv|ret/
+				return parse_linedata,err   ###err= nil
+		end
 		if parse_linedata["#{tblnamechop}_qty_case"]
-				if parse_linedata["opeitm_packqty"]
-					case tblnamechop
-						when /sch/	   #### "1,234.0".to_f -->1.234
-							if (parse_linedata["#{tblnamechop}_qty_case"].gsub(",","").to_f * parse_linedata["opeitm_packqty"].gsub(",","").to_f) != parse_linedata["#{tblnamechop}_qty_sch"].gsub(",","").to_f	
-            		err =  "error 63  ---> #{tblnamechop}_qty_case(#{parse_linedata["#{tblnamechop}_qty_case"]}) * opeitm_packqty(#{parse_linedata["opeitm_packqty"]}) != #{tblnamechop}_qty_sch(#{parse_linedata["#{tblnamechop}_qty_sch"]})"
-							end			
-						when /ord|purinst|purinst|custinst|reply/	
-							if (parse_linedata["#{tblnamechop}_qty_case"].gsub(",","").to_f * parse_linedata["opeitm_packqty"].gsub(",","").to_f) != parse_linedata["#{tblnamechop}_qty"].gsub(",","").to_f	
-            		err =  "error 63  ---> #{tblnamechop}_qty_case(#{parse_linedata["#{tblnamechop}_qty_case"]}) * opeitm_packqty(#{parse_linedata["opeitm_packqty"]})  != #{tblnamechop}_qty(#{parse_linedata["#{tblnamechop}_qty"]})"
-							end			
-						when /shpinst|dlv|act/	
-							if (parse_linedata["#{tblnamechop}_qty_case"].gsub(",","").to_f * parse_linedata["opeitm_packqty"].gsub(",","").to_f) != parse_linedata["#{tblnamechop}_qty_stk"].gsub(",","").to_f	
-            		err =  "error 63  ---> #{tblnamechop}_qty_case(#{parse_linedata["#{tblnamechop}_qty_case"]}) * opeitm_packqty(#{parse_linedata["opeitm_packqty"]})  != #{tblnamechop}_qty_act(#{parse_linedata["#{tblnamechop}_qty_stk"]})"
-							end		
-						else	
-							raise"LINE:#{__LINE__} error 63  tblnamechop: #{tblnamechop} "
+		 		if parse_linedata["opeitm_packqty"]
+						if parse_linedata["opeitm_packqty"].class.to_s == "String"
+								if parse_linedata["opeitm_packqty"] == "0" or parse_linedata["opeitm_packqty"] == ""
+				    				opeitm_packqty = "1"
+								else		
+										opeitm_packqty = parse_linedata["opeitm_packqty"].to_f
+								end	
+						else
+							if parse_linedata["opeitm_packqty"].class.to_s =~ /Integer|Float/   ###when excel upload
+										opeitm_packqty = parse_linedata["opeitm_packqty"]
+							else
+										return parse_linedata,err   ###err= nil
+							end
+						end
+				end
+				if parse_linedata["#{tblnamechop}_qty_case"].class.to_s == "String"
+								qty_case = parse_linedata["#{tblnamechop}_qty_case"].gsub(",","").to_f
+				else
+					if parse_linedata["#{tblnamechop}_qty_case"].class.to_s =~ /Integer|Float/
+							qty_case = parse_linedata["#{tblnamechop}_qty_case"]		
+					else	
+							return parse_linedata,err   ###err= nil
 					end
 				end
+		else
+			return parse_linedata,err   ###err= nil
+		end
+		qty = opeitm_packqty * qty_case
+		case tblnamechop
+				when /sch/	
+					parse_linedata["#{tblnamechop}_qty_sch"] = qty.to_s
+				else
+					parse_linedata["#{tblnamechop}_qty"] = qty.to_s
 		end
 	 	return parse_linedata,err   ###err= nil
 	end	
 	
-	def proc_judge_check_consumtype pparseLineData,item,index,screenCode
+	def proc_judge_check_consumtype parseLineData,item,index,screenCode
 		classlist = ""
     err = nil
 		case screenCode
@@ -883,6 +903,8 @@ module CtlFields
 				&
 				classlist = ActiveRecord::Base.connection.select_value(strsql)
 		  	case classlist
+					when "pgoods","shikakari","material","parts"  ###半製品,仕掛品,原材料,子部品
+			    	parseLineData["nditm_consumtype"] = "CON"
 		    	when "ITool","installationCharge","mold","apparatus"
 			    	parseLineData["nditm_consumtype"] = classlist
         	else
@@ -1169,23 +1191,33 @@ module CtlFields
 		err = false 
 		ex_date = nil
 		case screenCode
+		when /shpsch/
+			strpur = "shpsch"
+			stramtsym = "shpsch_amt_sch"
+			strqtysym = "shpsch_qty_sch"
+			strduedatesym = "shpsch_depdate"
 		when /shpord/
 			strpur = "shpord"
 			stramtsym = "shpord_amt"
 			strqtysym = "shpord_qty"
-			strtaxsym = "shpord_tax"
-			strduedatesym = "#{strpur}_depdate"
+			strduedatesym = "shpord_depdate"
+		when /shpinst/
+			strpur = "shpinst"
+			stramtsym = "shpinst_amt"
+			strqtysym = "shpinst_qty"
+			strtaxsym = "shpinst_tax"
+			strduedatesym = "shpinst_depdate"
 		when /shpact/
 			strpur = "shpact"
 			stramtsym = "shpact_amt"
 			strqtysym = "shpact_qty_stk"
-			strtaxsym = "shpact_tax"
-			strduedatesym = "#{strpur}_rcptdate"
+			strduedatesym = "shpact_rcptdate"
 		end	
 		strcontractpricesym = "#{strpur}_contractprice"
 		strmasterpricesym = "#{strpur}_masterprice"
 		strisudatesym = "#{strpur}_isuedate"
 		strpricesym = "#{strpur}_price"
+		strtaxsym = "#{strpur}_tax"
 		strtaxratesym = "#{strpur}_taxrate"
 		strcrrsym = "#{strpur}_crr_id"
 		strsuppliersym = "#{strpur}_supplier_id"
@@ -1316,20 +1348,20 @@ module CtlFields
 	end
 
 
-	def proc_judge_check_custprice parse_linedata,item,index,screenCode  ###M
-		dupLineData = parse_linedata.dup
+	def proc_judge_check_custprice parse_linedata,item,index,screenCode  ###
 		err = nil
+		if parse_linedata["custsch_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
+				return parse_linedata,err
+		end
+		dupLineData = parse_linedata.dup
 		case screenCode
 		when /custschs/
-			if parse_linedata["custsch_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
-				return parse_linedata,err
-			end
 			strsql = %Q&
 						select * from custprices 
-									where custs_id = #{dupLineData[":custsch_cust_id"]} and opeitms_id = #{dupLineData["custsch_opeitm_id"]}
+									where custs_id = #{dupLineData["custsch_cust_id"]} and opeitms_id = #{dupLineData["custsch_opeitm_id"]}
 									and crrs_id_custprice = #{dupLineData["custsch_crr_id"]}
-									and maxqty >= #{dupLineData["custsch_qty_sch"]}
-									and minqty < #{dupLineData["custsch_qty_sch"]}
+									and maxqty >= #{dupLineData["custsch_qty_case"]}
+									and minqty < #{dupLineData["custsch_qty_case"]}
 									and #{case dupLineData["custsch_contractprice"]
 											when "1"
 												"expiredate >= to_date('#{dupLineData["custsch_isudate"]}','yyyy/mm/dd')" 
@@ -1343,68 +1375,23 @@ module CtlFields
 											}
 									order by maxqty,expiredate limit 1
 			&
-			price = ActiveRecord::Base.connection.select_one(strsql)
-			if price
-				dupLineData["custsch_price"] =  dupLineData["custsch_masterprice"] = price["price"]
-				dupLineData["custsch_amt_sch"] = parse_linedata["custsch_qty_sch"].to_f * price["price"]
-				if dupLineData["custsch_crr_id"]
-          ###税率の取得
-          case dupLineData["itm_taxflg"]
-          when "0","1","9"
-            base_date =  dupLineData["custsch_duedate"]
-          when "A"
-            base_date =   dupLineData["custsch_isudate"]
-          else
-            base_date =  dupLineData["custsch_duedate"]
-          end
-          strsql = %Q&
-              select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
-                            and expiredate >= to_date('#{base_date}','yyyy/mm/dd')
-                            order by expiredate limit 1
-          &
-          dupLineData["custsch_taxrate"] = ActiveRecord::Base.connection.select_value(strsql)
-          dupLineData["custsch_taxrate"] ||= 0
-          dupLineData["custsch_tax"] = (dupLineData["custsch_amt_sch"].to_f * dupLineData["custsch_taxrate"] / 100)
-          ###通貨の小数点以下の桁数を取得
-					strsql = %Q&
-							select decimal from crrs where id = #{dupLineData["custsch_crr_id"]}
-					&
-					decimal = ActiveRecord::Base.connection.select_value(strsql)
-					case dupLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
-					when "1"
-						dupLineData["custsch_amt_sch"] = dupLineData["custsch_amt_sch"].floor(decimal.to_i )
-						dupLineData["custsch_tax"] = (dupLineData["custsch_amt_sch"] * dupLineData["custsch_taxrate"] / 100).floor(decimal.to_i )
-					when "2"
-						dupLineData["custsch_amt_sch"] = dupLineData["custsch_amt_sch"].round(decimal.to_i )
-						dupLineData["custsch_tax"] = (dupLineData["custsch_amt_sch"] * dupLineData["custsch_taxrate"] / 100).round(decimal.to_i )
-					when "3"
-						dupLineData["custsch_amt_sch"] = dupLineData["custsch_amt_sch"].ceil(decimal.to_i )
-						dupLineData["custsch_tax"] = (dupLineData["custsch_amt_sch"] * dupLineData["custsch_taxrate"] / 100).ceil(decimal.to_i )
-					else
-						dupLineData["custsch_tax"] = (dupLineData["custsch_amt_sch"] * dupLineData["custsch_taxrate"] / 100)
-					end
-				else
-				end
-			else
-				dupLineData["custsch_price"] = dupLineData["custsch_masterprice"] = 0
-				dupLineData["custsch_amt_sch"] = 0
-				parse_linedata["custsch_contractprice"] = "C"  ###C:マスター単価無
-			end
-				parse_linedata["custsch_price"] = dupLineData["custsch_price"].to_s 
-				parse_linedata["custsch_masterprice"] = dupLineData["custsch_masterprice"].to_s
-				parse_linedata["custsch_amt_sch"] = dupLineData["custsch_amt_sch"].to_s
-				parse_linedata["custsch_tax"] = dupLineData["custsch_tax"].to_s
-				parse_linedata["custsch_taxrate"] = dupLineData["custsch_taxrate"].to_s
+			str_price = "custsch_price"
+			str_masterprice = "custsch_masterprice"
+			str_amt = "custsch_amt_sch"
+			str_qty_case = "custsch_qty_case"
+			str_crr_id = "custsch_crr_id"
+			str_duedate = "custsch_duedate"
+			str_isudate = "custsch_isudate"
+			str_taxrate = "custsch_taxrate"
+			str_tax = "custsch_tax"
+			str_contractprice = "custsch_contractprice"
 		when /custords/
-			if parse_linedata["custord_contractprice"] =~ /[A-Z]|[a-z]/ ###数字の時マスター単価
-				return parse_linedata,err
-			end
 			strsql = %Q&
 						select * from custprices 
 									where custs_id = #{dupLineData["custord_cust_id"]} and opeitms_id = #{dupLineData["custord_opeitm_id"]}
 									and crrs_id_custprice = #{dupLineData["custord_crr_id"]}
-									and maxqty >= #{dupLineData["custord_qty"]}
-									#{if dupLineData["custord_qty"].to_f == 0 then  "" else " and minqty < #{dupLineData["custord_qty"]}" end}
+									and maxqty >= #{dupLineData["custord_qty_case"]}
+									and minqty < #{dupLineData["custord_qty_case"]}
 									and #{case dupLineData["custord_contractprice"]
 											when "1"
 												"expiredate >= to_date('#{dupLineData["custord_isudate"]}','yyyy/mm/dd')" 
@@ -1418,114 +1405,118 @@ module CtlFields
 											}
 									order by maxqty,expiredate limit 1
 			&
-			price = ActiveRecord::Base.connection.select_one(strsql)
-			if price
-				dupLineData["custord_price"] =  dupLineData["custord_masterprice"] = price["price"]
-				dupLineData["custord_amt"] = parse_linedata["custord_qty"].to_f * price["price"]
-				if dupLineData["custord_crr_id"]
-					strsql = %Q&
-							select decimal from crrs where id = #{dupLineData["custord_crr_id"]}
-					&
-					decimal = ActiveRecord::Base.connection.select_value(strsql)
-					case dupLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
-					when "1"
-						dupLineData["custord_amt"] = dupLineData["custord_amt"].floor(decimal.to_i )
-						dupLineData["custord_tax"] = (dupLineData["custord_amt"] * parse_linedata["custord_taxrate"].to_f / 100).floor(decimal.to_i )
-					when "2"
-						dupLineData["custord_amt"] = dupLineData["custord_amt"].round(decimal.to_i )
-						dupLineData["custord_tax"] = (dupLineData["custord_amt"] * parse_linedata["custord_taxrate"].to_f / 100).round(decimal.to_i )
-					when "3"
-						dupLineData["custord_amt"] = dupLineData["custord_amt"].ceil(decimal.to_i )
-						dupLineData["custord_tax"] = (dupLineData["custord_amt"] * parse_linedata["custord_taxrate"].to_f / 100).ceil(decimal.to_i )
-					end
-				else
-				end
-			else
-				dupLineData["custord_price"] = dupLineData["custord_masterprice"] = 0.0
-				dupLineData["custord_amt"] = dupLineData["custord_tax"] = 0.0
-				parse_linedata["custord_contractprice"] = "C"    ###C:マスター単価無
-			end
-				parse_linedata["custord_price"] = dupLineData["custord_price"].to_s 
-				parse_linedata["custord_masterprice"] = dupLineData["custord_masterprice"].to_s
-				parse_linedata["custord_price"] = dupLineData["custord_price"].to_s
-				parse_linedata["custord_amt"] = dupLineData["custord_amt"].to_s
-				parse_linedata["custord_tax"] = dupLineData["custord_tax"].to_s
-				parse_linedata["custord_taxrate"] = dupLineData["custord_taxrate"].to_s
-		when /custdlvs/  ###1:発注日ベース　2:仕入れ先きの出荷日ベース　3:検収ベース
+			str_price = "custord_price"
+			str_masterprice = "custord_masterprice"
+			str_amt = "custord_amt"
+			str_qty_case = "custord_qty_case"
+			str_crr_id = "custord_crr_id"
+			str_duedate = "custord_duedate"
+			str_isudate = "custord_isudate"
+			str_taxrate = "custord_taxrate"
+			str_tax = "custord_tax"
+			str_contractprice = "custord_contractprice"
+		when /custinsts/
+				return parse_linedata,err
+		when /custdlvs/
 			if params[:custdlv_contractprice]  == "2"  ###出荷日ベース　
 				strsql = %Q&
 							select * from custprices 
 										where custs_id = #{dupLineData["custdlv_cust_id"]} and opeitms_id = #{dupLineData["custdlv_opeitm_id"]}
 										and crrs_id_custprice = #{dupLineData["custdlv_crr_id"]}
-										and maxqty >= #{dupLineData["custdlv_qty"]}
-										and minqty < #{dupLineData["custdlv_qty"]}
+										and maxqty >= #{dupLineData["custdlv_qty_case"]}
+										and minqty < #{dupLineData["custdlv_qty_case"]}
 										and  expiredate >= to_date('#{dupLineData["custdlv_depdate"]}','yyyy/mm/dd')
 										order by maxqty,expiredate limit 1
 				&
-				price = ActiveRecord::Base.connection.select_one(strsql)
-				if price
-					decimal = dupLineData["crr_decimal"].to_i
-					dupLineData["custdlv_price"] = dupLineData["custdlv_masterprice"] = price["price"]
-					dupLineData["custdlv_amt"] = parse_linedata["custdlv_qty"].to_f * price["price"]
-					case dupLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
-					when "1"
-						dupLineData["custdlv_amt"] = dupLineData["custdlv_amt"].floor(decimal + 1)
-						dupLineData["custdlv_tax"] = (dupLineData["custdlv_amt"] * parse_linedata["custdlv_taxrate"].to_f  / 100).floor(decimal)
-					when "2"
-						dupLineData["custdlv_amt"] = dupLineData["custdlv_amt"].round(decimal + 1)
-						dupLineData["custdlv_tax"] = (dupLineData["custdlv_amt"] * parse_linedata["custdlv_taxrate"].to_f  / 100).round(decimal + 1)
-					when "3"
-						dupLineData["custdlv_amt"] = dupLineData["custdlv_amt"].ceil(decimal + 1)
-						dupLineData["custdlv_tax"] = (dupLineData["custdlv_amt"] * parse_linedata["custdlv_taxrate"].to_f / 100).ceil(decimal + 1)
-					end
-				else
-					parse_linedata["custdlv_contractprice"] = "C"  ###C:マスター単価無
-					dupLineData["custdlv_price"] = 0
-				end
-				parse_linedata["custdlv_price"] = dupLineData["custdlv_price"].to_s 
-				parse_linedata["custdlv_masterprice"] = dupLineData["custdlv_masterprice"].to_s
-				parse_linedata["custord_price"] = dupLineData["custord_price"].to_s
-				parse_linedata["custord_amt"] = dupLineData["custord_amt"].to_s
-				parse_linedata["custord_tax"] = dupLineData["custord_tax"].to_s
+			else
+				return parse_linedata,err
 			end
-		when /custacts/  ###1:発注日ベース　2:仕入れ先きの出荷日ベース　3:検収ベース
+			str_price = "custdlv_price"
+			str_masterprice = "custdlv_masterprice"
+			str_amt = "custdlv_amt"
+			str_qty_case = "custdlv_qty_case"
+			str_crr_id = "custdlv_crr_id"
+			str_duedate = "custdlv_depdate"
+			str_isudate = "custdlv_isudate"
+			str_taxrate = "custdlv_taxrate"
+			str_tax = "custdlv_tax"
+			str_contractprice = "custdlv_contractprice"
+		when /custacts/
 			if dupLineData["custact_contractprice"]  == "3"
 				strsql = %Q&
 					select * from custprices 
 							where custs_id = #{dupLineData["custact_cust_id"]} and opeitms_id = #{dupLineData["custact_opeitm_id"]}
 							and crrs_id_custprice = #{dupLineData["custact_crr_id"]}
-							and maxqty >= #{dupLineData["custact_qty"]}
-							and minqty < #{dupLineData["custact_qty"]}
+							and maxqty >= #{dupLineData["custact_qty_case"]}
+							and minqty < #{dupLineData["custact_qty_case"]}
 							and  expiredate >= to_date('#{dupLineData["custact_depdate"]}','yyyy/mm/dd')
 							order by maxqty,expiredate limit 1
 					&
-				price = ActiveRecord::Base.connection.select_one(strsql)
-				if price
-			    decimal = dupLineData["crr_decimal"].to_i
-					dupLineData["custact_price"] = dupLineData["custact_masterprice"] = price["price"]
-				  dupLineData["custact_amt"] = dupLineData["custact_qty"].to_f * price["price"].to_f
-				 	case dupLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
-				 	when "1"
-				  	dupLineData["custact_amt"] = dupLineData["custact_amt"].floor(decimal + 1)
-						dupLineData["custact_tax"] = (dupLineData["custact_amt"] * parse_linedata["custact_taxrate"].to_f / 100).floor(decimal )
-			   	when "2"
-						dupLineData["custact_amt"] = dupLineData["custact_amt"].round(decimal + 1)
-						dupLineData["custact_tax"] = (dupLineData["custact_amt"] * parse_linedata["custact_taxrate"].to_f / 100).round(decimal + 1)
-			   	when "3"
-						dupLineData["custact_amt"] = dupLineData["custact_amt"].ceil(decimal + 1)
-						dupLineData["custact_tax"] = (dupLineData["custact_amt"] * parse_linedata["custact_taxrate"].to_f / 100).ceil(decimal + 1)
-			   	end
-				else
-				  dupLineData["custord_price"] = dupLineData["custord_masterprice"] = 0
-				  dupLineData["custord_amt"] = 0
-				  parse_linedata["custact_contractprice"] = "C"  ###C:マスター単価無
-				end
-		  end
-			parse_linedata["custact_masterprice"] = dupLineData["custact_masterprice"].to_s
-			parse_linedata["custact_price"] = dupLineData["custact_price"].to_s
-			parse_linedata["custact_amt"] = dupLineData["custact_amt"].to_s
-			parse_linedata["custact_tax"] = dupLineData["custact_tax"].to_s
+			else
+				return parse_linedata,err
+			end	
+			str_price = "custact_price"
+			str_masterprice = "custact_masterprice"
+			str_amt = "custact_amt"
+			str_qty_case = "custact_qty_case"
+			str_crr_id = "custact_crr_id"
+			str_duedate = "custact_rcptdate"
+			str_isudate = "custact_isudate"
+			str_taxrate = "custact_taxrate"
+			str_tax = "custact_tax"
+			str_contractprice = "custact_contractprice"
 		end
+		price = ActiveRecord::Base.connection.select_one(strsql)
+		if price
+				dupLineData[str_price] =  dupLineData[str_masterprice] = price["price"]
+				dupLineData[str_amt] = parse_linedata[str_qty_case].to_f * price["price"]
+				if dupLineData[str_crr_id]
+          ###税率の取得
+          case dupLineData["itm_taxflg"]
+          when "0","1","9"
+            base_date =  dupLineData[str_duedate]
+          when "A"
+            base_date =   dupLineData[str_isudate]
+          else
+            base_date =  dupLineData[str_duedate]
+          end
+          strsql = %Q&
+              select taxrate from taxtbls where taxflg = '#{dupLineData["itm_taxflg"]}' 
+                            and expiredate >= to_date('#{base_date}','yyyy/mm/dd')
+                            order by expiredate limit 1
+          &
+          dupLineData[str_taxrate] = ActiveRecord::Base.connection.select_value(strsql)
+          dupLineData[str_taxrate] ||= 0
+          dupLineData[str_tax] = (dupLineData[str_amt].to_f * dupLineData[str_taxrate] / 100)
+          ###通貨の小数点以下の桁数を取得
+					strsql = %Q&
+							select decimal from crrs where id = #{dupLineData[str_crr_id]}
+					&
+					decimal = ActiveRecord::Base.connection.select_value(strsql)
+					case dupLineData["cust_amtround"]  ###1:切り捨て　2:四捨五入 3:切り上げ
+					when "1"
+						dupLineData[str_amt_sch] = dupLineData[str_amt].floor(decimal.to_i )
+						dupLineData[str_tax] = (dupLineData[str_amt] * dupLineData[str_taxrate] / 100).floor(decimal.to_i )
+					when "2"
+						dupLineData[str_amt] = dupLineData[str_amt].round(decimal.to_i )
+						dupLineData[str_tax] = (dupLineData[str_amt] * dupLineData[str_taxrate] / 100).round(decimal.to_i )
+					when "3"
+						dupLineData[str_amt] = dupLineData[str_amt].ceil(decimal.to_i )
+						dupLineData[str_tax] = (dupLineData[str_amt] * dupLineData[str_taxrate] / 100).ceil(decimal.to_i )
+					else
+						dupLineData[str_tax] = (dupLineData[str_amt] * dupLineData[str_taxrate] / 100)
+					end
+				end
+		else
+				dupLineData[str_price] = dupLineData[str_masterprice] = dupLineData[str_tax] = dupLineData[str_taxrate] = 0
+				dupLineData[str_amt] = 0
+				parse_linedata[str_contractprice] = "C"  ###C:マスター単価無
+		end
+		parse_linedata[str_price] = dupLineData[str_price].to_s 
+		parse_linedata[str_masterprice] = dupLineData[str_masterprice].to_s
+		parse_linedata[str_amt] = dupLineData[str_amt].to_s
+		parse_linedata[str_tax] = dupLineData[str_tax].to_s
+		parse_linedata[str_taxrate] = dupLineData[str_taxrate].to_s
 		return parse_linedata,err
 	end
 
@@ -1998,6 +1989,19 @@ module CtlFields
 		end
     return parseLineData, nil
 	end
+	def proc_judge_check_screenfield_selection(parseLineData,item,index,screenCode)
+									Rails.logger.debug(%Q%class:#{self},line:#{__LINE__},parseLineData:#{parseLineData}}%)
+			if parseLineData["screenfield_selection"] == "1"
+    			return parseLineData, nil
+			else
+				if parseLineData["pobject_code_sfd"] =~ /^#{parseLineData["pobject_code_scr"].split("_")[1].chop}/
+    					return parseLineData, "table field must be selected"
+				else
+    					return parseLineData, nil
+				end
+			end
+				
+	end
 	###
 	#
 	### prd,pur ・・・schs,ords,insts,acts,retsのレコード作成　	
@@ -2202,7 +2206,7 @@ module CtlFields
               	 			when /^pur/
                    			duedate,message = proc_calculate_working_day(tblnamechop,pstarttime,1,"-",command_x["#{tblnamechop}_supplier_id"])
 											else
-												raise " class:#{self} ,line:#{__LINE__},tblnamechop:#{tblnamechop} not define"
+												raise " error class:#{self} ,line:#{__LINE__},tblnamechop:#{tblnamechop} not define"
             		 		end
 								end
             		# if  nd["unitofduration"] == "Hour"
@@ -2223,7 +2227,7 @@ module CtlFields
                                         select locas_id_calendar from suppliers where id = #{command_x["#{tblnamechop}_supplier_id"]})&
                     			effectivetime = ActiveRecord::Base.connection.select_value(strsql)
 											else
-												raise " class:#{self} ,line:#{__LINE__},tblnamechop:#{tblnamechop} not define"
+												raise " error class:#{self} ,line:#{__LINE__},tblnamechop:#{tblnamechop} not define"
                 		end
                 		if effectivetime.nil?
                    			effectivetime = ActiveRecord::Base.connection.select_value(%Q&select effectivetime from hcalendars where locas_id = 0&)
@@ -2385,7 +2389,7 @@ module CtlFields
             		end
         	 end
     	else
-			  raise" class:#{self} ,line:#{__LINE__},tblname error:#{tblnamechop}s,command_x:#{command_x},nd:#{nd} "
+			  raise" error class:#{self} ,line:#{__LINE__},tblname error:#{tblnamechop}s,command_x:#{command_x},nd:#{nd} "
 		end
 		command_x[(tblnamechop+"_duedate")]  = duedate.strftime("%Y-%m-%d %H:%M:%S")
 		command_x[(tblnamechop+"_remark")]  = message
@@ -2411,7 +2415,7 @@ module CtlFields
 			command_x["#{tblnamechop}_facilitie_id"] = facilitie["id"]
 			command_x["#{tblnamechop}_chrg_id"] = facilitie["chrgs_id_facilitie"]
 		else
-			raise " class:#{self} ,line:#{__LINE__} \n command_x:#{command_x} \n nd:#{nd} "
+			raise "error  class:#{self} ,line:#{__LINE__} \n command_x:#{command_x} \n nd:#{nd} "
 		end
 		return command_x
 	end
@@ -2521,10 +2525,10 @@ module CtlFields
 			        when "postprocess"
 				        starttime = pduedate 
               else
-                	raise" class:#{self} ,line:#{__LINE__},processname:#{command_x["#{tblnamechop}_processname"]},command_x:#{command_x} "
+                	raise" error class:#{self} ,line:#{__LINE__},processname:#{command_x["#{tblnamechop}_processname"]},command_x:#{command_x} "
 			      end
         	else
-            	raise" class:#{self} ,line:#{__LINE__},  tblnamechop:#{tblnamechop}, command_x:#{command_x} "
+            	raise"error  class:#{self} ,line:#{__LINE__},  tblnamechop:#{tblnamechop}, command_x:#{command_x} "
     		end
     else
 		    pstarttime =  parent["starttime"].to_date  ###ercschsの親はdvsschs
@@ -2543,7 +2547,7 @@ module CtlFields
             	else
               		str_qty = command_x["#{tblnamechop}_qty"].to_f
             	end
-			    strsql = %Q&  ---装置のLTがある時
+			    	strsql = %Q&  ---装置のLTがある時
 				              select nd.packqtyfacility,nd.durationfacility,itm.classlist_code,op.duration,op.shelfnos_id_opeitm shelfnos_id 
 					                  from nditms nd
 					                  inner join (select i.id itms_id,c.code classlist_code from itms i
@@ -2556,20 +2560,20 @@ module CtlFields
 					              &
 			      appas = ActiveRecord::Base.connection.select_all(strsql)
 			      appas.each do |appa| 		
-				    if  (appa["durationfacility"].to_f) > 0   ###装置のlt
+				    	if  (appa["durationfacility"].to_f) > 0   ###装置のlt
 					      if (appa["packqtyfacility"].to_f) > 0  ###nd["duration"].nil? --> tbl=dymschs&opeitms無
                   			tduration = (appa["durationfacility"].to_f)*str_qty/(appa["packqtyfacility"].to_f).ceil    
 					      else
                   			tduration = (appa["durationfacility"].to_f).ceil  
 					      end
-				    else
+				    	else
                 		tduration = (appa["duration"]||=1).to_f.ceil  ###prdschs.opeitms_id.duration
-				    end
+				    	end
 			        if tduration > duration
 				        duration = tduration
 			        end
 			      end
-            		starttime,message = proc_calculate_working_day(tblnamechop,cduedate,duration,"-",command_x["shelfno_loca_id_shelfno"])
+            starttime,message = proc_calculate_working_day(tblnamechop,cduedate,duration,"-",command_x["shelfno_loca_id_shelfno"])
 		      when /^dvs/  ###親はprdschs
             	starttime,message = proc_calculate_working_day(tblnamechop,pstarttime,(nd["changeoverlt"]).to_f.ceil,"-",command_x["#{tblnamechop}_facilitie_id"])
 		      when /^shp/ ###親はprdschs 工具・金型
@@ -2585,10 +2589,10 @@ module CtlFields
 			        when "postprocess"
 				        starttime = pduedate 
               	 else
-                	raise "class:#{self} ,line:#{__LINE__},processname :#{command_x["#{tblnamechop}_processname"]},command_x:#{command_x} "
+                	raise "error class:#{self} ,line:#{__LINE__},processname :#{command_x["#{tblnamechop}_processname"]},command_x:#{command_x} "
 			      end
             else
-              raise" class:#{self} ,line:#{__LINE__},  tblnamechop :#{tblnamechop} command_x:#{command_x} "
+              raise"error  class:#{self} ,line:#{__LINE__},  tblnamechop :#{tblnamechop} command_x:#{command_x} "
 		    end
     end
 		case tblnamechop
@@ -2685,7 +2689,7 @@ module CtlFields
 		  if fcoperator
 			  command_x["#{tblnamechop}_fcoperator_id"] = fcoperator["id"]
 		  else
-			  raise " class:#{self} ,line:#{__LINE__}, can not get fcoperators_id \n nd:#{nd} \n command_x:#{command_x} "
+			  raise " error class:#{self} ,line:#{__LINE__}, can not get fcoperators_id \n nd:#{nd} \n command_x:#{command_x} "
 		  end
     	when "ercord"
 			strsql = %Q&
@@ -2696,34 +2700,43 @@ module CtlFields
 		  if fcoperator
 			  command_x["#{tblnamechop}_fcoperator_id"] = fcoperator["id"]
 		  else
-        	raise " class:#{self} ,line:#{__LINE__},tblnamechop:#{tblnamechop},\n command_x:#{command_x},\n nd:#{nd} "
+        	raise " error class:#{self} ,line:#{__LINE__},tblnamechop:#{tblnamechop},\n command_x:#{command_x},\n nd:#{nd} "
 		  end
     	else
-      		raise " class:#{self} ,line:#{__LINE__},tblnamechop:#{tblnamechop} error\n command_x:#{command_x},\n nd:#{nd} "
+      		raise " error class:#{self} ,line:#{__LINE__},tblnamechop:#{tblnamechop} error\n command_x:#{command_x},\n nd:#{nd} "
     	end
 		return command_x
 	end
 
 	def field_qty_sch tblnamechop,command_x,parent,nd
 		qty_require = proc_cal_qty_sch(parent["qty_handover"].to_f,
-										nd["chilnum"],nd["parenum"],
-										nd["packqty"],nd["consumunitqty"],nd["consumminqty"],nd["consumchgoverqty"])
+										nd["chilnum"],nd["parenum"])
 		command_x["#{tblnamechop}_qty_sch"]  = qty_require
 		command_x["#{tblnamechop}_qty_case"]  = (qty_require / nd["packqty"]).ceil 
 		return command_x,qty_require
 	end	
-
-	def proc_cal_qty_sch(parent_qty,chilnum,parenum,packqty,consumunitqty,consumminqty,consumchgoverqty)
+########  オーダ作成時纏められるので　nd["consumunitqty"],nd["consumminqty"],nd["consumchgoverqty"]は意味なし
+	# def proc_cal_qty_sch(parent_qty,chilnum,parenum,consumunitqty,consumminqty,consumchgoverqty)
+  #   	parenum == 0 ? parenum = 1.0 : parenum = parenum
+	# 		consumunitqty == 0 ? consumunitqty = 1.0 : consumunitqty = consumunitqty
+	# 	qty_require = parent_qty * chilnum / parenum
+	# 	# consumunitqty等については親に合わせて計算する。
+	# 	qty_require = (qty_require / consumunitqty).ceil *  consumunitqty  
+	# 	if consumminqty > qty_require
+	# 		qty_require = consumminqty  ###最小消費数
+	# 	end	
+	# 	qty_require = (qty_require + consumchgoverqty)## consumchgoverqty    ###段取り時に余分に使用(消費)される数量
+	# end
+	def proc_cal_qty_sch(parent_qty,chilnum,parenum)
     	parenum == 0 ? parenum = 1.0 : parenum = parenum
-    	packqty == 0 ? packqty = 1.0 : packqty = packqty
-			consumunitqty == 0 ? consumunitqty = 1.0 : consumunitqty = consumunitqty
 		qty_require = parent_qty * chilnum / parenum
 		# consumunitqty等については親に合わせて計算する。
-		qty_require = (qty_require / consumunitqty).ceil *  consumunitqty  
-		if consumminqty > qty_require
-			qty_require = consumminqty  ###最小消費数
-		end	
-		qty_require = (qty_require + consumchgoverqty)## consumchgoverqty    ###段取り時に余分に使用(消費)される数量
+		# qty_require = (qty_require / consumunitqty).ceil *  consumunitqty  
+		# if consumminqty > qty_require
+		# 	qty_require = consumminqty  ###最小消費数
+		# end	
+		# qty_require = (qty_require + consumchgoverqty)## consumchgoverqty    ###段取り時に余分に使用(消費)される数量
+		return qty_require
 	end
 
 	def field_price_amt_tax_contractprice tblnamechop,command_x
@@ -2972,7 +2985,9 @@ module CtlFields
                         where locas_id = (select locas_id_calendar from suppliers 
                                                 where id = #{calendars_id}    ---calendars_id = suppliers_id
                                                 and expiredate > cast('#{Date.today.strftime("%Y-%m-%d")}' as date)
-                        and targetdate  #{if plusminus == "-" then "<=" else ">=" end} cast('#{base_date.strftime("%Y-%m-%d")}' as date))
+                        												and targetdate  #{if plusminus == "-" then "<=" else ">=" end} cast('#{base_date.strftime("%Y-%m-%d")}' as date)
+																								and targetdate > current_date
+																								)
                         order by targetdate #{if plusminus == "-" then "desc" else "asc" end},
                                   effectivestarttime #{if plusminus == "-" then "desc" else "asc" end}  
                     &
@@ -3006,7 +3021,8 @@ module CtlFields
                                                 ---  inner join shelfnos s on w.locas_id_workplace = s.locas_id_shelfno
                                                  --- where s.id = #{calendars_id}    --- calendars_id = shelfnos_id
                                                   where w.locas_id_workplace = #{calendars_id}    --- 
-                                                  and w.expiredate > cast('#{Date.today.strftime("%Y-%m-%d")}' as date))
+                                                  and w.expiredate > cast('#{Date.today.strftime("%Y-%m-%d")}' as date)
+																								and targetdate > current_date)
                         and c.targetdate #{if plusminus == "-" then "<=" else ">=" end} cast('#{base_date.strftime("%Y-%m-%d")}' as date)
                         order by c.targetdate #{if plusminus == "-" then "desc" else "asc" end},
                                   c.effectivestarttime #{if plusminus == "-" then "desc" else "asc" end}  
@@ -3023,16 +3039,16 @@ module CtlFields
             &
             calendar = ActiveRecord::Base.connection.select_one(strsql)
             if calendar.nil?
-              message = "workplaces locas_id:#{calendars_id}  calendar missing"
+              message = "locas_id:#{calendars_id}  workplaces calendar missing"
               strsql = %Q&
                       select dayofweek,holidays,workingday,effectivetime  from hcalendars 
                           where locas_id = 0
                           order by expiredate limit 1
                 &
               calendar = ActiveRecord::Base.connection.select_one(strsql)
-              if calendar.nil?
+							if calendar.nil?
                 raise"error e9 calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
-              end
+							end
             end
           end
       when /^dvs/
@@ -3040,7 +3056,7 @@ module CtlFields
                     select * from facilitycalendars f 
                           where f.facilities_id = #{calendars_id}
                            and f.targetdate #{if plusminus == "-" then "<=" else ">=" end} cast('#{base_date.strftime("%Y-%m-%d")}' as date)
-                           and f.expiredate > current_date 								
+                           and f.expiredate > current_date 	and targetdate > current_date				
 									         order by targetdate #{if plusminus == "-" then "desc" else "asc" end},
                                     effectivestarttime #{if plusminus == "-" then "desc" else "asc" end}
             &
@@ -3053,12 +3069,15 @@ module CtlFields
                           order by expiredate limit 1
                 &
               calendar = ActiveRecord::Base.connection.select_one(strsql)
+            	if calendar.nil?
+              	  raise"error e91 calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
+            	end
             end
       when /^erc/
             strsql = %Q&
                     select p.* from chrgs c 
 			                  inner join personcalendars p  on p.persons_id = c.persons_id_chrg
-			                  where p.persons_id = #{calendars_id} 		and p.expiredate > current_date 
+			                  where p.persons_id = #{calendars_id} 		and p.expiredate > current_date 	and targetdate > current_date
                         order by targetdate,effectivestarttime #{if plusminus == "-" then "desc" else "asc" end}  
             &
             calendars = ActiveRecord::Base.connection.select_all(strsql)
@@ -3070,6 +3089,9 @@ module CtlFields
                           order by expiredate limit 1
                 &
               calendar = ActiveRecord::Base.connection.select_one(strsql)
+            	if calendar.nil?
+                raise"error e92 calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
+            	end
             end
       when /^shp/
               strsql = %Q&
@@ -3079,6 +3101,7 @@ module CtlFields
                                 ---                      where s.id = #{calendars_id}    --- calendars_id = shelfnos_id
                                 ---                      and w.expiredate > cast('#{Date.today.strftime("%Y-%m-%d")}' as date))
                             and c.targetdate #{if plusminus == "-" then "<=" else ">=" end} cast('#{base_date.strftime("%Y-%m-%d")}' as date)
+														and targetdate > current_date
                             order by targetdate #{if plusminus == "-" then "desc" else "asc" end},
                                       effectivestarttime #{if plusminus == "-" then "desc" else "asc" end}  
                         &
@@ -3086,24 +3109,14 @@ module CtlFields
               if calendars.length == 0          
                   strsql = %Q&
                         select dayofweek,holidays,workingday,effectivetime  from hcalendars 
-                            where locas_id = (select locas_id_shelfno from shelfnod s
+                            where locas_id = (select locas_id_shelfno from shelfnos s
                                                       where s.id = #{calendars_id}    --- calendars_id = shelfnos_id
-                                                      and w.expiredate > cast('#{Date.today.strftime("%Y-%m-%d")}' as date))
-                            and c.targetdate = cast('#{base_date.strftime("%Y-%m-%d")}' as date)
+                                                      and s.expiredate > cast('#{Date.today.strftime("%Y-%m-%d")}' as date))
                             order by expiredate limit 1
                 &
                 calendar = ActiveRecord::Base.connection.select_one(strsql)
                 if calendar.nil?
-                  message = "workplaces locas_id:#{calendars_id}  calendar missing"
-                  strsql = %Q&
-                          select dayofweek,holidays,workingday,effectivetime  from hcalendars 
-                              where locas_id = 0
-                              order by expiredate limit 1
-                    &
-                  calendar = ActiveRecord::Base.connection.select_one(strsql)
-                  if calendar.nil?
                     raise"error ea calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
-                  end
                 end
               end
       else
@@ -3130,7 +3143,7 @@ module CtlFields
       until calculate_time < 0
         if !workingday.include?(base_date.strftime("%Y%m%d"))&&(dayofweek.include?(base_date.wday.to_s)||holidays.include?(base_date.strftime("%m%d")))
           degcnt += 1
-          raise"LINE:#{__LINE__},degcnt:#{degcnt},base_date:#{base_date},workingday:#{workingday},dayofweek:#{dayofweek},holidays:#{holidays}"  if degcnt > 1000
+          raise"error LINE:#{__LINE__},degcnt:#{degcnt},base_date:#{base_date},workingday:#{workingday},dayofweek:#{dayofweek},holidays:#{holidays}"  if degcnt > 1000
         else
           if  calculate_time < wkHour
             if  plusminus == "-"
@@ -3170,7 +3183,7 @@ module CtlFields
         calendars.each do |calendar|
           if calendar["effectivestarttime"].to_time.nil? or calendar["effectivestarttime"].to_time.nil?
             degcnt += 1
-            raise"LINE:#{__LINE__},degcnt:#{degcnt},base_date:#{base_date},calendar:#{calendar}"  if degcnt > 1000
+            raise"error LINE:#{__LINE__},degcnt:#{degcnt},base_date:#{base_date},calendar:#{calendar}"  if degcnt > 1000
             next
           else
             if  base_date.to_date == calendar["targetdate"].to_date
@@ -3202,7 +3215,7 @@ module CtlFields
         calendars.each do |calendar|
           if calendar["effectivestarttime"].to_time.nil? or calendar["effectivestarttime"].to_time.nil?
             degcnt += 1
-            raise"LINE:#{__LINE__},degcnt:#{degcnt},base_date:#{base_date},calendar:#{calendar}"  if degcnt > 1000
+            raise"error LINE:#{__LINE__},degcnt:#{degcnt},base_date:#{base_date},calendar:#{calendar}"  if degcnt > 1000
             next
           else
             if  base_date.to_date == calendar["targetdate"].to_date
@@ -3219,7 +3232,7 @@ module CtlFields
                   end
                 end
             else
-              wkHour = calendar["effectiveendtime"].to_time - calendar["effectivestarttime"].to_time
+              wkHour = calendar["effectiveendtime"].to_time - calendar["effectivestarttime"].to_time						
               if calculate_time < wkHour
                 base_date = (calendar["targetdate"].to_time.strftime("%Y-%m-%d") + " " + calendar["effectivestarttime"] + ":00").to_time.since(calculate_time) 
                 break

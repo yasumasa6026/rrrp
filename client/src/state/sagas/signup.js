@@ -4,26 +4,22 @@ import axios         from 'axios'
 import {SIGNUP_SUCCESS,SIGNUP_FAILURE} from '../../actions'
 
 function signupApi({email,password,password_confirmation }) {
-  const url = `${process.env.REACT_APP_API_URL}/auth`
-  //const params = {email:email,password:password,password_confirmation:password_confirmation,provider:"email"}
-  const params = {email:email,password:password,password_confirmation:password_confirmation}
-  const headers = { 'Content-Type': 'application/json',
-               }
-  return (axios({
+  //const url = `${process.env.REACT_APP_API_URL}/auth`
+  const signupData = {email:email,password:password,password_confirmation:password_confirmation,
+                      confirm_success_url: 'http://localhost:3000/login' }
+  return axios({
     method: "POST",
-    url: url,
-    params: params,
-    headers: headers
-  }).then((results) => {
+    url:'http://localhost:3001/api/auth',
+    data:signupData 
+  }).then(results => {
     return  results 
   })
-  .catch(error => (
-    { error }
-  ))
-  )
+  .catch(error => {
+    return error
+  })
 }
 
-export function * SignupSaga({payload:{email,password,password_confirmation}}) {
+export function* SignupSaga({payload:{email,password,password_confirmation}}) {
   let {results,error} = yield call(signupApi, {email,password,password_confirmation } )
   if (results || !error) {
     // 成功したので適当なactionをdispatchして画面更新    

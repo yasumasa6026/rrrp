@@ -16,6 +16,7 @@ const initialValues = {
   error:{},
   isAuthenticated:false,
   isSignUp:false,
+  isLogin:true,
   email:"",
   token:null,
   client:null,
@@ -29,8 +30,6 @@ const authreducer =  (state= initialValues , actions) =>{
       
     case SIGNUPFORM_REQUEST:
       return {
-        isSignUp:true,
-        isLogin:false,
         isChangePassword:false,
         isResetPassword:false,
         isDeleteUser:false,
@@ -40,7 +39,6 @@ const authreducer =  (state= initialValues , actions) =>{
     case SIGNUP_REQUEST:
         return {
           isSubmitting:true,
-          isSignUp:true,
           message: "signining in...",
           result: "",
         }
@@ -50,7 +48,6 @@ const authreducer =  (state= initialValues , actions) =>{
     case SIGNUP_SUCCESS:
       return {...state,
         isSubmitting:false,
-        isSignUp:true,
         result: "ok"
       }
 
@@ -60,7 +57,6 @@ const authreducer =  (state= initialValues , actions) =>{
       return {
           time: new Date(),
           isSubmitting:false,
-          isSignUp:true,
           result: actions.payload.message   /// payloadに統一
       }
 
@@ -93,7 +89,7 @@ const authreducer =  (state= initialValues , actions) =>{
       return {...state,
         message: "",
         isAuthenticated:true,
-        "access-token":actions.payload["access-token"], 
+        token:actions.payload["access-token"], 
         client:actions.payload.client, 
         uid:actions.payload.uid,
         expiry:actions.payload.expiry,
@@ -114,7 +110,7 @@ const authreducer =  (state= initialValues , actions) =>{
     case SECOND_CONFIRMALL_SUCCESS:
     case GANTTCHART_SUCCESS:
       return {...state,
-        "access-token":actions.payload.headers["access-token"]?actions.payload.headers["access-token"]:state["access-token"],
+        token:actions.payload.headers["access-token"]?actions.payload.headers["access-token"]:state["token"],
         client:actions.payload.headers.client, 
         uid:actions.payload.headers.uid,
         expiry:actions.payload.headers.expiry?actions.payload.headers.expiry:state.expiry,
@@ -133,7 +129,7 @@ const authreducer =  (state= initialValues , actions) =>{
 
     case LOGOUT_REQUEST:
     return {
-      "access-token":actions.payload["access-token"], 
+      token:actions.payload["access-token"], 
       client:actions.payload.client, 
       uid:actions.payload.uid, 
       isAuthenticated:false,
@@ -158,7 +154,11 @@ const authreducer =  (state= initialValues , actions) =>{
  
 
     default:
-      return state
+      return {
+        ...state,
+        isSignUp:false,
+        isLogin:true,
+      }
   }
 }
 

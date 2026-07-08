@@ -30,12 +30,13 @@ function loginApi({ email, password}) {
 export function* LoginSaga({ payload: { email, password } }) {
   try{
       let results = yield call(loginApi, { email, password} ) 
-      console.log(`headers.access-token:${results.headers["access-token"]},headers.client:${results.headers.client},
-                    header.expiry:${results.headers.expiry},headers.token-type:${results.headers["token-type"]},
-                    headers.authorization:${results.headers.authorization},headers.contentType:${results.headers.contentType}`)
+      // console.log(`headers.access-token:${results.headers["access-token"]},headers.client:${results.headers.client},
+      //               header.expiry:${results.headers.expiry},headers.token-type:${results.headers["token-type"]},
+      //               headers.authorization:${results.headers.authorization},headers.contentType:${results.headers.contentType}`)
         yield put({ type: LOGIN_SUCCESS, payload: results.headers })
-        yield put(MenuRequest(results.headers) )      
-        yield put(ButtonListRequest(results.headers) )
+        let headers = {...results.headers,"token":results.headers["access-token"]}
+        yield put(MenuRequest(headers) )      
+        yield put(ButtonListRequest(headers) )
     }
     catch(error){ 
              return  yield put({type:LOGIN_FAILURE,payload:{error:error,}})     

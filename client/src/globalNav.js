@@ -1,4 +1,4 @@
-import React from 'react'
+import React,{useState} from 'react'
 import { connect } from 'react-redux'
 import {Routes, Route,useNavigate,} from 'react-router-dom'
 import AppBar from '@mui/material/AppBar'
@@ -11,15 +11,15 @@ import { LogoutRequest,SignupFormRequest,ChangePasswordFormRequest} from './acti
 import Login from './components/login'
 import Signup from './components/signup'
 import ChangePassword from './components/changepassword'
-
-const GlobalNav  = ( { isAuthenticated, isSubmitting,isSignUp,isLogin,
+const GlobalNav  = ( { isAuthenticated, isSubmitting,isSignUpOrg,isLoginOrg,
                     token,client,uid,
                     LogoutClick,SignupFormClick,ChangePasswordFormClick}) => {
                const navigate = useNavigate()
-                const changepasswordform = () => {navigate('/changepassword')}
-                const loginform = () => {navigate('/login')}
-                const signupform = () => {navigate('/signup')}
-              
+               const changepasswordform = () => {navigate('/changepassword')}
+               const loginform = () => {navigate('/login')}
+               const signupform = () => {navigate('/signup')}
+ const [isSignUp, setIsSignUp] = useState(isSignUpOrg)
+ const [isLogin, setIsLogin] = useState(isLoginOrg)
     return (
       <div>
       <ThemeProvider theme={theme}>
@@ -42,16 +42,16 @@ const GlobalNav  = ( { isAuthenticated, isSubmitting,isSignUp,isLogin,
               ChangePassword{isSubmitting && <i className='fa fa-spinner fa-spin' />}</Button>}
           </Typography>
           <Typography variant="h5"  gutterBottom = {true}  >
-            {!isAuthenticated && !isLogin && <Button variant="contained" color='success' 
-              type='submit' disabled={false}
-              onClick ={loginform}>
-              {isSubmitting && <i className='fa fa-spinner fa-spin' />}Login</Button>}
-           </Typography>
-           <Typography variant="h5"  gutterBottom = {true}  >
-            {!isAuthenticated && !isSignUp && <Button variant="contained" color='success'
-              type='submit' disabled={false}
-              /*onClick ={() =>{SignupFormClick(),signupform()}}>SignUp</Button>}*/
-              onClick ={() =>{signupform()}}>SignUp</Button>}
+                      {!isAuthenticated && isSignUp && <Button variant="contained" color='success' 
+                        type='submit' disabled={false}
+                        onClick = {() =>{loginform(),setIsSignUp(false),setIsLogin(true)}}>
+                        {isSubmitting && <i className='fa fa-spinner fa-spin' />}Login</Button>}
+          </Typography>
+          <Typography variant="h5"  gutterBottom = {true}  >
+                      {!isAuthenticated && isLogin && <Button variant="contained" color='success'
+                        type='submit' disabled={false}
+                        /*onClick ={() =>{SignupFormClick(),signupform()}}>SignUp</Button>}*/
+                        onClick ={() =>{setIsSignUp(true),setIsLogin(false),signupform()}}>SignUp</Button>}
           </Typography>
           </Toolbar>
       </StyledAppBar>
@@ -89,8 +89,17 @@ const mapDispatchToProps = (dispatch,ownProps ) => {
         }
 }
 const  mapStateToProps = (state) => {
-  const { isSubmitting ,isAuthenticated,client,uid,token,isSignUp,isLogin} = state.auth
-  return { isSubmitting ,isAuthenticated, token,client,uid,isSignUp,isLogin}
-}
+  //const { isSubmitting ,isAuthenticated,client,uid,token,isSignUp,isLogin} = state.auth
+  //return { isSubmitting ,isAuthenticated, token,client,uid,isSignUp,isLogin}
+  return {
+      isSubmitting: state.auth.isSubmitting,
+      isAuthenticated: state.auth.isAuthenticated,
+       token: state.auth.token,
+       client: state.auth.client,
+       uid: state.auth.uid,
+       isSignUpOrg: state.auth.isSignUp,
+       isLoginOrg: state.auth.isLogin,
+    }
+  }
 
 export default connect(mapStateToProps, mapDispatchToProps )(GlobalNav)

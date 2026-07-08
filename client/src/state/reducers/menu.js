@@ -10,6 +10,7 @@ import {MENU_REQUEST,MENU_SUCCESS,MENU_FAILURE,
 const initialValues = {
   isSubmitting:false,
   isSignUp:false,
+  isLogin:false,
   errors:[],
   screenFlg:"first",
   firstView:true,
@@ -33,11 +34,13 @@ const menureducer =  (state= initialValues , actions) =>{
       return {...state,
         firstView:false,
         secondView:false,
+        isLogin:true,
       }
 
     case MENU_SUCCESS:
         return {...state,
-          menuListData:actions.action,
+          menuListData:actions.action.sgrp_menue,
+          menuMessage:actions.action.menuMessage,
           firstView:false,
           secondView:false,
           hostError:null,

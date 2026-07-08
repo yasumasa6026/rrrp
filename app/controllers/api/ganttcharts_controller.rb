@@ -30,17 +30,17 @@ module Api
                                      "type"=>ganttdata[:type],"start"=>ganttdata[:start],"end"=>ganttdata[:duedate],
                                      "styles"=>case ganttdata[:classlist_code]
                                                 when "installationCharge"   ###設置
-                                                    {"backgroundColor"=>"#33FFFF"}
+                                                    {"backgroundColor"=>"#33FFFF"}  #
                                                 when "mold"  ###金型
                                                     {"backgroundColor"=>"#66FF66"}
                                                 when "apparatus" ### 設備
-                                                  {"backgroundColor"=>"#ccccff"} 
+                                                  {"backgroundColor"=>"#eb8888"} 
                                                 when "changeover"  ### 切替作業
-                                                    {"backgroundColor"=>"#cccc99"} 
+                                                    {"backgroundColor"=>"#cc8899"} 
                                                 when "require"
-                                                    {"backgroundColor"=>"#cccc66"} 
+                                                    {"backgroundColor"=>"#cc6666"} 
                                                 when "postprocess"  ###後加工作業
-                                                    {"backgroundColor"=>"#cccc33"} 
+                                                    {"backgroundColor"=>"#cc4433"} 
                                                 when "ITool" ### 工具
                                                     {"backgroundColor"=>"#009900"}
                                                 else

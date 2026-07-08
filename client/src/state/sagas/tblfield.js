@@ -6,9 +6,9 @@ import {TBLFIELD_SUCCESS, SECONDTBLFIELD_SUCCESS, SCREEN_FAILURE,SECOND_FAILURE,
 function screenApi({params,auth}) {
   //const url = 'http://localhost:3001/api/tblfields'
   const url = `${process.env.REACT_APP_API_URL}/tblfields`
-  const headers = {'access-token':auth["access-token"],'client':auth.client,'uid':auth.uid ,
+  const headers = {'access-token':auth["token"],'client':auth.client,'uid':auth.uid ,
                     'expiry':auth.expiry,'token-type':auth["token-type"],
-                    'authorization':auth.authorization,contentType: "application/json",}
+                    'authorization':auth.authorization,}
 
     return axios({
         method: "POST",

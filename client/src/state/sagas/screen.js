@@ -30,9 +30,9 @@ export function* ScreenSaga({ payload: {params}  }) {
   //url = 'http://localhost:3001/api/menus7'
   const url = `${process.env.REACT_APP_API_URL}/menus7`
 
-  const headers = {'access-token':auth["access-token"],'client':auth.client,'uid':auth.uid ,
+  const headers = {'access-token':auth["token"],'client':auth.client,'uid':auth.uid ,
                     'expiry':auth.expiry,'token-type':auth["token-type"],
-                    'authorization':auth.authorization,contentType: "application/json",}
+                    'authorization':auth.authorization,}
     let message
     let hostError
     let lineData
@@ -198,7 +198,7 @@ export function* ScreenSaga({ payload: {params}  }) {
             case /code.*401/.test(e): message = ` Invalid credentials  Unauthorized or Login TimeOut ${e}`
                      console.log(`headers.access-token:${headers["access-token"]},headers.client:${headers.client},
                     header.expiry:${headers.expiry},headers.token-type:${headers["token-type"]},
-                    headers.authorization:${headers.authorization},headers.contentType:${headers.contentType}`)
+                    headers.authorization:${headers.authorization}`)
                     yield call(history.push,'/login')
                     return  yield put({type:LOGIN_FAILURE, payload:{message:message}})   
             default:

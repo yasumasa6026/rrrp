@@ -9,7 +9,7 @@ function pdfApi({params,auth}) {
   let client = auth.client         
   let uid = auth.uid 
   const url = `${process.env.REACT_APP_API_URL}/pdf`
-  const headers =  { 'access-token':auth["access-token"], 
+  const headers =  { 'access-token':auth["token"], 
                     client:auth.client,
                     uid:auth.uid,
                     authorization:auth.authorization,

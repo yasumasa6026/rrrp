@@ -396,6 +396,7 @@ module RorBlkCtl
 				  reqparams = setGantt(reqparams)
 				  ope = Operation::OpeClass.new(reqparams)  ###xxxschs,xxxords
           if reqparams[:classname] =~ /_insert_|_add_/  ###trngantts 追加
+							   Rails.logger.debug" line:#{__LINE__} ,reqparams:#{reqparams}  "
 				    last_lotstks = ope.proc_trngantts_insert()  ###xxxschs,xxxordsのtrngannts,linktbls,
           	conParams = ope.proc_opeParams.dup
 				    conParams[:segment]  = "mkShpschConord"  ### ordsの時shpschs,conordsを作成
@@ -779,7 +780,7 @@ module RorBlkCtl
 				gantt["consumunitqty"] = 1 ###消費単位 nditmから別途セットする。
 				gantt["consumminqty"]  = 0 ###最小消費数　 nditmから別途セットする。
 				gantt["consumchgoverqty"] = 0  ###段取り消費数　 nditmから別途セットする。
-				gantt["optfixoterm"] =  (opeitm["optfixoterm"].to_f == 0 ? 365 : opeitm["optfixoterm"].to_f)  
+				gantt["optfixoterm"] =  (opeitm["optfixoterm"].to_f == 0 ? Constants::Maxoptfixoterm : opeitm["optfixoterm"].to_f)  
 				gantt["packqty"] =  (opeitm["packqty"].to_f == 0 ? 1 : opeitm["packqty"].to_f)
         gantt["duration"] =  (opeitm["duration"].to_f == 0 ? 1 : opeitm["duration"].to_f)
         gantt["unitofduration"] =  (opeitm["unitofduration"].to_s == "" ? "Day " : opeitm["unitofduration"].to_s)
@@ -958,7 +959,7 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
 				gantt["consumunitqty"] = 1 ###消費単位
 				gantt["consumminqty"]  =  0 ###最小消費数
 				gantt["consumchgoverqty"] = 0  ###段取り消費数
-				gantt["optfixoterm"] =  (opeitm["optfixoterm"].to_f == 0 ? 365 : opeitm["optfixoterm"].to_f)  
+				gantt["optfixoterm"] =  (opeitm["optfixoterm"].to_f == 0 ? Constants::Maxoptfixoterm : opeitm["optfixoterm"].to_f)  
 				gantt["packqty"] =  (opeitm["packqty"].to_f == 0 ? 1 : opeitm["packqty"].to_f)
         gantt["duration"] =  (opeitm["duration"].to_f == 0 ? 1 : opeitm["duration"].to_f)
         gantt["unitofduration"] =  (opeitm["unitofduration"].to_s == "" ? "Day " : opeitm["unitofduration"].to_s)
@@ -1111,6 +1112,7 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
 				next if key.to_s == "errPath"
 				rec[key] = val
 			end	
+			Rails.logger.debug" class:#{self},line:#{__LINE__} ,\n ommand_c:#{command_c}" 
 			tbl_add_arel  "SIO_#{command_c["sio_viewname"]}",rec
 		end   ## 
 		

@@ -1,7 +1,7 @@
 module Api
   ###
   ###  rollbackの結果を画面に返せてない。エラー時はlogで確認
-  ###　日付は文字タイプ(関数、日付は使用できない。)
+  ###　数量等や日付は文字タイプ(関数、日付は使用できない。)
   ###
 class UploadexcelController < ApplicationController
         #include DeviseTokenAuth::Concerns::SetUserByToken
@@ -58,8 +58,8 @@ class UploadexcelController < ApplicationController
         idx = 0
         idAll = 0
 
-  		fetchCode = YupSchema.proc_create_fetchCode screen.screenCode ##
-        checkCode  = YupSchema.proc_create_checkCode screen.screenCode   
+  		fetchCode = screen.proc_create_fetchCode screen.screenCode ##
+        checkCode  = screen.proc_create_checkCode screen.screenCode   
         tblid = screen.screenCode.split("_")[1].chop + "_id"
         lines = params[:uploadData][:uploadexcel]
         lines.each do |linevalues|

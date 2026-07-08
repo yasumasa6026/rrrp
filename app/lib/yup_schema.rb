@@ -94,25 +94,6 @@ extend self
         yupschema <<  "     }"
         return {:yupschema=>yupschema}           
     end 
-    def proc_create_fetchCode screenCode       
-        fetchCode ={}
-        ActiveRecord::Base.connection.select_all(fetchCodesql(screenCode)).each do |rec|   
-            if rec["screenfield_paragraph"]  
-                fetchCode[rec["pobject_code_sfd"]] = rec["screenfield_paragraph"]
-            end    
-        end 
-
-        return fetchCode           
-    end  
-    def proc_create_checkCode screenCode       
-        checkCode ={}
-        ActiveRecord::Base.connection.select_all(checkCodesql(screenCode)).each do |rec|   
-            if rec["screenfield_subindisp"]  
-                checkCode[rec["pobject_code_sfd"]] = rec["screenfield_subindisp"] 
-            end    
-        end 
-        return checkCode           
-    end 
     private
     def strsql_atr screenCode
          %Q%select pobject_code_sfd,screenfield_type,screenfield_indisp,screenfield_maxvalue,
@@ -127,19 +108,5 @@ extend self
                     screenfield_minvalue,screenfield_formatter,screenfield_paragraph,pobject_code_scr,
                     screenfield_dataprecision,screenfield_datascale
                     order by 	pobject_code_scr,pobject_code_sfd%
-    end    
-    def fetchCodesql screenCode
-         %Q%select pobject_code_sfd,screenfield_paragraph
-                    from r_screenfields
-                    where trim(screenfield_paragraph) != '' and screenfield_paragraph is not null and
-                    screenfield_expiredate > current_date
-                    #{if screenCode then " and pobject_code_scr = '#{screenCode}' " else "" end }%
-    end     
-    def checkCodesql screenCode
-         %Q%select pobject_code_sfd,screenfield_subindisp
-                    from r_screenfields
-                    where trim(screenfield_subindisp) != '' and screenfield_subindisp is not null and
-                    screenfield_expiredate > current_date
-                    #{if screenCode then " and pobject_code_scr = '#{screenCode}' " else "" end }%
-    end  
+    end   
 end

@@ -52,8 +52,8 @@ DeviseTokenAuth.setup do |config|
                          # 追加↓
                           :authorization => 'authorization'
                         }
-
-                          # By default, only Bearer Token authentication is implemented out of the box.
+  config.redirect_whitelist = ['http://localhost:3000/login', 'http://localhost:3000/']
+  # By default, only Bearer Token authentication is implemented out of the box.
   # If, however, you wish to integrate with legacy Devise authentication, you can
   # do so by enabling this flag. NOTE: This feature is highly experimental!
    config.enable_standard_devise_support = false
@@ -62,5 +62,5 @@ DeviseTokenAuth.setup do |config|
   # devise confirmable module. If you want to use devise confirmable module and
   # send email, set it to true. (This is a setting for compatibility)
   # config.send_confirmation_email = true
-  config.default_confirm_success_url = "confirmed"
+  config.default_confirm_success_url = "http://localhost:3000/login"
 end

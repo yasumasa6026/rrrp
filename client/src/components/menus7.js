@@ -19,7 +19,7 @@ const titleNameSet = (screenName) =>{ return (
 
 const Menus7 = ({ isAuthenticated ,menuListData,getScreen,loadingOrg,loadingOrgSecond,
           toggleSubForm,toggleSubFormSecond,screenNameSecond,
-          hostError,message,firstView,secondView,auth}) =>{
+          hostError,message,menuMessage,firstView,secondView,auth}) =>{
     const [tabIndex, setTabIndex] = useState(0)
     const [subTabIndex, setSubTabIndex] = useState(0)
     const loading = useMemo(()=>loadingOrg,[loadingOrg])
@@ -93,6 +93,9 @@ const Menus7 = ({ isAuthenticated ,menuListData,getScreen,loadingOrg,loadingOrgS
               {firstView&&loading && ( <div colSpan="10000">
             	              Loading...
           	              </div>)}
+              {!firstView&&!secondView&&menuMessage&& ( <div colSpan="10000">
+                                  {menuMessage}
+          	              </div>)}
               {firstView&&message&& ( <div colSpan="10000">
                                   {message}
           	              </div>)}
@@ -147,6 +150,7 @@ const  mapStateToProps = (state,ownProps) =>({
   toggleSubFormSecond:state.second.toggleSubForm,
   hostError: state.menu.hostError,
   message: state.menu.message,
+  menuMessage: state.menu.menuMessage,
 })
 
 const mapDispatchToProps = (dispatch,ownProps ) => ({

@@ -181,8 +181,8 @@ module ScreenLib
 				@grid_columns_info[:columns_info] = columns_info
 				@grid_columns_info[:hiddenColumns] = hiddenColumns
 				@grid_columns_info[:fetchOrCheck] = {}
-				@grid_columns_info[:fetchOrCheck][:fetchCode] = YupSchema.proc_create_fetchCode   screenCode
-				@grid_columns_info[:fetchOrCheck][:checkCode] = YupSchema.proc_create_checkCode   screenCode
+				@grid_columns_info[:fetchOrCheck][:fetchCode] = proc_create_fetchCode   screenCode
+				@grid_columns_info[:fetchOrCheck][:checkCode] = proc_create_checkCode   screenCode
 				@grid_columns_info[:fetch_data] = {}
 				@grid_columns_info[:subform_info] = subform_info
 
@@ -366,8 +366,8 @@ module ScreenLib
 			@grid_columns_info[:columns_info] = columns_info
 			@grid_columns_info[:hiddenColumns] = hiddenColumns
 			@grid_columns_info[:fetchOrCheck] = {}
-			@grid_columns_info[:fetchOrCheck][:fetchCode] = {} ###YupSchema.proc_create_fetchCode   screenCode
-			@grid_columns_info[:fetchOrCheck][:checkCode] = {} ###YupSchema.proc_create_checkCode   screenCode
+			@grid_columns_info[:fetchOrCheck][:fetchCode] = {} ###proc_create_fetchCode   screenCode
+			@grid_columns_info[:fetchOrCheck][:checkCode] = {} ###proc_create_checkCode   screenCode
 			@grid_columns_info[:fetch_data] = {}
 			@grid_columns_info[:subform_info] = subform_info
 
@@ -1005,8 +1005,8 @@ module ScreenLib
 					##end
 				end	
 				fetchOrCheck = {}
-				fetchOrCheck[:fetchCode] = YupSchema.proc_create_fetchCode screenCode   
-				fetchOrCheck[:checkCode]  = YupSchema.proc_create_checkCode screenCode   
+				fetchOrCheck[:fetchCode] = proc_create_fetchCode screenCode   
+				fetchOrCheck[:checkCode]  = proc_create_checkCode screenCode   
 				page_info[:screenwidth] = screenwidth	
 				if gridmessages_fields.size > 1
 					select_fields << gridmessages_fields
@@ -1020,8 +1020,8 @@ module ScreenLib
 			reqparams = params.dup
       reqparams[:gantt] = JSON.parse(params[:gantt]) if params[:gantt]
 			tblnamechop = screenCode.split("_")[1].chop
-			yup_fetch_code = grid_columns_info[:fetchOrCheck][:fetchCode]
-			yup_check_code = grid_columns_info[:fetchOrCheck][:checkCode]
+			field_fetch_code = grid_columns_info[:fetchOrCheck][:fetchCode]
+			field_check_code = grid_columns_info[:fetchOrCheck][:checkCode]
 			reqparams[:err] = nil
       reqparams[:outqty] = 0
     	reqparams[:outamt] = 0
@@ -1036,8 +1036,8 @@ module ScreenLib
             break
           end                     
 				end  
-				if yup_fetch_code[field] 
-				 	reqparams[:fetchview] = yup_fetch_code[field]
+				if field_fetch_code[field] 
+				 	reqparams[:fetchview] = field_fetch_code[field]
 				 	reqparams = CtlFields.proc_fetch_rec reqparams,parse_linedata  
 				 	if reqparams[:err] 
 						command_c[:confirm_gridmessage] = reqparams[:err] 
@@ -1052,9 +1052,9 @@ module ScreenLib
 				 	end
 				end
 				if reqparams[:err].nil? or reqparams[:err] == "" 
-					if yup_check_code[field] 
+					if field_check_code[field] 
 						reqparams[:err] = nil
-						reqparams = CtlFields.proc_judge_check_code reqparams,field,yup_check_code[field] ,parse_linedata 
+						reqparams = CtlFields.proc_judge_check_code reqparams,field,field_check_code[field] ,parse_linedata 
 						if reqparams[:err]
 							command_c[:confirm_gridmessage] = reqparams[:err] 
 							command_c[:confirm] = false 
@@ -1162,11 +1162,10 @@ module ScreenLib
 			  			end
 					end
 					if reqparams[:err].nil?    or reqparams[:err] == "" ###一画面分纏めてcommit
-						reqparams,command_c = blk.proc_add_update_table(reqparams,command_c)
-						reqparams[:parse_linedata] = ok_confirm(parse_linedata,command_c,tblnamechop)
-						ArelCtl.proc_materiallized tblnamechop+"s"
-					else
-			  		end 
+							reqparams,command_c = blk.proc_add_update_table(reqparams,command_c)
+							reqparams[:parse_linedata] = ok_confirm(parse_linedata,command_c,tblnamechop)
+							ArelCtl.proc_materiallized tblnamechop+"s"
+				  end 
 				when /trngantts|alloctbls/  ### blk.proc_private_aud_rec　使用せず
 						base = {"srctblname" => "lotstkhists"}
 						case screenCode
@@ -1236,8 +1235,7 @@ module ScreenLib
 								gantt["qty_require"] = 0
 								gantt["qty_handover"] = 0
 								gantt["packqty"]	= 1
-								gantt["qty_sch"] = CtlFields.proc_cal_qty_sch(gantt["qty_sch_pare"].to_f,gantt["chilnum"].to_f,gantt["parenum"].to_f,
-															gantt["packqty"].to_f,gantt["consumunitqty"],gantt["consumminqty"].to_f,gantt["consumchgoverqty"].to_f)
+								gantt["qty_sch"] = CtlFields.proc_cal_qty_sch(gantt["qty_sch_pare"].to_f,gantt["chilnum"].to_f,gantt["parenum"].to_f)
 								gantt["persons_id_upd"] = params[:person_id_upd]
 								last_lotstks = ArelCtl.proc_insert_trngantts(gantt,{})   ###子。孫への展開はない
 							rescue
@@ -1709,10 +1707,43 @@ module ScreenLib
                                          &
         ActiveRecord::Base.connection.insert(strsql)
         max_id = ActiveRecord::Base.connection.select_value(%Q&select max(id) from facilitycalendars&)
-        strsql = %Q& select setval('facilitycalendars_seq',#{max_id})&
-        ActiveRecord::Base.connection.update(strsql)
+        strsql = %Q& select setval('facilitycalendars_seq',cast(#{max_id} as integer))&
+        ActiveRecord::Base.connection.select_one(strsql)
     end
+    
+    def proc_create_fetchCode screenCode       
+        fetchCode ={}
+        ActiveRecord::Base.connection.select_all(fetchCodesql(screenCode)).each do |rec|   
+            if rec["screenfield_paragraph"]  
+                fetchCode[rec["pobject_code_sfd"]] = rec["screenfield_paragraph"]
+            end    
+        end 
 
+        return fetchCode           
+    end  
+    def proc_create_checkCode screenCode       
+        checkCode ={}
+        ActiveRecord::Base.connection.select_all(checkCodesql(screenCode)).each do |rec|   
+            if rec["screenfield_subindisp"]  
+                checkCode[rec["pobject_code_sfd"]] = rec["screenfield_subindisp"] 
+            end    
+        end 
+        return checkCode           
+    end  
+    def fetchCodesql screenCode
+         %Q%select pobject_code_sfd,screenfield_paragraph
+                    from r_screenfields
+                    where trim(screenfield_paragraph) != '' and screenfield_paragraph is not null and
+                    screenfield_expiredate > current_date
+                    #{if screenCode then " and pobject_code_scr = '#{screenCode}' " else "" end }%
+    end     
+    def checkCodesql screenCode
+         %Q%select pobject_code_sfd,screenfield_subindisp
+                    from r_screenfields
+                    where trim(screenfield_subindisp) != '' and screenfield_subindisp is not null and
+                    screenfield_expiredate > current_date
+                    #{if screenCode then " and pobject_code_scr = '#{screenCode}' " else "" end }%
+    end  
   
 		def undefined
 		  nil
