@@ -1,18 +1,18 @@
 module ArelCtl
 	extend self
-	def proc_get_opeitms_rec itms_id,locas_id,processseq = nil,priority = nil  ###
-		strsql = %Q& select * from opeitms where itms_id = #{itms_id} 
-					#{if locas_id then " and locas_id = " + locas_id.to_s else "" end}
-				   #{if processseq then " and processseq = " + processseq.to_s else "" end}
-				   #{if priority then " and priority = " + priority.to_s else "" end}
-				   and expiredate > current_date  order by  priority desc &
-		newrec = ActiveRecord::Base.connection.select_one(strsql)
-		if newrec
-			return newrec
-		else
-			return nil
-    end
-	end
+	# def proc_get_opeitms_rec itms_id,locas_id,processseq = nil,priority = nil  ###
+	# 	strsql = %Q& select * from opeitms where itms_id = #{itms_id} 
+	# 				#{if locas_id then " and locas_id = " + locas_id.to_s else "" end}
+	# 			   #{if processseq then " and processseq = " + processseq.to_s else "" end}
+	# 			   #{if priority then " and priority = " + priority.to_s else "" end}
+	# 			   and expiredate > current_date  order by  priority desc &
+	# 	newrec = ActiveRecord::Base.connection.select_one(strsql)
+	# 	if newrec
+	# 		return newrec
+	# 	else
+	# 		return nil
+  #   end
+	# end
 
   def proc_materiallized tblname
 		if  Constants::Materiallized[tblname]
@@ -43,27 +43,36 @@ module ArelCtl
 	
 	def proc_processreqs_add params
 		processreqs_id = proc_get_nextval("processreqs_seq")
-		if params[:seqno].nil?
-			params[:seqno] = []
-		end	
-		params[:seqno] << processreqs_id  ###
-		reqparams = params.dup
-		reqparams.delete(:parse_linedata)  ###size 8192対策
-		reqparams.delete(:lineData)
-		if reqparams[:where_str]
-			reqparams[:where_str] = reqparams[:where_str].gsub("'","#!")
+		if params[:seqno].nil? or params[:seqno] == 0 ###
+				params[:seqno] = processreqs_id 
+				params[:seqnos] = [] 
+		else
+				params[:seqnos] << processreqs_id 
+		end
+		if params[:billpayparams] 
+			 	strParams = params.to_json
+		else 
+				strParams = "{}"
 		end
 		strsql = %Q&
 			insert into processreqs(
 						contents,remark,
 						created_at,updated_at,
-						update_ip,persons_id_upd,reqparams,
-						seqno,id,result_f)
+						update_ip,persons_id_upd,
+						id,seqno,seqnos,
+						segment,mkprdpurordsidparam,result_f,
+						tblname,tblid,tbldata,
+						billpayparams,
+						gantt,child)
 					values(
-						'','#{reqparams[:remark]}',
+						'','#{params[:remark]}',
 						current_timestamp,current_timestamp,
-						'',#{reqparams[:person_id_upd]},'#{reqparams.to_json}',
-						#{reqparams[:seqno][0]},#{processreqs_id},'0')
+						'',#{params[:person_id_upd]},
+						#{processreqs_id},'#{params[:seqno]}','#{params[:seqnos].to_json}',
+						'#{params[:segment]}',#{(params[:mkprdpurords_id]||=0)},'0',
+						'#{params[:tblname]||=""}',#{params[:tblid]||=0},'#{params[:tbldata].to_json}',
+						'#{strParams}',
+						'#{(params[:gantt]||={}).to_json}','#{(params[:child]||={}).to_json}')
 		&
 		ActiveRecord::Base.connection.insert(strsql) 
 		return processreqs_id,params
@@ -288,7 +297,6 @@ module ArelCtl
        link = {"prevtblname" => src["tblname"],"prevtblid" => src["tblid"],"tblname" => newsrc["tblname"],"tblid" => newsrc["tblid"]}
        add_dvserc_link(link)
     end  
-		return linktbl_id
 	end
 
 	
@@ -519,7 +527,7 @@ module ArelCtl
       end
     ###when "delete"
     end
-		return alloctbl["id"],last_lotstk
+		return last_lotstk
 	end
 
 		###custschs,custords,prdschs,prdords,purschs,purords dvsschs ercschs xxxx(在庫)  の時のみ作成
@@ -609,13 +617,13 @@ module ArelCtl
       last_lotstks = []
 			case gantt["tblname"] 
 			when /^pur/   ### shp itmclass,code=mold,ITollの時
-				linktbl_id = proc_insert_linktbls(src,base)
-				alloctbl_id,last_lotstk = proc_aud_alloctbls(alloc,"insert")
+				proc_insert_linktbls(src,base)
+				last_lotstk = proc_aud_alloctbls(alloc,"insert")
         last_lotstks << last_lotstk
         ###reqparams = {:tbldata => tbldata,:gantt => gantt,:opeitm => {}}
 			when /^prd/   ### shp itmclass,code=mold,ITollの時
-				linktbl_id = proc_insert_linktbls(src,base)
-				alloctbl_id,last_lotstk = proc_aud_alloctbls(alloc,"insert")
+				proc_insert_linktbls(src,base)
+				last_lotstk = proc_aud_alloctbls(alloc,"insert")
         ###
         # gate runner check
         ###
@@ -631,19 +639,19 @@ module ArelCtl
         #
         ###reqparams = {:tbldata => tbldata,:gantt => gantt,:opeitm => {}}
 			when /^dymschs|^shp/   ### shp itmclass,code=mold,ITollの時
-				linktbl_id = proc_insert_linktbls(src,base)
-				alloctbl_id,last_lotstk = proc_aud_alloctbls(alloc,"insert")
+				proc_insert_linktbls(src,base)
+				last_lotstk = proc_aud_alloctbls(alloc,"insert")
         last_lotstks << last_lotstk
 			when /^erc|^dvs/   ### shp itmclass,code=mold,ITollの時
-				linktbl_id = proc_insert_linktbls(src,base)
-				alloctbl_id,last_lotstk_tmp = proc_aud_alloctbls(alloc,"insert")
+				proc_insert_linktbls(src,base)
+				last_lotstk_tmp = proc_aud_alloctbls(alloc,"insert")
         ###在庫移動無
 			when /^con/   ### runnerの時のみtrnganttsを作成
-				linktbl_id = proc_insert_linktbls(src,base)
-				alloctbl_id,last_lotstk_tmp = proc_aud_alloctbls(alloc,"insert")
+				proc_insert_linktbls(src,base)
+				last_lotstk_tmp = proc_aud_alloctbls(alloc,"insert")
 			when /^cust/
-				linktbl_id = proc_insert_linkcusts(src,base)
-				alloctbl_id,last_lotstk = proc_aud_alloctbls(alloc,"insert")
+				proc_insert_linkcusts(src,base)
+				last_lotstk = proc_aud_alloctbls(alloc,"insert")
         last_lotstks << last_lotstk
 			end
 			return last_lotstks
@@ -710,14 +718,14 @@ module ArelCtl
 				ActiveRecord::Base.connection.update(update_sql)
 			else
         3.times{Rails.logger.debug" class:#{self},line:#{__LINE__} ,\n src:#{src},\n base:#{base},\n strsql:#{strsql}"}
-        raise
+        ### raise
 			end
 		end
 
 		alloc = {"id" => src["alloctbls_id"], "qty_linkto_alloctbl" => src["qty_linkto_alloctbl"],
         "srctblname" => src["tblname"],"srctblid" => src["tblid"],"trngantts_id" => src["trngantts_id"],
         "remark" => base["remark"],"persons_id_upd" => 0}
-    alloctbl_id,last_lotstk = proc_aud_alloctbls(alloc,"update")
+    last_lotstk = proc_aud_alloctbls(alloc,"update")
     last_lotstks << last_lotstk
 		str_qty = case src["tblname"]
 		 			when /schs$/
@@ -758,14 +766,14 @@ module ArelCtl
 			alloc = {"srctblname" => base["tblname"],"srctblid" => base["tblid"],"trngantts_id" => base["trngantts_id"],
         					"qty_linkto_alloctbl" => src["qty_src"] * -1,
         					"remark" => "#{self} line #{__LINE__} #{Time.now}" + (base["remark"]||=""),"persons_id_upd" => 0}
-    	alloctbl_id,last_lotstk = proc_aud_alloctbls(alloc,"update+")  
+    	last_lotstk = proc_aud_alloctbls(alloc,"update+")  
 			###引当の変更はあるが在庫数の変更はない
     end
 
 		alloc = {"trngantts_id" => src["trngantts_id"],"srctblname" => base["tblname"] ,"srctblid" => base["tblid"],
               "allocfree" => "alloc","qty_linkto_alloctbl" => src["qty_src"] ,
 							"remark" => "#{self} (line: #{__LINE__} #{Time.now})" + (base["remark"]||="")}
-    alloctbl_id,last_lotstk = proc_aud_alloctbls(alloc,nil)
+    last_lotstk = proc_aud_alloctbls(alloc,nil)
 		if base["tblname"] =~ /schs$|ords$/
 				### 
 		else
@@ -1061,32 +1069,32 @@ module ArelCtl
             %  
   end
 	
-  def proc_PrevConSql(parent,child,prev_contblname)
-        %Q$
-            --- select pare.srctblname prev_paretblname,pare.srctblid prev_paretblid,pare.qty_src  ,
-			--- 		trn.id trngantts_id ,pare.tblname_pare paretblname,pare.tblid_pare paretblid
-			--- 	from trngantts trn 
-			--- 	inner join (select link.*,t.orgtblname,t.orgtblid,link.tblname tblname_pare,link.tblid tblid_pare,
-			--- 							t.tblname tblname_sch,t.tblid tblid_sch,
-			--- 							t.shelfnos_id_trn pare_shelfnos_id from trngantts t 
-			--- 				inner join linktbls link on t.id = link.trngantts_id
-			--- 				where link.tblname = '#{parent["tblname"]}' and link.tblid = #{parent["id"]}) pare
-			--- 		on trn.orgtblid = pare.orgtblid and trn.orgtblname = pare.orgtblname
-			--- 		and trn.paretblid = pare.tblid_sch and trn.paretblname = pare.tblname_sch
-			--- 	inner join #{prev_contblname} con on con.paretblid  = pare.srctblid 
-			--- 	where  con.itms_id = #{child["itms_id"]} and con.processseq = #{child["processseq"]}  
-			--- 	and con.shelfnos_id_fm = #{child["shelfnos_id_fm"]}
-			--- 	and trn.itms_id_trn = #{child["itms_id"]} and trn.processseq_trn = #{child["processseq"]}  
-			--- 	and pare.pare_shelfnos_id = #{child["shelfnos_id_fm"]}
+  # def proc_PrevConSql(parent,child,prev_contblname)
+  #       %Q$
+  #           --- select pare.srctblname prev_paretblname,pare.srctblid prev_paretblid,pare.qty_src  ,
+	# 		--- 		trn.id trngantts_id ,pare.tblname_pare paretblname,pare.tblid_pare paretblid
+	# 		--- 	from trngantts trn 
+	# 		--- 	inner join (select link.*,t.orgtblname,t.orgtblid,link.tblname tblname_pare,link.tblid tblid_pare,
+	# 		--- 							t.tblname tblname_sch,t.tblid tblid_sch,
+	# 		--- 							t.shelfnos_id_trn pare_shelfnos_id from trngantts t 
+	# 		--- 				inner join linktbls link on t.id = link.trngantts_id
+	# 		--- 				where link.tblname = '#{parent["tblname"]}' and link.tblid = #{parent["id"]}) pare
+	# 		--- 		on trn.orgtblid = pare.orgtblid and trn.orgtblname = pare.orgtblname
+	# 		--- 		and trn.paretblid = pare.tblid_sch and trn.paretblname = pare.tblname_sch
+	# 		--- 	inner join #{prev_contblname} con on con.paretblid  = pare.srctblid 
+	# 		--- 	where  con.itms_id = #{child["itms_id"]} and con.processseq = #{child["processseq"]}  
+	# 		--- 	and con.shelfnos_id_fm = #{child["shelfnos_id_fm"]}
+	# 		--- 	and trn.itms_id_trn = #{child["itms_id"]} and trn.processseq_trn = #{child["processseq"]}  
+	# 		--- 	and pare.pare_shelfnos_id = #{child["shelfnos_id_fm"]}
 
-			select prevcon.paretblname prev_paretblname,prevcon.paretblid prev_paretblid,link.qty_src,link.trngantts_id 
-					from  #{prev_contblname}  prevcon
-				inner join  linktbls link on link.srctblid = prevcon.paretblid
-				where  prevcon.itms_id = #{child["itms_id"]} and prevcon.processseq = #{child["processseq"]} 
-				and prevcon.shelfnos_id_fm = #{child["shelfnos_id_fm"]}
-				and link.tblid =#{parent["id"]} and link.tblname = '#{parent["tblname"]}'
-        $
-  end
+	# 		select prevcon.paretblname prev_paretblname,prevcon.paretblid prev_paretblid,link.qty_src,link.trngantts_id 
+	# 				from  #{prev_contblname}  prevcon
+	# 			inner join  linktbls link on link.srctblid = prevcon.paretblid
+	# 			where  prevcon.itms_id = #{child["itms_id"]} and prevcon.processseq = #{child["processseq"]} 
+	# 			and prevcon.shelfnos_id_fm = #{child["shelfnos_id_fm"]}
+	# 			and link.tblid =#{parent["id"]} and link.tblname = '#{parent["tblname"]}'
+  #       $
+  # end
 	
   def proc_ChildConSql(parent)  
         %Q&

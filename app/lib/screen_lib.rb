@@ -1284,6 +1284,7 @@ module ScreenLib
         command_c["sio_result_f"] = "9"  ##9:error
 				parse_linedata["confirm"] = false  
 			end
+							Rails.logger.debug " class:#{self} ,line:#{__LINE__},\n command_c:#{command_c},\n parse_linedata:#{parse_linedata}"
       return reqparams
 		end
 

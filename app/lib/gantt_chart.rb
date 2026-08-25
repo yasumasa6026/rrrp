@@ -1584,25 +1584,25 @@ module GanttChart
     def get_duration_by_loca(loca_id_fm,loca_id_to,priority)
         {:duration=>1,:transport_id =>ActiveRecord::Base.connection.select_value("select id from transports where code = 'dummy' ")}
     end
-   	def proc_get_opeitms_id_from_itm itms_id ###
-			strsql = %Q& select max(processseq) from opeitms where itms_id = #{itms_id} 
-					 and expiredate > current_date group by itms_id &
-			max_processseq = ActiveRecord::Base.connection.select_value(strsql)
-			if max_processseq 
-				strsql = %Q& select max(priority) from opeitms where itms_id = #{itms_id} 
-					 and processseq =#{max_processseq} and expiredate > current_date group by itms_id &
-				max_priority = ActiveRecord::Base.connection.select_value(strsql)
-				if max_priority
-					strsql = %Q& select id from opeitms where itms_id = #{itms_id} 
-						 and processseq =#{max_processseq} and priority =#{max_priority} and expiredate > current_date &
-					opeitms_id = ActiveRecord::Base.connection.select_value(strsql)
-				else 
-					opeitms_id = nil	
-				end		
-			else
-				opeitms_id = nil
-			end		
-			return opeitms_id
-		end
-	end
+#   #  	def proc_get_opeitms_id_from_itm itms_id ###
+# 	# 		strsql = %Q& select max(processseq) from opeitms where itms_id = #{itms_id} 
+# 	# 				 and expiredate > current_date group by itms_id &
+# 	# 		max_processseq = ActiveRecord::Base.connection.select_value(strsql)
+# 	# 		if max_processseq 
+# 	# 			strsql = %Q& select max(priority) from opeitms where itms_id = #{itms_id} 
+# 	# 				 and processseq =#{max_processseq} and expiredate > current_date group by itms_id &
+# 	# 			max_priority = ActiveRecord::Base.connection.select_value(strsql)
+# 	# 			if max_priority
+# 	# 				strsql = %Q& select id from opeitms where itms_id = #{itms_id} 
+# 	# 					 and processseq =#{max_processseq} and priority =#{max_priority} and expiredate > current_date &
+# 	# 				opeitms_id = ActiveRecord::Base.connection.select_value(strsql)
+# 	# 			else 
+# 	# 				opeitms_id = nil	
+# 	# 			end		
+# 	# 		else
+# 	# 			opeitms_id = nil
+# 	# 		end		
+# 	# 		return opeitms_id
+# 	# 	end
+ end
 end 

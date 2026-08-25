@@ -48,7 +48,7 @@ import {ScreenRequest,DownloadRequest,UploadExcelInit,GanttChartRequest,
         }
         
         {(buttonflg==="ganttchart"||buttonflg==="reversechart")&&screenFlg===params.screenFlg&&
-                  <div style={{ width: '1800px' }}><GanttTask /> </div>}
+                  <div style={{ width: 'stretch' }}><GanttTask /> </div>}
         {buttonflg==='upload'&&<UploadExcel/>}
         {buttonflg==="download"&&<Download/>}
         {buttonflg.endsWith("Pdf")&&<Pdf/>}

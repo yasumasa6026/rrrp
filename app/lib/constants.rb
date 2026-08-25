@@ -39,5 +39,7 @@ module Constants
     MaxCnt = 200  ###loop最大数
 
     OderConfirmDefult = 1 ###0：仮　 1:確定　　mkprdpurordsでorderを作成した時の規定値
+    MoveUpDuedateWhenMaxqtySplit = true  ###xxxords作成時maxqtyを超えたとき数量分割する。其時納期をLT(duration)分前倒しする。
+    MinOptfixodate = Time.now.to_date - Maxoptfixoterm 
 
 end

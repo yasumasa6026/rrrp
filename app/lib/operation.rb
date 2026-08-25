@@ -176,20 +176,20 @@ module Operation
 														select l.id link_id,a.id alloc_id,l.trngantts_id from linktbls l
 																				inner join alloctbls a on l.trngantts_id = a.trngantts_id and l.tblname = a.srctblname
 																															and l.tblid = a.srctblid
-																				where a.srctblname = '#{@tblname}' and a.srctblid = #{tbldata["id"]}
+																				where a.srctblname = '#{@tblname}' and a.srctblid = #{@tbldata["id"]}
 																				and a.qty_linkto_alloctbl > 0 and  l.srctblname = l.tblname and l.srctblid = l.tblid
 								%
 								sch_link_alloc = ActiveRecord::Base.connection.select_one(strsql)
 								if sch_link_alloc
 										strsql = %Q&
-															update linktbls set qty_src = #{@tbldata["qty_ach"]},amt_src = #{@tbldata["amt_ach"]},
+															update linktbls set qty_src = #{@tbldata["qty_sch"]},amt_src = #{@tbldata["amt_sch"]},
 																			remark = 'class:#{self}, line:#{__LINE__} #{Time.now}'||left(remark,100)
 																			where id = #{sch_link_alloc["link_id"]}
 										&
 										ActiveRecord::Base.connection.update(strsql)
 										alloc = {"srctblname" => @tblname,"srctblid" => @tbldata["id"],"qty_linkto_alloctbl" => @tbldata["qty_sch"],
 															"id" => sch_link_alloc["alloc_id"],"trngantts_id" => sch_link_alloc["trngantts_id"]}
-										alloctbl_id,last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"update")
+										last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"update")
 										last_lotstks << last_lotstk
 								end
           when  /^dvs|^erc/
@@ -220,26 +220,26 @@ module Operation
 				 	      &
 				 	    links = ActiveRecord::Base.connection.select_all(strsql)
 					    if links.to_ary.size > 0    ###custschs引当
-				 		    if qty < link["qty_src"].to_f
-				 			    update_sql = %Q&
+				 		    	if qty < link["qty_src"].to_f
+				 			    		update_sql = %Q&
 				 				                update linkcusts 
 				 					                    set qty_src = #{qty},remark = ' #{self} line:#{__LINE__} '||remark
 				 					                  where id = #{link["id"]}
 				 			                &
-				 			    ActiveRecord::Base.connection.update(update_sql)
-							    rcv_qty = qty
-							    qty = 0
-				 		    else
-							    rcv_qty = link["qty_src"]
-				 			    qty -= link["qty_src"].to_f
-				 		    end
-						    custschs_rcv_sql = %Q&
-							    update linkcusts  set qty_src = qty_src + #{rcv_qty},remark = ' #{self} line:#{__LINE__} '||remark
+				 			    		ActiveRecord::Base.connection.update(update_sql)
+							    		rcv_qty = qty
+							    		qty = 0
+				 		    	else
+							    		rcv_qty = link["qty_src"]
+				 			    		qty -= link["qty_src"].to_f
+				 		    	end
+						    	custschs_rcv_sql = %Q&
+							    		update linkcusts  set qty_src = qty_src + #{rcv_qty},remark = ' #{self} line:#{__LINE__} '||remark
 								          where tblname = 'custschs' and srctblname = 'custschs'
 								        and tblid = #{link["srctblid"]} and srctblid = #{link["srctblid"]}
-						 	    &
-						    ActiveRecord::Base.connection.update(custschs_rcv_sql)
-              end
+						 	    		&
+						    	ActiveRecord::Base.connection.update(custschs_rcv_sql)
+							end
               #
 						  ###return 
               #
@@ -487,14 +487,14 @@ module Operation
 					@reqparams[:remark]  = "#{self}   構成展開"  ###構成展開
           @reqparams[:tblname] = @tblname
           @reqparams[:tblid] = @tblid
-					processreqs_id ,@reqparams = ArelCtl.proc_processreqs_add @reqparams
+					@reqparams = ArelCtl.proc_processreqs_add @reqparams
 			  end
 		  when /^custschs|^custords/
 			  @reqparams[:segment]  = "mkprdpurchildFromCustxxxs"   ###構成展開		
 			  @reqparams[:remark]  = "#{self}   pur,prd by custschs,ords"  
         @reqparams[:tblname] = @tblname
         @reqparams[:tblid] = @tblid
-			  processreqs_id ,@reqparams = ArelCtl.proc_processreqs_add @reqparams
+			  @reqparams = ArelCtl.proc_processreqs_add @reqparams
 		  end
 		  return last_lotstks
 	  end
@@ -516,7 +516,7 @@ module Operation
 			  @reqparams[:remark]  = "#{self}  line:#{__LINE__}  構成展開 level > 1" 
         @reqparams[:tblname] = @gantt["tblname"]
         @reqparams[:tblid] = @gantt["tblid"] 
-			  processreqs_id ,@reqparams = ArelCtl.proc_processreqs_add @reqparams
+			  @reqparams = ArelCtl.proc_processreqs_add @reqparams
 		  end
 		  return  last_lotstks
 	  end
@@ -552,7 +552,6 @@ module Operation
 			  raise 
 		  end 
 
-		  gantt = @reqparams[:gantt].dup
 		  dvs = RorBlkCtl::BlkClass.new("r_#{currdvstbl}")
 		  command_dvs = dvs.command_init
       command_dvs["#{currdvstbl.chop}_prjno_id"] = @tbldata["prjnos_id"]
@@ -565,7 +564,6 @@ module Operation
       @reqparams[:child] = {}
       command_dvs["#{currdvstbl.chop}_#{@tblname.chop}_id_#{currdvstbl.chop}"] = @tbldata["id"] ###@tbldata=prdschs or prdords
       command_dvs["#{currdvstbl.chop}_person_id_upd"] = @reqparams[:person_id_upd] = @tbldata["persons_id_upd"]
-		  prevdvs = {}
 		   
 			command_dvs = CtlFields.proc_field_facilities_id(currdvstbl.chop,command_dvs,@tbldata,apparatus)
       case currdvstbl 

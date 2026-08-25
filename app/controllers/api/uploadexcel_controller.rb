@@ -36,7 +36,6 @@ class UploadexcelController < ApplicationController
         columns_info,page_info,init_where_info,select_fields,fetchOrCheck,dropDownList,@sort_info,nameToCode = 
                 screen.proc_create_upload_editable_columns_info jparams,"import" 
         # upload_columns_info = [columns_info,page_info,init_where_info,select_fields.chop,fetchOrCheck,dropDownList,@sort_info,nameToCode]
-        performSeqNos = []
         results = {}   
         results[:columns] = []
         results[:rows] = []
@@ -171,11 +170,8 @@ class UploadexcelController < ApplicationController
                 else
                 end
                 if uploadError == false and parse_linedata["confirm"] == true 
-                    reqparams = blk.proc_private_aud_rec(jparams,command_c)
+                    jparams = blk.proc_private_aud_rec(jparams,command_c)
                     idx += 1
-                    if reqparams[:seqno][0]
-                        performSeqNos << reqparams[:seqno][0]
-                    end
                 else
                     ActiveRecord::Base.connection.rollback_db_transaction()
                 end
@@ -202,7 +198,7 @@ class UploadexcelController < ApplicationController
             uploadError = true
         else
             ActiveRecord::Base.connection.commit_db_transaction()
-            performSeqNos.each do |seq|
+            jparams[:seqnos].each do |seq|
 				        CreateOtherTableRecordJob.perform_later(seq)
             end
             ArelCtl.proc_materiallized tblname

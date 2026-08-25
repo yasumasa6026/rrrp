@@ -92,13 +92,13 @@ module RorBlkCtl
 		end
 
 		def proc_create_tbldata(command_c) ##
-        @tbldata = {}
-			  @tbldata["id"] = command_c["id"]
-        command_c.each do |j,k|
-        		j_to_stbl,j_to_sfld = j.to_s.split("_",2)
-				    if  j_to_stbl == @tblname.chop  and j_to_sfld !~ /_gridmessage/ and j_to_sfld != "id" and
+      @tbldata = {}
+			@tbldata["id"] = command_c["id"]
+      command_c.each do |j,k|
+        	j_to_stbl,j_to_sfld = j.to_s.split("_",2)
+					if  j_to_stbl == @tblname.chop  and j_to_sfld !~ /_gridmessage/ and j_to_sfld != "id" and
 					    j_to_sfld != "code_upd" and  j_to_sfld != "name_upd"   and  j_to_sfld != "id_upd"##本体の更新
-			    	  if  k
+							if  k
 	            		@tbldata[j_to_sfld.sub("_id","s_id")] = k
 						      @tbldata[j_to_sfld] = nil  if k  == "\#{nil}"  ##
 						      if (k == ""  or k.nil? or k == 0) and command_c["sio_classname"] =~ /_add_|_insert_/
@@ -111,17 +111,15 @@ module RorBlkCtl
 							      when 'gno'
 								      command_c[@tblname.chop+"_gno"] = @tbldata["gno"] = CtlFields.proc_field_gno(@tblname.chop,command_c["id"])
 							      end
-						      else
 						      end
-					    else
-					    end
-            end   ## if j_to_s.
-			  end ## command_c.each
-			  command_c[@tblname.chop+"_id"] = command_c["id"] 
-        @tbldata["persons_id_upd"] = command_c["#{@tblname.chop}_person_id_upd"]
-			  @tbldata["updated_at"] = command_c["#{@tblname.chop}_updated_at"] = Time.now
-         ###
-			  return command_c
+							end
+					end   ## if j_to_s.
+			end ## command_c.each
+			command_c[@tblname.chop+"_id"] = command_c["id"] 
+      @tbldata["persons_id_upd"] = command_c["#{@tblname.chop}_person_id_upd"]
+			@tbldata["updated_at"] = command_c["#{@tblname.chop}_updated_at"] = Time.now
+       ###
+			return command_c
 		end
 
 		def proc_add_update_table(params,command_c)  
@@ -141,18 +139,20 @@ module RorBlkCtl
 				 							command_c["sio_errline"].split(":")[1][0..100]  
 				params[:parse_linedata][:confirm_gridmessage] = err_message if params[:parse_linedata]
             	Rails.logger.debug"error class #{self} : #{Time.now}: #{$@} \n command_c: #{command_c}  "
-      else
+			else
 				ActiveRecord::Base.connection.commit_db_transaction()
-				if params[:seqno].size > 0
-					if command_c["mkord_runtime"] 
-						CreateOtherTableRecordJob.set(wait: command_c["mkord_runtime"].to_f.hours).perform_later(params[:seqno][0])
-					else	
-						CreateOtherTableRecordJob.perform_later(params[:seqno][0])
+				if params[:seqno]
+					if params[:seqno] > 0
+						if command_c["mkord_runtime"] 
+							CreateOtherTableRecordJob.set(wait: command_c["mkord_runtime"].to_f.hours).perform_later(params[:seqno])
+						else	
+							CreateOtherTableRecordJob.perform_later(params[:seqno])
+						end
 					end
 				end
-      		ensure
-	  	end ##begin
-      	return params,command_c
+			ensure
+			end ##begin
+      return params,command_c
 		end
 
 		def proc_private_aud_rec(params,command_c)   ###commitなし params-->前の状態を引き継ぐ
@@ -187,7 +187,7 @@ module RorBlkCtl
      	 ###
 			last_lotstks = []
 			
-			reqparams[:seqno] ||= []
+			reqparams[:seqnos] ||= []
 			reqparams[:classname] = command_c["sio_classname"]
      	@last_rec= {}
 			case  @tblname
@@ -211,13 +211,13 @@ module RorBlkCtl
           reqparams[:tbldata] = @tbldata
 					reqparams[:mkprdpurords_id] = @tbldata["id"]
 					reqparams[:remark] = " #{self} line #{__LINE__} "
-					processreqs_id ,reqparams = ArelCtl.proc_processreqs_add(reqparams)		
+					processreqs_id,reqparams = ArelCtl.proc_processreqs_add(reqparams)		
 			  when /^mkbillinsts$/
 				  reqparams[:gantt] = {}
 				  reqparams[:segment] = "mkbillinsts"
 				  reqparams[:mkbillinsts_id] = @tbldata["id"]
 				  reqparams[:remark] = " #{self} line #{__LINE__} "
-				  processreqs_id ,reqparams = ArelCtl.proc_processreqs_add(reqparams)	
+				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(reqparams)	
 			  when /^mkpayinsts$/
 				  reqparams[:gantt] = {}
 				  reqparams[:segment] = "mkpayinsts"
@@ -225,7 +225,7 @@ module RorBlkCtl
 				  reqparams[:remark] = " #{self} line #{__LINE__} "
           reqparams[:tblname] = @tblname
           reqparams[:tblid] = @tbldata["id"]
-				  processreqs_id ,reqparams = ArelCtl.proc_processreqs_add(reqparams)	
+				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(reqparams)	
 			  when /^dymschs$/
           			###trnganttsの作成
 				  reqparams = setGantt(reqparams)				###作業場所の稼働日考慮要
@@ -304,7 +304,7 @@ module RorBlkCtl
 						##  dvsords ercordsの変更はoperationで
 						###
           end  
-        when /^dvsinst$|^dvsacts$|^ercinsts$|^ercacts$|^dvsords$|^ercords$/
+				when /^dvsinst$|^dvsacts$|^ercinsts$|^ercacts$|^dvsords$|^ercords$/
           if @tblname =~ /^dvsords$|ercords$/
             ###trnganttsの作成
 				    reqparams = setGantt(reqparams)				###作業場所の稼働日考慮要
@@ -351,13 +351,13 @@ module RorBlkCtl
                             "qty_linkto_alloctbl" => 1,
                             "remark" => "#{self} line #{__LINE__} #{Time.now}","persons_id_upd" => reqparams[:person_id_upd],
                             "allocfree" => 	"alloc"}
-                    linktbl_id = ArelCtl.proc_insert_linktbls(src,base)
-                    alloctbl_id,tmp_last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"insert")
+                    ArelCtl.proc_insert_linktbls(src,base)
+                    temp_last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"insert")
                     alloc = {"srctblname" => prev_dvserc["tblname"],"srctblid" => prev_dvserc["id"],"trngantts_id" => link["trngantts_id"],
                             "qty_linkto_alloctbl" => 0,
                             "remark" => "#{self} ,line:#{__LINE__} #{Time.now}","persons_id_upd" => reqparams[:person_id_upd],
                             "allocfree" => 	"alloc"}
-                    alloctbl_id,temp_last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"update")
+                    temp_last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"update")
                   end
                 end
               end
@@ -401,8 +401,8 @@ module RorBlkCtl
           	conParams = ope.proc_opeParams.dup
 				    conParams[:segment]  = "mkShpschConord"  ### ordsの時shpschs,conordsを作成
 				    conParams[:remark] = " #{self} line #{__LINE__} "
-            conParams[:tblname] = ""
-            conParams[:tblid] = ""
+            conParams[:tblname] = nil
+            conParams[:tblid] = nil
 				    processreqs_id,reqparams = ArelCtl.proc_processreqs_add(conParams)
 					  addupdate = "mkpayschs"
           else
@@ -410,7 +410,7 @@ module RorBlkCtl
             last_lotstks = ope.proc_trngantts_update(@last_rec,@chng_flg)
 					  addupdate = "updatepayschs"
           end
-				  payParams = {:segment => addupdate,  ###必須項目
+				  payParams = {:billpayparams => true,:segment => addupdate,  ###必須項目
 									:srctblname => "purords",:srctblid => @tbldata["id"],
 									:amt_src =>  @tbldata["amt"],
 									:tax =>  @tbldata["tax"],:taxrate =>  @tbldata["taxrate"],
@@ -420,11 +420,11 @@ module RorBlkCtl
 									:last_amt => @last_rec["amt"]||= @tbldata["amt"],
 									:last_duedate => @last_rec["duedate"]||= @tbldata["duedate"],
 									:remark => " #{self} line #{__LINE__} ",
-									:seqno => reqparams[:seqno],
+									:seqnos => reqparams[:seqnos],
 									:trngantts_id => reqparams[:gantt]["trngantts_id"],:chrgs_id => @tbldata["chrgs_id"],
 									:gantt => reqparams[:gantt],:tbldata => @tbldata,###必須項目
 									:person_id_upd => @tbldata["persons_id_upd"]}
-				  processreqs_id ,payParams = ArelCtl.proc_processreqs_add(payParams)	
+				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(payParams)	
 			  when /^replyinputs$/ ###trnganttsは作成しない。
 				  last_lotstks = prdpurinstact reqparams
 			  when /^purinsts$/  ###trnganttsは作成しない。
@@ -433,20 +433,20 @@ module RorBlkCtl
 				  last_lotstks = prdpurinstact reqparams
 			  when /^puracts$/ ###trnganttsは作成しない。
 				  last_lotstks = prdpurinstact(reqparams)
-				  payParams = {:segment => "mkpayords",  ###必須項目
+				  payParams = {:billpayparams => true,:segment => "mkpayords",  ###必須項目
 								:srctblname => "puracts",:srctblid => @tbldata["id"],
 							  :last_amt => @last_rec["amt"]||= @tbldata["amt"],
 								:last_tax =>  @last_rec["tax"]||= @tbldata["tax"],
 								:last_taxrate =>  @last_rec["taxrate"]||= @tbldata["taxrate"],
 								:last_duedate => @last_rec["duedate"]||= @tbldata["duedate"],
 								:remark => " class:#{self}, line:#{__LINE__} ",
-								:seqno => reqparams[:seqno],
+								:seqnos => reqparams[:seqnos],
 								:trngantts_id => 0,
                 :gantt => {"tblname" => "payords" ,"tblid" => @tbldata["id"],"paretblname" => "payords" },
 								:tbldata => @tbldata.dup, ###必須項目
                 :suppliers_id => @tbldata["suppliers_id"],
 								:person_id_upd => @tbldata["persons_id_upd"]}
-				  processreqs_id ,payParams = ArelCtl.proc_processreqs_add(payParams)	
+				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(payParams)	
 			  when /^rejections$/ ###trnganttsは作成しない。
 				  last_lotstks << {"paretblname" => @tbldata["paretblname"],"paretblid" => @tbldata["paretblid"],
                           "tblname" => "rejections","tblid" => @tbldata["id"],"qty_src" => @tbldata["qty_rejection"]}
@@ -464,7 +464,7 @@ module RorBlkCtl
             check_shelfnos_duedate_qty(params)
             last_lotstks = ope.proc_trngantts_update(@last_rec,@chng_flg)
           end
-          billParams = {:segment => "mkbillests",  ###必須項目
+          billParams = {:billpayparams => true,:segment => "mkbillests",  ###必須項目
                 :srctblname => "custschs",:srctblid => @tbldata["id"],
                 :amt_src =>  @tbldata["amt_sch"],
                 :tax =>  @tbldata["tax"],:taxrate =>  @tbldata["taxrate"],
@@ -472,13 +472,12 @@ module RorBlkCtl
                 :last_amt => @last_rec["amt_sch"]||= @tbldata["amt_sch"],
                 :last_duedate => @last_rec["duedate"]||= @tbldata["duedate"],
                 :remark => "#{self} line #{__LINE__} ",
-                :seqno => reqparams[:seqno],
+                :seqnos => reqparams[:seqnos],
                 :trngantts_id => reqparams[:gantt]["trngantts_id"],
                	:gantt => reqparams[:gantt],:tbldata => {},###必須項目
                 :person_id_upd => @tbldata["persons_id_upd"]}
-          		reqparams = ope.proc_opeParams.dup
 				  ###schsの時はshpschs
-				  processreqs_id ,billParams = ArelCtl.proc_processreqs_add(billParams)	
+				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(billParams)	
 			  when /^custords$/  ### reqparams[:gantt].nil?==trueのはず
 				  ###下位部品所要量計算用
 				  ###自身のschsからordsへの変換用
@@ -494,7 +493,7 @@ module RorBlkCtl
             last_lotstks = ope.proc_trngantts_update(@last_rec,@chng_flg)
           end
           reqparams = ope.proc_opeParams.dup
-          billParams = {:segment => "mkbillschs",  ###必須項目
+          billParams = {:billpayparams => true,:segment => "mkbillschs",  ###必須項目
                 :srctblname => "custords",:srctblid => @tbldata["id"],
                 :amt_src =>  @tbldata["amt"],
                 :tax =>  @tbldata["tax"],:taxrate =>  @tbldata["taxrate"],
@@ -502,17 +501,17 @@ module RorBlkCtl
                 :last_amt => @last_rec["amt"]||= @tbldata["amt"],
                 :last_duedate => @last_rec["duedate"]||= @tbldata["duedate"],
                 :remark => " #{self} line #{__LINE__} ",
-                :seqno => reqparams[:seqno],
+                :seqnos => reqparams[:seqnos],
                 :trngantts_id => reqparams[:gantt]["trngantts_id"],
                 :gantt => {},:tbldata => @tbldata,###必須項目
                 :person_id_upd => @tbldata["persons_id_upd"]}
-				  processreqs_id ,billParams = ArelCtl.proc_processreqs_add(billParams)
+				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(billParams)
 			  when /custinsts|custdlvs/
 				  last_lotstk = custinstsdlvsacts(reqparams)
 			  when /custacts$/ ###trnganttsは作成しない。
 					last_lotstks = custinstsdlvsacts(reqparams)
-          reqparams[:tblname] = ""
-          reqparams[:tblid] = ""
+          reqparams[:tblname] = nil
+          reqparams[:tblid] = nil
           if reqparams[:head]
             if reqparams[:head]["paretblname"] == "custactheads"
               ###
@@ -520,11 +519,11 @@ module RorBlkCtl
               ###
             else
               billParams = setBillParams(reqparams)
-              processreqs_id ,billParams = ArelCtl.proc_processreqs_add(billParams)
+              processreqs_id,reqparams = ArelCtl.proc_processreqs_add(billParams)
             end
           else
               billParams = setBillParams(reqparams)
-              processreqs_id ,billParams = ArelCtl.proc_processreqs_add(billParams)
+              processreqs_id,reqparams = ArelCtl.proc_processreqs_add(billParams)
           end
 
 				when /custactheads$/ ###
@@ -540,7 +539,7 @@ module RorBlkCtl
 					  count +=  val["count"].to_f
 					  tax +=  val["amt"].to_f * rate.to_f / 100
 				  end
-				  processreqs_id ,billParams = ArelCtl.proc_processreqs_add(billParams)
+				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(billParams)
 				  reqparams[:amt] = amt
 				  reqparams[:qty] = qty
 				  reqparams[:count] = count
@@ -553,7 +552,7 @@ module RorBlkCtl
 				  ###
 				  proc_insert_sio_r(command_c)   ###sioxxxxの追加
 				  ###
-        when /movacts/
+				when /movacts/
             if  @tbldata["qty_stk_fm"].to_f  > 0
               @tbldata["qty_stk"] = @tbldata["qty_stk_fm"].to_f * -1 
               @tbldata["shelfnos_id"] = @tbldata["shelfnos_id_fm"]
@@ -605,7 +604,7 @@ module RorBlkCtl
 				  alloc = {trngantts_id => @tbldata["trngantts_id"] ,srctblname => @tblname,srctblid => @tbldata["id"],
                 "qty_linkto_alloctbl" => @tbldata["qty_sch"],
                 "remark" => "#{self} line #{__LINE__} #{Time.now}"}
-          alloctbl_id,last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"update")
+          last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"update")
           last_lotstks << last_lotstk
 			  else
 			end	
@@ -925,7 +924,7 @@ module RorBlkCtl
 						gantt["persons_id_upd"]   =  reqparams[:person_id_upd]
 				    gantt["remark"] = " class:#{self},line:#{__LINE__} "
 					end
-        when /movacts/
+				when /movacts/
             gantt["qty_stk"] = @tbldata["qty_stk"]
             gantt["shelfnos_id_to_trn"] =  gantt["shelfnos_id_to_pare"] =  @tbldata["shelfnos_id"]
             gantt["qty_sch"] = gantt["qty"] = gantt["qty_handover"] = 0
@@ -1088,10 +1087,10 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
       alloc = {"trngantts_id" => link["trngantts_id"] ,"srctblname" => link["srctblname"],"srctblid" => link["srctblid"],
               "qty_linkto_alloctbl" => link["qty_src"] - src_qty,
               "remark" => "#{self} line #{__LINE__} #{Time.now}"}
-      alloctbl_id,last_lotstk_prev = ArelCtl.proc_aud_alloctbls(alloc,"update")
+      last_lotstk_prev = ArelCtl.proc_aud_alloctbls(alloc,"update")
       alloc = {"trngantts_id" => link["trngantts_id"] ,"srctblname" => link["tblname"],"srctblid" => link["tblid"],
               "qty_linkto_alloctbl" => src_qty,  "remark" => "#{self} line #{__LINE__} #{Time.now}"}
-      alloctbl_id,last_lotstk_curr = ArelCtl.proc_aud_alloctbls(alloc,"update")
+      last_lotstk_curr = ArelCtl.proc_aud_alloctbls(alloc,"update")
       return last_lotstk_prev,last_lotstk_curr
 		end
 
@@ -1117,10 +1116,9 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
 		end   ## 
 		
    ## proc_strwhere
-
-	  	def undefined
+		def undefined
     		nil
-    	end
+		end
 
 		def tbl_add_arel  reqTblName,tblarel ##
 			fields = ""
@@ -1389,7 +1387,7 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
           end
 				else   ##♯在庫移動なし
 					return []
-        end
+				end
 			else 
         ###新規 prd,pur /insts$|replyinputs$|dlvs$|acts$/ 
 				if reqparams[:classname] =~  /_add_|_insert_/
@@ -1587,22 +1585,22 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
 		end
 		def add_custact_details_from_head(params,command_c)
 			case command_c["sio_classname"]
-			when /_add_|_insert_/       
-				reqparams = params.dup
-        @tbldata["invoiceno"] = "Inv-" + format('%06d',ArelCtl.proc_get_nextval("invoiceno_seq"))
- 				parse_linedata = JSON.parse(params[:lineData])
-				reqparams[:tbldata] = @tbldata.dup
-				secondScreen = ScreenLib::ScreenClass.new(reqparams)
-				amtTaxRate ,err = secondScreen.proc_add_custact_details reqparams, parse_linedata  ### custactheadの追加
-				if err.nil?
-					command_c["sio_classname"] = "_edit_custacthead_for_amt"
-					command_c["custacthead_invoiceno"] = @tbldata["invoiceno"]
-					command_c["custacthead_taxjson"] = @tbldata["taxjson"] = amtTaxRate.to_json
-					tbl_edit_arel(" id = #{@tbldata["id"]}")
-					proc_insert_sio_r(command_c)   ###sioxxxxの追加
-				end
-			when /_edit_|_update_/
-			when  /_delete_|_purge_/
+				when /_add_|_insert_/       
+					reqparams = params.dup
+        	@tbldata["invoiceno"] = "Inv-" + format('%06d',ArelCtl.proc_get_nextval("invoiceno_seq"))
+ 					parse_linedata = JSON.parse(params[:lineData])
+					reqparams[:tbldata] = @tbldata.dup
+					secondScreen = ScreenLib::ScreenClass.new(reqparams)
+					amtTaxRate ,err = secondScreen.proc_add_custact_details reqparams, parse_linedata  ### custactheadの追加
+					if err.nil?
+						command_c["sio_classname"] = "_edit_custacthead_for_amt"
+						command_c["custacthead_invoiceno"] = @tbldata["invoiceno"]
+						command_c["custacthead_taxjson"] = @tbldata["taxjson"] = amtTaxRate.to_json
+						tbl_edit_arel(" id = #{@tbldata["id"]}")
+						proc_insert_sio_r(command_c)   ###sioxxxxの追加
+					end
+				when /_edit_|_update_/
+				when  /_delete_|_purge_/
 			end	    
             #         strInvoiceNo = "custacthead_invoiceno"
             #         ActiveRecord::Base.connection.begin_db_transaction()
@@ -1718,7 +1716,7 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
     def setBillParams(reqparams)
         {:segment => "mkbillords",  ###必須項目
           :srctblname => "custacts",:srctblid => @tbldata["id"],
-          :seqno => reqparams[:seqno],
+          :seqno => reqparams[:seqno],:seqnos => reqparams[:seqnos],
          :gantt => {"tblname" => "billords" ,"tblid" => @tbldata["id"],"paretblname" => "billords" },
           :tbldata => @tbldata,###必須項目
           "last_amt" => @last_rec["amt"]||=@tbldata["amt"],"last_tax" =>  @last_rec["tax"]||=@tbldata["tax"],
@@ -1758,7 +1756,6 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
 		  	if @tbldata[@str_qty] != @last_rec[@str_qty]  
 			 			@chng_flg << "qty"
 		  	end
-            	Rails.logger.debug"error class #{self},\n@tbldata:#{@tbldata},\n@last_rec:#{@last_rec}"
 		  	if @tbldata[@str_duedate] != @last_rec[@str_duedate]
 			  		@chng_flg << "due"
 		  	end
@@ -1778,7 +1775,7 @@ Rails.logger.debug" line:#{__LINE__} \n gantt:#{gantt},#{gantt.class.to_s}"
                   &
           @last_rec = ActiveRecord::Base.connection.select_one(strsql)
           @last_rec ||= {}
-		  end
+			end
 		  return 
 	  end
 	end  ###class

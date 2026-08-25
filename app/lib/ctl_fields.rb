@@ -2813,9 +2813,9 @@ module CtlFields
                           order by expiredate limit 1
                 &
               calendar = ActiveRecord::Base.connection.select_one(strsql)
-              if calendar.nil?
-                raise"error e2 calendar missing \n supplier:#{calendars_id}  calendar missing"
-              end
+              # if calendar.nil?
+              #   raise"error e2 calendar missing \n supplier:#{calendars_id}  calendar missing"
+              # end
             end
       when /^prd/
             strsql = %Q&
@@ -2829,7 +2829,7 @@ module CtlFields
             &
             calendar = ActiveRecord::Base.connection.select_one(strsql)
             if calendar.nil?
-              message = "workplaces shelfnos_id:#{calendars_id}  calendar missing"
+              message = "workplaces locas_id:#{calendars_id}  calendar missing"
               strsql = %Q&
                       select dayofweek,holidays,workingday from hcalendars 
                           where locas_id = 0
@@ -2857,9 +2857,9 @@ module CtlFields
                               order by expiredate limit 1
                     &
                   calendar = ActiveRecord::Base.connection.select_one(strsql)
-                  if calendar.nil?
-                    raise"error e4calendar missing \n locas_id = 0  calendar missing"
-                  end
+                  # if calendar.nil?
+                  #   raise"error e4calendar missing \n locas_id = 0  calendar missing"
+                  # end
                 end
       when /^dvs/
             strsql = %Q&  ---休日を求める　facilitycalendars:日別カレンダーから年次カレンダーを求める
@@ -2920,9 +2920,10 @@ module CtlFields
                order by expiredate limit 1
               &
             calendar = ActiveRecord::Base.connection.select_one(strsql)
-              if calendar.nil?
-                raise"error e5 calendar missing "
-              end
+              # if calendar.nil?
+              #   raise"error e5 calendar missing "
+              # end
+              message = "calendars_id:#{calendars_id}   calendar missing"
         end
       else
         strsql = %Q&
@@ -3046,9 +3047,9 @@ module CtlFields
                           order by expiredate limit 1
                 &
               calendar = ActiveRecord::Base.connection.select_one(strsql)
-							if calendar.nil?
-                raise"error e9 calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
-							end
+							# if calendar.nil?
+              #   raise"error e9 calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
+							# end
             end
           end
       when /^dvs/
@@ -3069,9 +3070,9 @@ module CtlFields
                           order by expiredate limit 1
                 &
               calendar = ActiveRecord::Base.connection.select_one(strsql)
-            	if calendar.nil?
-              	  raise"error e91 calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
-            	end
+            	# if calendar.nil?
+              # 	  raise"error e91 calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
+            	# end
             end
       when /^erc/
             strsql = %Q&
@@ -3089,9 +3090,9 @@ module CtlFields
                           order by expiredate limit 1
                 &
               calendar = ActiveRecord::Base.connection.select_one(strsql)
-            	if calendar.nil?
-                raise"error e92 calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
-            	end
+            	# if calendar.nil?
+              #   raise"error e92 calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
+            	# end
             end
       when /^shp/
               strsql = %Q&
@@ -3115,9 +3116,9 @@ module CtlFields
                             order by expiredate limit 1
                 &
                 calendar = ActiveRecord::Base.connection.select_one(strsql)
-                if calendar.nil?
-                    raise"error ea calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
-                end
+                # if calendar.nil?
+                #     raise"error ea calendar missing \n workplaces shelfnos_id:#{calendars_id}  calendar missing"
+                # end
               end
       else
             strsql = %Q&
@@ -3349,4 +3350,34 @@ module CtlFields
 		  return parseLineData,err  
     end
   end  ###proc_judge_check_opeitms?
+  def proc_judge_check_opeitm_maxqty parseLineData,item,index,screenCode
+			###packqtyの整数倍又は999999999
+			err = nil
+			if parseLineData["opeitm_packqty"]	
+				if parseLineData["opeitm_packqty"].to_f != 0
+						if parseLineData["opeitm_maxqty"].to_f < 999999999
+							 	if (parseLineData["opeitm_maxqty"].to_f /  parseLineData["opeitm_packqty"].to_f).ceil * 
+								  			parseLineData["opeitm_packqty"].to_f != parseLineData["opeitm_packqty"].to_f
+									err = " opeitm_maxqty must be integer_multiple of  packqty "
+								end					
+						end
+				end	
+			end
+		  return parseLineData,err  
+  end
+	def proc_judge_check_opeitm_consumminqty parseLineData,item,index,screenCode
+			###packqtyの整数倍又は999999999
+			err = nil
+			if parseLineData["opeitm_packqty"]	
+				if parseLineData["opeitm_packqty"].to_f != 0
+						if parseLineData["opeitm_consumminqty"].to_f > 0
+							 	if (parseLineData["opeitm_consumminqty"].to_f /  parseLineData["opeitm_packqty"].to_f).ceil * 
+								  			parseLineData["opeitm_packqty"].to_f != parseLineData["opeitm_packqty"].to_f
+									err = " opeitm_consumminqty must be integer_multiple of  packqty "
+								end					
+						end
+				end	
+			end
+		  return parseLineData,err  				
+	end
 end   ##module

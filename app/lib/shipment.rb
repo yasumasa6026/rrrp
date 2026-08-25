@@ -174,7 +174,7 @@ module Shipment
                 end
 								if outcnt > 0 or shortcnt > 0
                 	last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ##
-                end
+								end
 								if shp["consumauto"] == "A"   ###使用後自動返却
 								 		###shpschs,shpordsでは瓶毎、リール毎に出庫してないので、瓶、リールの自動返却はない。
 		                shp["duedate"] = (parent["duedate"].to_time + 4*3600).strftime("%Y/%m/%d %H:%M:%S")  ###稼働日　稼働時間
@@ -184,7 +184,7 @@ module Shipment
 										last_lotstks_parts = shpord_create_by_shpsch(shp)   ###
                     last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
 								end
-            end
+						end
 					end
 				end
 				
@@ -208,8 +208,6 @@ module Shipment
 	end	
 
 	def proc_second_shp params,grid_columns_info
-		tmp = []
-		err = nil
 		pareTblName = "" 
 		str_func = %Q&select * from func_get_name('screen','#{params[:screenCode]}','#{params[:email]}')&
 		params[:screenName] = ActiveRecord::Base.connection.select_value(str_func)
@@ -422,7 +420,7 @@ module Shipment
 						qty_sch = 1
 						command_c["#{yield}_duedate"] = parent["duedate"]
 						command_c["#{yield}_depdate"] = (parent["starttime"].to_time - 1*24*3600).strftime("%Y-%m-%d %H:%M:%S")
-          when "run"
+					when "run"
 						command_c["#{yield}_duedate"] = command_c["#{yield}_depdate"] = parent["duedate"]
 					  command_c["#{yield}_shelfno_id_fm"] = 0 ###自身の保管先から出庫
 					  command_c["#{yield}_shelfno_id_to"] = child["shelfnos_id_to"] ###自身の保管先から出庫
@@ -520,13 +518,13 @@ module Shipment
 				    err = " no shpords record"
 				  end
 			  end
-		  rescue
+			rescue
 			  ActiveRecord::Base.connection.rollback_db_transaction()
 			  Rails.logger.debug"error class #{self} : #{Time.now}: #{$@}\n ,$!:#{$!}"
 			  err << $!
-		  else
+			else
 			  ActiveRecord::Base.connection.commit_db_transaction()
-		  end
+			end
 		return outcnt,err
 	end	
 
@@ -1110,7 +1108,7 @@ module Shipment
           alloc = {trngantts_id => shplink["trngantts_id"] ,srctblname => shplink["srctblname"],srctblid => shplink["srctblname"],
                   "qty_linkto_alloctbl" => 0,
                   "remark" => "#{self} line #{__LINE__} #{Time.now}"}
-          alloctbl_id,last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"update")
+          last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"update")
           last_lotstks << last_lotstk
           3.times{Rails.logger.debug" class:#{self} , line:#{__LINE__} ,error last_lotstk:#{last_lotstk}"} if  last_lotstk.nil? or last_lotstk["tblname"].nil? or last_lotstk["tblname"] == ""
 
@@ -1122,8 +1120,8 @@ module Shipment
 						"qty_linkto_alloctbl" => 1,
 						"remark" => "#{self} line #{__LINE__} #{Time.now}","persons_id_upd" => shp["persons_id_upd"],
 						"allocfree" => 	"alloc"}
-					linktbl_id = ArelCtl.proc_insert_linktbls(src,base)
-					alloctbl_id,last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,nil)
+					ArelCtl.proc_insert_linktbls(src,base)
+					last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,nil)
           last_lotstks << last_lotstk
 				end
 			end 
@@ -1145,7 +1143,7 @@ module Shipment
 				ActiveRecord::Base.connection.update(link_update_sql)
         alloc = {trngantts_id => shplink["trngantts_id"] ,srctblname => shplink["tblname"],srctblid => shplink["tblname"],
                 "qty_linkto_alloctbl" => 0, "remark" => "#{self} line #{__LINE__} #{Time.now}"}
-        alloctbl_id,last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"update")
+        last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,"update")
         last_lotstks << last_lotstk
 
 				src = {"tblname" => prevshp,"tblid" => shplink["tblid"],"trngantts_id" => shplink["trngantts_id"]}
@@ -1155,9 +1153,9 @@ module Shipment
 					"qty_linkto_alloctbl" => 1,
 					"remark" => "#{self} line #{__LINE__} #{Time.now}","persons_id_upd" => shp["persons_id_upd"],
 					"allocfree" => 	"alloc"}
-				alloctbl_id,last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,nil)
+				last_lotstk = ArelCtl.proc_aud_alloctbls(alloc,nil)
         last_lotstks << last_lotstk
-				linktbl_id = ArelCtl.proc_insert_linktbls(src,base)
+				ArelCtl.proc_insert_linktbls(src,base)
 			end
 		end
     return last_lotstks

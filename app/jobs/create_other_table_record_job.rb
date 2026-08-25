@@ -11,21 +11,20 @@ class CreateOtherTableRecordJob < ApplicationJob
                             order by t.id limit 1 for update"
         processreq = ActiveRecord::Base.connection.select_one(perform_strsql)
         return if processreq.nil?            
-        params = JSON.parse(processreq["reqparams"]).symbolize_keys   
-        strsql = %Q% select * from persons where id = #{params[:person_id_upd]}
+        params = JSON.parse(processreq["billpayparams"]).with_indifferent_access
+        strsql = %Q% select * from persons where id = #{processreq["persons_id_upd"]}
                     %
         person = ActiveRecord::Base.connection.select_one(strsql) ###
         params[:email] = person["email"]
         params[:person_code_chrg] = person["code"]
         ###params[:person_id_upd] = person["id"]
         until processreq.nil? do
-          reqparams = params.dup
-          if params[:tbldata]
-                      tbldata = params[:tbldata]
+          if processreq["tbldata"]
+                      tbldata = JSON.parse(processreq["tbldata"])
           else
-            if params[:tblname]
+            if processreq["tblname"]
                         strsql = %Q&
-                                    select * from #{params[:tblname]} where id = #{params[:tblid]} 
+                                    select * from #{processreq["tblname"]} where id = #{ processreq["tblid"]} 
                         &
 				                tbldata = ActiveRecord::Base.connection.select_one(strsql)
             else
@@ -44,10 +43,14 @@ class CreateOtherTableRecordJob < ApplicationJob
 			    else
 				    opeitm = {}
 			    end
-          if reqparams[:where_str]
-            reqparams[:where_str] = reqparams[:where_str].gsub("#!","'")
+          if processreq["where_str"]
+            processreq["where_str"] = processreq["where_str"].gsub("#!","'")
           end
-          gantt = params[:gantt].dup
+          if processreq["gantt"] 
+             gantt = JSON.parse(processreq["gantt"])
+          else
+            gantt = {}                        
+          end
           tblname = gantt["tblname"]
           tblid = gantt["tblid"]
           paretblname = gantt["paretblname"]
@@ -56,7 +59,7 @@ class CreateOtherTableRecordJob < ApplicationJob
           ActiveRecord::Base.connection.update(strsql)
           result_f = '1'
           remark = ""
-          case params[:segment]
+          case processreq["segment"]
 
             when "createtable"
 
@@ -66,52 +69,29 @@ class CreateOtherTableRecordJob < ApplicationJob
               mkordparams[:incnt] =  mkordparams[:inqty] = mkordparams[:inamt] = 0
               mkordparams[:outcnt] = mkordparams[:outqty] = mkordparams[:outamt] = 0
               ###mkordparams,last_lotstks = MkordinstLib.proc_mkprdpurords params,mkordparams
-              mkordparams,last_lotstks = MkordinstLib.proc_mkprdpurordv1 params,mkordparams
-              if mkordparams[:message_code] == ""
-                mkordparams[:remark] = "  #{self} line:#{__LINE__} "
+              mkordparams,last_lotstks = MkordinstLib.proc_mkprdpurordv1 processreq,mkordparams
+            #  if mkordparams[:message_code] == ""
+                mkordparams[:remark] = "  #{self} line:#{__LINE__} " +  mkordparams[:message_code] 
                 strsql = %Q%update mkprdpurords set incnt = #{mkordparams[:incnt]},inqty = #{mkordparams[:inqty]},
                                                 inamt = #{mkordparams[:inamt]},outcnt = #{mkordparams[:outcnt]},
                                                 outqty = #{mkordparams[:outqty]},outamt = #{mkordparams[:outamt]} ,
                                                 message_code = '#{mkordparams[:message_code]}',remark = ' #{mkordparams[:remark]} ',
                                                 result_f = '1',cmpldate = now()
-                                                where id = #{params[:mkprdpurords_id]}
+                                                where id = #{processreq["mkprdpurords_id"]}
                                 %
                 ActiveRecord::Base.connection.update(strsql)
                 if !last_lotstks.empty?
-                    ArelCtl.proc_add_update_lotstkhists(last_lotstks,params[:person_id_upd])
+                    ArelCtl.proc_add_update_lotstkhists(last_lotstks,processreq["person_id_upd"])
                 end
-              else
-                ActiveRecord::Base.connection.rollback_db_transaction()
-                ActiveRecord::Base.connection.begin_db_transaction()
-                mkordparams[:remark] = " error #{self} line:#{__LINE__} error "
-                strsql = %Q%update mkprdpurords set message_code = '#{mkordparams[:message_code]}',
-                                                                  remark = ' #{mkordparams[:remark]} ',
-                                                                   result_f = '9',cmpldate = now()
-                                                where id = #{params[:mkprdpurords_id]}
-                                %
-                ActiveRecord::Base.connection.update(strsql)
-                if processreq
-                  strsql = %Q%update processreqs set result_f = '5'  where seqno = #{pid} and id < #{processreq["id"]}
-                                %
-                  ActiveRecord::Base.connection.update(strsql)
-                  strsql = %Q%update processreqs set result_f = '9'  where seqno = #{pid} and id = #{processreq["id"]}
-                                %
-                  ActiveRecord::Base.connection.update(strsql)
-                  strsql = %Q%update processreqs set result_f = '8'  where seqno = #{pid} and id > #{processreq["id"]}
-                                %
-                  ActiveRecord::Base.connection.update(strsql)
-                end           
-                ActiveRecord::Base.connection.commit_db_transaction()
-                return 
-              end
             when /mkpayords|mkbillords/
-		          ActiveRecord::Base.connection.execute("lock table #{params[:segment][2..-1]} in  SHARE ROW EXCLUSIVE mode")
+              ###　perform時　billpayparams => true でparamsの項目を作成済のこと pay,bill用
+		          ActiveRecord::Base.connection.execute("lock table #{processreq["segment"][2..-1]} in  SHARE ROW EXCLUSIVE mode")
               ### 　parent 未使用
               if tbldata["amt"].to_f > 0
                 ###ArelCtl.proc_createtable は使用しない
                 ###bill_loca_id_bill_cust
                 isudate = Time.now
-                case params[:segment]
+                case processreq["segment"]
                   when "mkpayords"
                     trn_day = tbldata["rcptdate"].to_date.strftime("%d").to_i
                     duedate =  tbldata["rcptdate"].to_date
@@ -234,7 +214,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                                   %
                             ActiveRecord::Base.connection.update(strsql)
             when /mkpayschs|mkbillschs|mkbillests|updatepayschs|updatebillschs/
-              case params[:segment]
+              case processreq["segment"]
                   when "mkpayschs" 
                     locktbl = "payschs"
                   when "mkbillschs" 
@@ -248,8 +228,8 @@ class CreateOtherTableRecordJob < ApplicationJob
               end
 		          ActiveRecord::Base.connection.execute("lock table #{locktbl} in  SHARE ROW EXCLUSIVE mode")
               ### 　parent 未使用
-              if params[:segment] == "updatepayschs" or params[:segment] == "updatebillschs"
-                delete_paybillschs(params[:segment],params)
+              if processreq["segment"] == "updatepayschs" or processreq["segment"] == "updatebillschs"
+                delete_paybillschs(processreq["segment"],params)
               end
               ###payestsは作成されない。purschsが在庫に引き当っていることがある為。
               ###ArelCtl.proc_createtable は使用しない
@@ -258,7 +238,7 @@ class CreateOtherTableRecordJob < ApplicationJob
               isudate = Time.now
               src = {"tblname" => params[:srctblname],"tblid" => params[:srctblid],"trngantts_id" => 0}
               duedate = tbldata["duedate"].to_date
-              case params[:segment]
+              case processreq["segment"]
                 when "mkpayschs","updatepayschs"
                   strsql = %Q%select b.*,c.id suppliers_id from payments b
                                             inner join suppliers c on c.payments_id_supplier = b.id   
@@ -341,9 +321,9 @@ class CreateOtherTableRecordJob < ApplicationJob
                 end
                         #                            
             when "mkschs"  ### XXXXschs,ordsの時prdschs,purschsを作成
+              reqparams = {}
               parent = tbldata.dup
               trnganttkey ||= 0  ###keyのカウンター
-              gantt = params[:gantt].dup
               gantt_key = gantt["key"]
               gantt["mlevel"] = gantt["mlevel"].to_i+1
               gantt["paretblname"] = parent["tblname"] = tblname
@@ -380,10 +360,9 @@ class CreateOtherTableRecordJob < ApplicationJob
                           gantt["consumtype"] = (nd["consumtype"]||="CON")
                       end
                       ### gantt["qty_handover"] = (qty_require / nd["packqty"]).ceil * nd["packqty"] 
-                      gantt["qty_handover"] = qty_require   
+                      gantt["qty_handover"] = gantt["qty_require"] = qty_require   
                       gantt["duedate_trn"] = command_c["#{gantt["tblname"].chop}_duedate"]
                       gantt["toduedate_trn"] = command_c["#{gantt["tblname"].chop}_toduedate"]
-                      gantt["qty_require"] = qty_require
                       gantt["qty_sch"] = command_c["#{gantt["tblname"].chop}_qty_sch"]
                       gantt["starttime_trn"] =  command_c["#{gantt["tblname"].chop}_starttime"]
                       ###作業場所の稼働日考慮要
@@ -396,6 +375,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                       if gantt["consumtype"] == "CON"  ###出庫 消費と金型・設備の使用
                         reqparams[:child] =  nd.dup
                         reqparams[:screenCode] = "r_conschs"
+                        reqparams[:err] = err
                         last_lotstks <<  Shipment.proc_create_consume(reqparams)   ###自身の消費を作成
                       end
                   when "run"
@@ -423,6 +403,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                       gantt["tblid"] = consume_tbldata["id"]
                       gantt["persons_id_upd"] = reqparams[:person_id_upd]
                       reqparams[:gantt] =  gantt.dup
+                      (reqparams[:remark] ||= "") << message
                       ope = Operation::OpeClass.new(reqparams)
                       ope.proc_trngantts_insert() 
                       ###
@@ -479,15 +460,14 @@ class CreateOtherTableRecordJob < ApplicationJob
                           gantt["tblname"] = 'dymschs'
                           nd["locas_id"] = 0 
                           nd["locas_id_to"] = 0
-                          command_c,qty_require = add_update_prdpur_table_from_nditm(nd,parent,tblname,command_c)  ###tblname -->paretblname
+                          command_c,qty_require,err = add_update_prdpur_table_from_nditm(nd,parent,tblname,command_c)  ###tblname -->paretblname
                           command_c["dymsch_itm_id_dym"] = nd["itms_id"]
                           command_c["dymsch_shelfno_id"] = 0
                           command_c["dymsch_shelfno_id_to"] = 0
                           gantt["duedate_trn"] = command_c["#{gantt["tblname"].chop}_duedate"]
                           gantt["locas_id_trn"] = 0
                           gantt["shelfnos_id_trn"] = 0
-                          gantt["qty_require"] = qty_require
-                          gantt["qty_handover"] = qty_require  
+                          gantt["qty_require"] = gantt["qty_handover"] = qty_require
                           gantt["processseq_trn"] = command_c["#{gantt["tblname"].chop}_processseq"] = 999
                           gantt["toduedate_trn"] = command_c["#{gantt["tblname"].chop}_toduedate"]
                           gantt["qty_sch"] = command_c["#{gantt["tblname"].chop}_qty_sch"]
@@ -530,10 +510,10 @@ class CreateOtherTableRecordJob < ApplicationJob
                   child = {}
                   last_lotstks = []
                   ActiveRecord::Base.connection.select_all(ArelCtl.proc_pareChildTrnsSqlGroupByChildItem(parent)).each do |nd|
-                  reqparams[:mkprdpurords_id] = 0
-                  child = nd.dup
-                  case child["consumtype"]
-                    when "CON"  ###出庫 消費 
+                    reqparams[:mkprdpurords_id] = 0
+                    child = nd.dup
+                    case child["consumtype"]
+                      when "CON"  ###出庫 消費 
                         child["packno"] = ""
                         child["lotno"] = ""   ### shpschs,shpordsの時はlotnoは""  
                         reqparams[:parent] = parent.dup
@@ -549,7 +529,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                             reqparams[:screenCode] = "r_conords"    
                             last_lotstks <<  Shipment.proc_create_consume(reqparams)
                         end
-                    when "mold","ITool"  ###出庫 金型・工具の使用
+                      when "mold","ITool"  ###出庫 金型・工具の使用
                         child["packno"] = ""
                         child["lotno"] = ""   ### shpschs,shpordsの時はlotnoは""  
                         reqparams[:parent] = parent.dup
@@ -561,7 +541,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                             end
                             last_lotstks.concat last_lotstks_parts  if last_lotstks_parts.size > 0  ###nilを避ける
                         end    
-                    when "BYP" ,"run"  ###副産物,runner
+                      when "BYP" ,"run"  ###副産物,runner
                         ###消費はない
                         child["packno"] = ""
                         child["lotno"] = ""   ### shpschs,shpordsの時はlotnoは""  
@@ -572,7 +552,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                           "shpsch"
                         end
                         last_lotstks.concat last_lotstks_parts if last_lotstks_parts.size > 0  ###nilを避ける
-                    when "apparatus"  ###設備の使用
+                      when "apparatus"  ###設備の使用
                             next
                     end
                   end 
@@ -581,7 +561,6 @@ class CreateOtherTableRecordJob < ApplicationJob
                   end
             when "mkprdpurchildFromCustxxxs"  ### custxxxsからpur,purschsに変更"custord_crr_id_custord" 
                             ###　parent 未使用
-                            gantt = params[:gantt].dup
                             gantt["mlevel"] = 1
                             gantt["key"] = "00000000"
                             gantt["qty_sch_pare"] = 0 
@@ -626,7 +605,7 @@ class CreateOtherTableRecordJob < ApplicationJob
                                                     updated_at = current_timestamp
                                                     where id = #{sch["link_id"]}
                                             &
-                                    ActiveRecord::Base.connection.update(update_sql) ###引き当ったcustschsの減gantt = reqparams[:gantt].dup
+                                    ActiveRecord::Base.connection.update(update_sql) ###引き当ったcustschsの減
                                     src = {"tblname" => "custschs","tblid" => sch["srctblid"],"trngantts_id" => sch["trngantts_id"],"remark" => "#{self},line:#{__LINE__} "}
                                     base = {"tblname" => "custords","tblid" => gantt["orgtblid"],"qty_src" => qty_src,"amt_src" => 0,"persons_id_upd" => reqparams[:person_id_upd]}
                                     ArelCtl.proc_insert_linkcusts(src,base)  ###
@@ -663,27 +642,29 @@ class CreateOtherTableRecordJob < ApplicationJob
                             command_c = blk.command_init
                             command_c["#{opeitm["prdpur"]}sch_person_id_upd"] = reqparams[:person_id_upd]
                             command_c["#{opeitm["prdpur"]}sch_duedate"] = tbldata["starttime"].to_time.strftime("%Y-%m-%d") + " 16:00:00"
-                            command_c,qty_require = add_update_prdpur_table_from_nditm(child,tbldata,paretblname,command_c)  ###tbldata--->parent
+                            command_c,qty_require,err = add_update_prdpur_table_from_nditm(child,tbldata,paretblname,command_c)  ###tbldata--->parent
                             command_c["#{opeitm["prdpur"]}sch_created_at"] = Time.now
+                            gantt["qty_require"] = qty_require
                             reqparams[:gantt] = gantt.dup
+                            (reqparams[:err] ||= "") << err
                             reqparams = blk.proc_private_aud_rec(reqparams,command_c)   
                             result_f = '1'
                             if !last_lotstks.empty?
                               ArelCtl.proc_add_update_lotstkhists(last_lotstks,params[:person_id_upd])
                             end
-            else  
+          else  
                         result_f = '6'
                         3.times{Rails.logger.debug" class:#{self},line:#{__LINE__}  program(segment) nothing  \n reqparams:#{reqparams}"}  
-                    end ## process   
-                    strsql = %Q%update processreqs set result_f = '#{result_f}',remark = '#{remark}' where id = #{processreq["id"]}
+          end ## process   
+          strsql = %Q%update processreqs set result_f = '#{result_f}',remark = '#{remark}' where id = #{processreq["id"]}
                             %
-                    ActiveRecord::Base.connection.update(strsql)
-                    processreq = ActiveRecord::Base.connection.select_one(perform_strsql)
-                    if processreq
+          ActiveRecord::Base.connection.update(strsql)
+          processreq = ActiveRecord::Base.connection.select_one(perform_strsql)
+          if processreq
                         params = JSON.parse(processreq["reqparams"]).symbolize_keys  
-                    end
           end
-        rescue
+        end
+      rescue
             ActiveRecord::Base.connection.rollback_db_transaction()
             ActiveRecord::Base.connection.begin_db_transaction()
             remark =  %Q% $@: #{$@[0..200]} :class #{self} : LINE #{__LINE__} $!: #{$!} %  ###evar not defined
@@ -703,20 +684,21 @@ class CreateOtherTableRecordJob < ApplicationJob
                 ActiveRecord::Base.connection.update(strsql)
             end           
             ActiveRecord::Base.connection.commit_db_transaction()
-        else
+      else
             ActiveRecord::Base.connection.commit_db_transaction()
-        end  
+      end  
     end
  
-	  ###schsの追加	paretblname =~ /schs$|ords$/の時呼ばれる 
-	  def add_update_prdpur_table_from_nditm(nd,parent,paretblname,command_init) ### id processreqsのid child-->nditms  parent ===> r_prd,pur XXXs
-            parent["qty_sch"] = parent["qty_sch"].to_f + parent["qty"].to_f 
-            if paretblname =~ /ords/   ###ordsから _schを作成
+	    ###schsの追加	paretblname =~ /schs$|ords$/の時呼ばれる 
+	  def add_update_prdpur_table_from_nditm(nd,parent,paretblname,command_init)
+       ### id processreqsのid child-->nditms  parent ===> r_prd,pur XXXs
+          parent["qty_sch"] = parent["qty_sch"].to_f + parent["qty"].to_f 
+          if paretblname =~ /ords/   ###ordsから _schを作成
                 parent.delete("qty") 
                 parent.delete("amt") 
-            end
-		    command_c,qty_require,err = CtlFields.proc_schs_fields_making(nd,parent,command_init)
-		    return command_c,qty_require,err
+          end
+		      command_c,qty_require,err = CtlFields.proc_schs_fields_making(nd,parent,command_init)
+		      return command_c,qty_require,err
     end
 
     def setGanttFromNd(gantt, nd)
@@ -786,7 +768,9 @@ class CreateOtherTableRecordJob < ApplicationJob
                   gantt["mlevel"] = gantt["mlevel"].to_i+1
                   gantt["key"] = gantt["key"] + "10000"
                   gantt["qty_handover"] = command_c["prdsch_qty_handover"]
+                  gantt["qty_require"] = qty_require
                   gateParams[:gantt] = gantt.dup
+                  (gateParams[:err] ||= "") << err 
                   gateParams = blk.proc_private_aud_rec(gateParams,command_c) ###
                   return
                 else
@@ -853,49 +837,46 @@ class CreateOtherTableRecordJob < ApplicationJob
 			      raise " class:#{self} ,line:#{__LINE__} runner operation error\n strsql:#{strsql} "
         end
     end
-
-
     
-
     def delete_paybillschs(segment,params)
         ###check billscks exists or not
-        case segment
-        when "updatebillords"
-            # blk = RorBlkCtl::BlkClass.new("r_billords")
-            # command_c = blk.command_init
-            # command_c["billord_accounttitle"] = "A"  ### 売上
-            paybillsch = "billord"
-            mst = "bill"
-            str_amt = "amt"
-        when "updatebillschs"
-            # blk = RorBlkCtl::BlkClass.new("r_billschs")
-            # command_c = blk.command_init
-            # command_c["billsch_accounttitle"] = "A"  ### 売上
-            paybillsch = "billsch"
-            mst = "bill"
-            str_amt = "amt_sch"
-        when "updatebillests"
-            # blk = RorBlkCtl::BlkClass.new("r_billests")
-            # command_c = blk.command_init
-            # command_c["billest_accounttitle"] = "A"  ### 売上
-            mst = "bill"
-            paybillsch = "billest"
-            str_amt = "amt_est"
-        when "updatepayschs"
-            # blk = RorBlkCtl::BlkClass.new("r_payschs")
-            # command_c = blk.command_init
-            # command_c["paysch_accounttitle"] = "1"  ### 仕入
-            mst = "payment"
-            paybillsch = "paysch"
-            str_amt = "amt_sch"
-        when "updatepayords"
-            # blk = RorBlkCtl::BlkClass.new("r_payords")
-            # command_c = blk.command_init
-            # command_c["payord_accounttitle"] = "1"  ### 仕入
-            mst = "payment"
-            paybillsch = "payord"
-            str_amt = "amt"
-        end 
+        # case segment
+        # when "updatebillords"
+        #     # blk = RorBlkCtl::BlkClass.new("r_billords")
+        #     # command_c = blk.command_init
+        #     # command_c["billord_accounttitle"] = "A"  ### 売上
+        #     paybillsch = "billord"
+        #     mst = "bill"
+        #     str_amt = "amt"
+        # when "updatebillschs"
+        #     # blk = RorBlkCtl::BlkClass.new("r_billschs")
+        #     # command_c = blk.command_init
+        #     # command_c["billsch_accounttitle"] = "A"  ### 売上
+        #     paybillsch = "billsch"
+        #     mst = "bill"
+        #     str_amt = "amt_sch"
+        # when "updatebillests"
+        #     # blk = RorBlkCtl::BlkClass.new("r_billests")
+        #     # command_c = blk.command_init
+        #     # command_c["billest_accounttitle"] = "A"  ### 売上
+        #     mst = "bill"
+        #     paybillsch = "billest"
+        #     str_amt = "amt_est"
+        # when "updatepayschs"
+        #     # blk = RorBlkCtl::BlkClass.new("r_payschs")
+        #     # command_c = blk.command_init
+        #     # command_c["paysch_accounttitle"] = "1"  ### 仕入
+        #     mst = "payment"
+        #     paybillsch = "paysch"
+        #     str_amt = "amt_sch"
+        # when "updatepayords"
+        #     # blk = RorBlkCtl::BlkClass.new("r_payords")
+        #     # command_c = blk.command_init
+        #     # command_c["payord_accounttitle"] = "1"  ### 仕入
+        #     mst = "payment"
+        #     paybillsch = "payord"
+        #     str_amt = "amt"
+        # end 
 
         strsql = %Q& --- payxxxsとpurxxxs、billxxxsとcustxxxsの関係
                     select * from srctbllinks where srctblname = '#{params[:srctblname]}' and srctblid = #{params[:srctblid]} 
