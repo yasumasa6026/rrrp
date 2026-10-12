@@ -1,15 +1,6 @@
 ##https://github.com/lynndylanhurley/devise_token_auth
 module Api
   module Auth
-    # class RegistrationsController < DeviseTokenAuth::RegistrationsController
-    #   ###before_action :authenticate_api_user!, except: [:create,:new]
-    #   ###def new  ### createを使用する。
-    #   ###end  
-    #   private
-    #   def sign_up_params
-    #       params.permit(*params_for_resource(:sign_up))
-    #   end
-    # end  class Users::RegistrationsController < Devise::RegistrationsController
     class Users::RegistrationsController < DeviseTokenAuth::RegistrationsController
       before_action :authenticate_api_user!, except: [:create]
       def create
@@ -57,6 +48,9 @@ end
 # # ここから追加
 # config.action_mailer.delivery_method = :smtp
 # config.action_mailer.smtp_settings = { address: "localhost", port: 1025 }
+# 
+#/rrrp$ mailcatcher --ip 127.0.0.1  ##MailCatcher起動
+#
 
 # これで、Railsアプリケーションから送信されるメールはMailCatcherによってキャッチされ、
 # http://localhost:1080 で閲覧可能になります。

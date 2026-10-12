@@ -22,7 +22,7 @@ ${'' /* These styles are required for a horizontaly scrollable table overflow */
     overflow-y: hidden;
     overflow-x: scroll;
     .tr{ height: 35px;
-        ${ /*white-space: nowrap;折り返し禁止*/ ' '}
+        ${/* white-space: nowrap;折り返し禁止 */ ' '}
       }
   }
 
@@ -102,7 +102,7 @@ ${'' /* These styles are required for a horizontaly scrollable table overflow */
   }
 
  input { width:95%;
-          height:85%;  ${'' /* gotoPgageはscreengrid7で設定*/}
+          height:85%;  ${'' /* gotoPgageはscreengrid7で設定 */}
   }
 
   th {

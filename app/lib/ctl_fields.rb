@@ -1350,12 +1350,12 @@ module CtlFields
 
 	def proc_judge_check_custprice parse_linedata,item,index,screenCode  ###
 		err = nil
-		if parse_linedata["custsch_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
-				return parse_linedata,err
-		end
 		dupLineData = parse_linedata.dup
 		case screenCode
 		when /custschs/
+			if parse_linedata["custsch_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
+				return parse_linedata,err
+			end
 			strsql = %Q&
 						select * from custprices 
 									where custs_id = #{dupLineData["custsch_cust_id"]} and opeitms_id = #{dupLineData["custsch_opeitm_id"]}
@@ -1386,6 +1386,9 @@ module CtlFields
 			str_tax = "custsch_tax"
 			str_contractprice = "custsch_contractprice"
 		when /custords/
+			if parse_linedata["custord_contractprice"] =~ /[A-Z]|[a-z]/  ###数字の時マスター単価
+				return parse_linedata,err
+			end
 			strsql = %Q&
 						select * from custprices 
 									where custs_id = #{dupLineData["custord_cust_id"]} and opeitms_id = #{dupLineData["custord_opeitm_id"]}

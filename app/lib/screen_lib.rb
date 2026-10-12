@@ -1284,7 +1284,7 @@ module ScreenLib
         command_c["sio_result_f"] = "9"  ##9:error
 				parse_linedata["confirm"] = false  
 			end
-							Rails.logger.debug " class:#{self} ,line:#{__LINE__},\n command_c:#{command_c},\n parse_linedata:#{parse_linedata}"
+							Rails.logger.debug " class:#{self} ,line:#{__LINE__},\n command_c:#{command_c},\n parse_linedata:#{parse_linedata},\n reqparams:#{reqparams}"
       return reqparams
 		end
 
@@ -1292,7 +1292,7 @@ module ScreenLib
 			parse_linedata["id"] = command_c["id"]
 			parse_linedata[tblnamechop+"_id"] = command_c[tblnamechop+"_id"]
 			parse_linedata["confirm"] = true  
-			parse_linedata["confirm_gridmessage"] = "done"
+			parse_linedata["confirm_gridmessage"] = "ok"  ###= "done"  
 			return parse_linedata
 		end
 

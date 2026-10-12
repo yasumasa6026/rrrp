@@ -1,21 +1,23 @@
-import {MENU_REQUEST,MENU_SUCCESS,MENU_FAILURE,
-          LOGOUT_REQUEST,LOGIN_FAILURE,LOGIN_SUCCESS,LOGOUT_SUCCESS,
-          SCREENINIT_REQUEST,SCREEN_REQUEST,SCREEN_SUCCESS7,SCREEN_FAILURE,
-          SECONDFETCH_RESULT,FETCH_RESULT,TBLFIELD_SUCCESS,
-          SCREEN_CONFIRM7, SCREEN_CONFIRM7_SUCCESS,CONFIRMALL_SUCCESS,
-          SECOND_CONFIRMALL_REQUEST,SECOND_CONFIRMALL_SUCCESS,
-          SECOND_REQUEST,SECOND_SUCCESS7,SECOND_CONFIRM7,MKSHPORDS_SUCCESS,
-          SECOND_FAILURE,SCREEN_DATASET,
-          PDF_REQUEST,PDF_SUCCESS,PDF_FAILURE, } from '../../actions'
+import {
+  MENU_REQUEST, MENU_SUCCESS, MENU_FAILURE,
+  LOGOUT_REQUEST, LOGIN_FAILURE, LOGIN_SUCCESS, LOGOUT_SUCCESS,
+  SCREENINIT_REQUEST, SCREEN_REQUEST, SCREEN_SUCCESS7, SCREEN_FAILURE,
+  SECONDFETCH_RESULT, FETCH_RESULT, TBLFIELD_SUCCESS,
+  SCREEN_CONFIRM7, SCREEN_CONFIRM7_SUCCESS, CONFIRMALL_SUCCESS,
+  SECOND_CONFIRMALL_REQUEST, SECOND_CONFIRMALL_SUCCESS,
+  SECOND_REQUEST, SECOND_SUCCESS7, SECOND_CONFIRM7, MKSHPORDS_SUCCESS,
+  SECOND_FAILURE, SCREEN_DATASET,
+  PDF_REQUEST, PDF_SUCCESS, PDF_FAILURE
+} from '../../actions'
 const initialValues = {
-  isSubmitting:false,
-  isSignUp:false,
-  isLogin:false,
-  errors:[],
-  screenFlg:"first",
-  firstView:true,
-  secondView:false,
-  params:{screenCode:null,screenName:null,buttonflg:"viewtablereq7"},
+  isSubmitting: false,
+  isSignUp: false,
+  isLogin: false,
+  errors: [],
+  screenFlg: 'first',
+  firstView: true,
+  secondView: false,
+  params: { screenCode: null, screenName: null, buttonflg: 'viewtablereq7' }
 }
 /*
 MENU_REQUEST firstView と secondView を false に設定した新しい状態を返します。
@@ -27,233 +29,239 @@ SECONDFETCH_RESULT  message をアクションのペイロードから取得し�
 SCREENINIT_REQUEST  params をアクションのペイロードから取得した新しい状態を返します。
 */
 
-const menureducer =  (state= initialValues , actions) =>{
+const menureducer = (state = initialValues, actions) => {
   switch (actions.type) {
-    
     case MENU_REQUEST:
-      return {...state,
-        firstView:false,
-        secondView:false,
-        isLogin:true,
+      return {
+        ...state,
+        firstView: false,
+        secondView: false,
+        isLogin: true
       }
 
     case MENU_SUCCESS:
-        return {...state,
-          menuListData:actions.action.sgrp_menue,
-          menuMessage:actions.action.menuMessage,
-          firstView:false,
-          secondView:false,
-          hostError:null,
-        }
+      return {
+        ...state,
+        menuListData: actions.action.sgrp_menue,
+        menuMessage: actions.action.menuMessage,
+        firstView: false,
+        secondView: false,
+        hostError: null
+      }
 
     case MENU_FAILURE:
-      return {...state,
-        hostError:actions.payload.hostError,
-    }    
+      return {
+        ...state,
+        hostError: actions.payload.hostError
+      }
 
-    
-    case SCREEN_FAILURE:  //gridtable が利用できないとき 
-      return {...state,
-        screenFlg:"first",
-        secondView:false,
-        hostError:actions.payload.hostError,
-        message:actions.payload.message,
-        loading:false,
-    }  
+    case SCREEN_FAILURE: // gridtable が利用できないとき
+      return {
+        ...state,
+        screenFlg: 'first',
+        secondView: false,
+        hostError: actions.payload.hostError,
+        message: actions.payload.message,
+        loading: false
+      }
 
     case FETCH_RESULT:
-      return {...state,
-      message:actions.payload.params.err,
-      loading:false,
-      hostError:null,
-      firstView:true,
-      secondView:false,
-    }
-
+      return {
+        ...state,
+        message: actions.payload.params.err,
+        loading: false,
+        hostError: null,
+        firstView: true,
+        secondView: false
+      }
 
     case SECONDFETCH_RESULT:
-      return {...state,
-      message:actions.payload.params.err,
-      loading:false,
-      hostError:null,
-      firstView:true,
-      secondView:true,
-    }
+      return {
+        ...state,
+        message: actions.payload.params.err,
+        loading: false,
+        hostError: null,
+        firstView: true,
+        secondView: true
+      }
 
-    
     case SCREENINIT_REQUEST:
-      return {...state,
-        params:actions.payload.params,
-        loading:true,
-        firstView:false,
-        secondView:false,
-        hostError:null,
-        message:null,
+      return {
+        ...state,
+        params: actions.payload.params,
+        loading: true,
+        firstView: false,
+        secondView: false,
+        hostError: null,
+        message: null
       }
 
-    
     case SCREEN_SUCCESS7: // payloadに統一
-      return {...state,
-        firstView:true,
-        secondView:false,
-        hostError:null,
-        message: actions.payload.params.message,
-      }  
-      
-    case SCREEN_REQUEST:
-      return {...state,
-        loading:true,
-        screenFlg:null,
-        secondView:false,
-        hostError:null,
-        message:null,
+      return {
+        ...state,
+        firstView: true,
+        secondView: false,
+        hostError: null,
+        message: actions.payload.params.message
       }
-         
-    
 
-  case TBLFIELD_SUCCESS:
-    return {...state,
-    params: {...state.params},
-    message:actions.payload.message,
-    disabled:false,
-    loading:false,
-    firstView:true,
-    secondView:false,
-    }  
+    case SCREEN_REQUEST:
+      return {
+        ...state,
+        loading: true,
+        screenFlg: null,
+        secondView: false,
+        hostError: null,
+        message: null
+      }
 
+    case TBLFIELD_SUCCESS:
+      return {
+        ...state,
+        params: { ...state.params },
+        message: actions.payload.message,
+        disabled: false,
+        loading: false,
+        firstView: true,
+        secondView: false
+      }
 
     case SECOND_CONFIRM7:
-    case SECOND_CONFIRMALL_REQUEST:  
-          return {...state,
-                    loading:true,
-                    firstView:true,
-                    hostError:null,
-                    message:actions.payload.message,
+    case SECOND_CONFIRMALL_REQUEST:
+      return {
+        ...state,
+        loading: true,
+        firstView: true,
+        hostError: null,
+        message: actions.payload.message
       }
 
-      
-    case SCREEN_DATASET:  
-          let idx = actions.payload.params.index
-          return {...state,
-                    loading:true,
-                    firstView:true,
-                    hostError:actions.payload.data[idx]&&actions.payload.data[idx].confirm_gridmessage,
-                    message:null,
+    case SCREEN_DATASET:
+      const idx = actions.payload.params.index
+      return {
+        ...state,
+        loading: true,
+        firstView: true,
+        hostError: actions.payload.data[idx] && actions.payload.data[idx].confirm_gridmessage,
+        message: null
       }
 
-    
-      case  SCREEN_CONFIRM7_SUCCESS:
-              return {...state,
-                        loading:false,
-                        firstView:true,
-                        secondView:false,
-                        message:actions.payload.message,
-                        hostError:actions.payload.params.err,
-          }
-          
-      
-      case SCREEN_CONFIRM7:
-            return {...state,
-                      loading:true,
-                      secondView:false,
-                      hostError:null,
-        }  
-
-      case CONFIRMALL_SUCCESS:
-          return {...state,
-            loading:false,
-            message:actions.payload.message,
-          }   
-
-    
-      case MKSHPORDS_SUCCESS:
-          return {...state,
-          message:actions.payload.message, 
-          loading:false,
-      }    
-
-      case LOGIN_SUCCESS:
-            return {...state,
-              firstView:false,
-              secondView:false,
+    case SCREEN_CONFIRM7_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        firstView: true,
+        secondView: false,
+        message: actions.payload.message,
+        hostError: actions.payload.params.err
       }
 
+    case SCREEN_CONFIRM7:
+      return {
+        ...state,
+        loading: true,
+        secondView: false,
+        hostError: null
+      }
 
-  //  case MKSHPACTS_RESULT:
+    case CONFIRMALL_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        message: actions.payload.message
+      }
+
+    case MKSHPORDS_SUCCESS:
+      return {
+        ...state,
+        message: actions.payload.message,
+        loading: false
+      }
+
+    case LOGIN_SUCCESS:
+      return {
+        ...state,
+        firstView: false,
+        secondView: false
+      }
+
+      //  case MKSHPACTS_RESULT:
     case SECOND_REQUEST:
-        return {...state,
-          screenFlg:"second",
-          secondView:true,
-          loading:true,
-          hostError:null,
-        }   
+      return {
+        ...state,
+        screenFlg: 'second',
+        secondView: true,
+        loading: true,
+        hostError: null
+      }
 
-    
-   
-      case SECOND_SUCCESS7: // payloadに統一
-        return {...state,
-          secondView:true,
-          hostError:null,
-          message: actions.payload.params.message,
-        }
-        
+    case SECOND_SUCCESS7: // payloadに統一
+      return {
+        ...state,
+        secondView: true,
+        hostError: null,
+        message: actions.payload.params.message
+      }
+
     case SECOND_CONFIRMALL_SUCCESS:
-      return {...state,
-        screenFlg:"second",
-        secondView:true,
-        loading:false,
-      }   
+      return {
+        ...state,
+        screenFlg: 'second',
+        secondView: true,
+        loading: false
+      }
 
     case SECOND_FAILURE:
-          return {...state,
-            screenFlg:"second",
-            secondView:true,
-            loading:false,
-            hostError:actions.payload.hostError,
-          }   
-    
+      return {
+        ...state,
+        screenFlg: 'second',
+        secondView: true,
+        loading: false,
+        hostError: actions.payload.hostError
+      }
+
     case PDF_REQUEST:
-      return {...state,
-        firstView:true,
-        secondView:false,
-        loading:true,
+      return {
+        ...state,
+        firstView: true,
+        secondView: false,
+        loading: true
       }
 
     case PDF_SUCCESS:
-        return {...state,
-          listNamePdf:actions.payload.params.listNamePdf,
-          listTypePdf:actions.payload.params.listTypePdf,
-          totalPagePdf:actions.payload.params.totalPagePdf,
-          hostError:null,
-          loading:false,
-        }
-
-    case PDF_FAILURE:
-      return {...state,
-          loading:false,
-          hostError:actions.payload.hostError,
-    }    
-
-
-    case  LOGOUT_REQUEST:
-    return {}  
-
-      
-    case  LOGIN_FAILURE:
       return {
-        firstView:false,
-        secondView:false,
-        hostError:actions.payload.error,
+        ...state,
+        listNamePdf: actions.payload.params.listNamePdf,
+        listTypePdf: actions.payload.params.listTypePdf,
+        totalPagePdf: actions.payload.params.totalPagePdf,
+        hostError: null,
+        loading: false
       }
 
-    case  LOGOUT_SUCCESS:
-            return {
-              isAuthenticated:false,
-            }
+    case PDF_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        hostError: actions.payload.hostError
+      }
+
+    case LOGOUT_REQUEST:
+      return {}
+
+    case LOGIN_FAILURE:
+      return {
+        firstView: false,
+        secondView: false,
+        hostError: actions.payload.error
+      }
+
+    case LOGOUT_SUCCESS:
+      return {
+        isAuthenticated: false
+      }
 
     default:
-      return  {...state,
-      }   
+      return { ...state }
   }
 }
 

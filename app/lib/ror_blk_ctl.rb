@@ -211,13 +211,13 @@ module RorBlkCtl
           reqparams[:tbldata] = @tbldata
 					reqparams[:mkprdpurords_id] = @tbldata["id"]
 					reqparams[:remark] = " #{self} line #{__LINE__} "
-					processreqs_id,reqparams = ArelCtl.proc_processreqs_add(reqparams)		
+					reqparams = ArelCtl.proc_processreqs_add(reqparams)		
 			  when /^mkbillinsts$/
 				  reqparams[:gantt] = {}
 				  reqparams[:segment] = "mkbillinsts"
 				  reqparams[:mkbillinsts_id] = @tbldata["id"]
 				  reqparams[:remark] = " #{self} line #{__LINE__} "
-				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(reqparams)	
+				  reqparams = ArelCtl.proc_processreqs_add(reqparams)	
 			  when /^mkpayinsts$/
 				  reqparams[:gantt] = {}
 				  reqparams[:segment] = "mkpayinsts"
@@ -225,7 +225,7 @@ module RorBlkCtl
 				  reqparams[:remark] = " #{self} line #{__LINE__} "
           reqparams[:tblname] = @tblname
           reqparams[:tblid] = @tbldata["id"]
-				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(reqparams)	
+				  reqparams = ArelCtl.proc_processreqs_add(reqparams)	
 			  when /^dymschs$/
           			###trnganttsの作成
 				  reqparams = setGantt(reqparams)				###作業場所の稼働日考慮要
@@ -290,7 +290,7 @@ module RorBlkCtl
           	conParams = ope.proc_opeParams.dup
 				    conParams[:segment]  = "mkShpschConord"  ### XXXXschs,ordsの時XXXschsを作成
 				    conParams[:remark] = " #{self} line #{__LINE__} "
-				    processreqs_id,reqparams = ArelCtl.proc_processreqs_add(conParams)
+				    reqparams = ArelCtl.proc_processreqs_add(conParams)
            	ActiveRecord::Base.connection.select_all(ArelCtl.proc_apparatus_sql(@tbldata["opeitms_id"])).each do |apparatus|
                  ope = Operation::OpeClass.new(reqparams) 
                  ope.proc_add_dvs_data(apparatus)
@@ -403,7 +403,7 @@ module RorBlkCtl
 				    conParams[:remark] = " #{self} line #{__LINE__} "
             conParams[:tblname] = nil
             conParams[:tblid] = nil
-				    processreqs_id,reqparams = ArelCtl.proc_processreqs_add(conParams)
+				    reqparams = ArelCtl.proc_processreqs_add(conParams)
 					  addupdate = "mkpayschs"
           else
             check_shelfnos_duedate_qty(params)
@@ -424,7 +424,7 @@ module RorBlkCtl
 									:trngantts_id => reqparams[:gantt]["trngantts_id"],:chrgs_id => @tbldata["chrgs_id"],
 									:gantt => reqparams[:gantt],:tbldata => @tbldata,###必須項目
 									:person_id_upd => @tbldata["persons_id_upd"]}
-				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(payParams)	
+				  payParams = ArelCtl.proc_processreqs_add(payParams)	
 			  when /^replyinputs$/ ###trnganttsは作成しない。
 				  last_lotstks = prdpurinstact reqparams
 			  when /^purinsts$/  ###trnganttsは作成しない。
@@ -446,7 +446,7 @@ module RorBlkCtl
 								:tbldata => @tbldata.dup, ###必須項目
                 :suppliers_id => @tbldata["suppliers_id"],
 								:person_id_upd => @tbldata["persons_id_upd"]}
-				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(payParams)	
+				  payParams = ArelCtl.proc_processreqs_add(payParams)	
 			  when /^rejections$/ ###trnganttsは作成しない。
 				  last_lotstks << {"paretblname" => @tbldata["paretblname"],"paretblid" => @tbldata["paretblid"],
                           "tblname" => "rejections","tblid" => @tbldata["id"],"qty_src" => @tbldata["qty_rejection"]}
@@ -477,7 +477,7 @@ module RorBlkCtl
                	:gantt => reqparams[:gantt],:tbldata => {},###必須項目
                 :person_id_upd => @tbldata["persons_id_upd"]}
 				  ###schsの時はshpschs
-				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(billParams)	
+				  billParams = ArelCtl.proc_processreqs_add(billParams)	
 			  when /^custords$/  ### reqparams[:gantt].nil?==trueのはず
 				  ###下位部品所要量計算用
 				  ###自身のschsからordsへの変換用
@@ -505,7 +505,7 @@ module RorBlkCtl
                 :trngantts_id => reqparams[:gantt]["trngantts_id"],
                 :gantt => {},:tbldata => @tbldata,###必須項目
                 :person_id_upd => @tbldata["persons_id_upd"]}
-				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(billParams)
+				  billParams = ArelCtl.proc_processreqs_add(billParams)
 			  when /custinsts|custdlvs/
 				  last_lotstk = custinstsdlvsacts(reqparams)
 			  when /custacts$/ ###trnganttsは作成しない。
@@ -519,11 +519,11 @@ module RorBlkCtl
               ###
             else
               billParams = setBillParams(reqparams)
-              processreqs_id,reqparams = ArelCtl.proc_processreqs_add(billParams)
+            billParams = ArelCtl.proc_processreqs_add(billParams)
             end
           else
               billParams = setBillParams(reqparams)
-              processreqs_id,reqparams = ArelCtl.proc_processreqs_add(billParams)
+              billParams = ArelCtl.proc_processreqs_add(billParams)
           end
 
 				when /custactheads$/ ###
@@ -539,7 +539,7 @@ module RorBlkCtl
 					  count +=  val["count"].to_f
 					  tax +=  val["amt"].to_f * rate.to_f / 100
 				  end
-				  processreqs_id,reqparams = ArelCtl.proc_processreqs_add(billParams)
+				  billParams = ArelCtl.proc_processreqs_add(billParams)
 				  reqparams[:amt] = amt
 				  reqparams[:qty] = qty
 				  reqparams[:count] = count

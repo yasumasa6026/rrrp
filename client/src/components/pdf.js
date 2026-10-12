@@ -1,26 +1,18 @@
-import { connect } from 'react-redux'
+import {  useSelector, } from 'react-redux'
 
-const Pdf = ({listNamePdf,listTypePdf,totalPagePdf,}) => {
-            
-          
-        return(                 
-        <div>
-        <form  > 
-           <p>ListName:{listNamePdf}</p>
-           <p>ListType:{listTypePdf}</p>
-           <p>total Page count {totalPagePdf}</p>
-        </form> 
-        </div> 
-        )             
+const Pdf = () => {
+  const params = useSelector((state) => state.screen.params)
+  const listTypePdf =  params.listTypePdf ? params.listTypePdf : ''
+  const totalPagePdf =  params.totalPagePdf ? params.totalPagePdf : 0
+  return (
+    <div>
+      <form>
+        <p>ListName:{params.listNamePdf}</p>
+        <p>ListType:{listTypePdf}</p>
+        <p>total Page count {totalPagePdf}</p>
+      </form>
+    </div>
+  )
 }
-  
-    const mapStateToProps = (state,ownProps)  =>({  
-      listNamePdf:state.screen.params.listNamePdf,
-      listTypePdf:state.screen.params.listTypePdf?state.screen.params.listTypePdf:"",
-      totalPagePdf:state.screen.params.totalPagePdf?state.screen.params.totalPagePdf:0,
-    })
-    
-    const mapDispatchToProps = () => ({
-    })
-    
-export  default  connect(mapStateToProps,mapDispatchToProps)(Pdf)
+
+export default Pdf

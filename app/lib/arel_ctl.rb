@@ -14,7 +14,7 @@ module ArelCtl
   #   end
 	# end
 
-  def proc_materiallized tblname
+	def proc_materiallized tblname
 		if  Constants::Materiallized[tblname]
         Constants::Materiallized[tblname].each do |view|
 				  strsql = %Q%select 1 from pg_catalog.pg_matviews pm 
@@ -42,20 +42,31 @@ module ArelCtl
 	end
 	
 	def proc_processreqs_add params
-		processreqs_id = proc_get_nextval("processreqs_seq")
-		if params[:seqno].nil? or params[:seqno] == 0 ###
+			processreqs_id = proc_get_nextval("processreqs_seq")
+			if params[:seqno].nil? or params[:seqno] == 0 ###
 				params[:seqno] = processreqs_id 
 				params[:seqnos] = [] 
-		else
+			else
 				params[:seqnos] << processreqs_id 
-		end
-		if params[:billpayparams] 
+			end
+			if params[:billpayparams] 
 			 	strParams = params.to_json
-		else 
+			else 
 				strParams = "{}"
-		end
-		strsql = %Q&
-			insert into processreqs(
+			end
+			###processreqs_id-->Jobs::CreateOtherTableRecordJob.perform(pid),processreqs_idはjobsに渡すパラメータ
+			###params[:seqno]-->Group seqno
+			###params[:seqnos]-->Array of processreqs_id when Group
+			###segment-->Target process name
+			###mkprdpurordsidparam-->when segment ==  "mkprdpurords",top pur|prd + schs|ords -> tblid
+			###tblname-->Target table name
+			###tblid-->Target table id
+			###tbldata-->Target table data
+			###strParams-->JSON of params		if parent_tblname =~ /pur|cust/
+			###gantt-->JSON of gantt
+			###child-->JSON of child
+			strsql = %Q&
+				insert into processreqs(
 						contents,remark,
 						created_at,updated_at,
 						update_ip,persons_id_upd,
@@ -73,9 +84,9 @@ module ArelCtl
 						'#{params[:tblname]||=""}',#{params[:tblid]||=0},'#{params[:tbldata].to_json}',
 						'#{strParams}',
 						'#{(params[:gantt]||={}).to_json}','#{(params[:child]||={}).to_json}')
-		&
-		ActiveRecord::Base.connection.insert(strsql) 
-		return processreqs_id,params
+			&
+			ActiveRecord::Base.connection.insert(strsql) 
+			return params
 	end
 
 	def proc_createtable fmtbl,totbl,fmcommand_c,params  ### fmtbl:元のテーブル totbl:fmtblから自動作成するテーブル
@@ -181,7 +192,7 @@ module ArelCtl
 					fmcommand_c[sym_qty_stk] = qty_stk
 					proc_createtable fmtbl,totbl,fmcommand_c,params[:classname]
 				end
-      when /facilities/
+			when /facilities/
         case totbl
         when "fcoperators"
           command_c["fcoperator_itm_id_fcoperator"] =  fmcommand_c["facilitie_itm_id"]
@@ -247,13 +258,13 @@ module ArelCtl
 			amt = command_c["custact_amt"]
 			taxrate = command_c["custact_taxrate"] 
 		end
-		command_c["sio_classname"] =
-			if params[:classname] =~ /_add_|_insert_/
-				"_add_proc_createtable_data"
+		if params[:classname] =~ /_add_|_insert_/
+				
+				command_c["sio_classname"] ="_add_proc_createtable_data"
 				command_c["#{headTbl.chop}_created_at"] = Time.now
-			else
-				"_update_proc_createtable_data"
-			end
+		else
+				command_c["sio_classname"] = "_update_proc_createtable_data"
+		end
 		command_c["#{headTbl.chop}_person_id_upd"] = params[:person_id_upd]
 		command_c["id"] = ArelCtl.proc_get_nextval("#{headTbl}_seq")
 		blk.proc_private_aud_rec({},command_c)
@@ -293,10 +304,10 @@ module ArelCtl
 				&
 			ActiveRecord::Base.connection.insert(strsql)
 		end
-    if src["tblname"] =~ /^prd/ and newsrc["tblname"] =~ /^prd/  and src["tblname"] != newsrc["tblname"] and newsrc["qty_src"].to_f > 0
-       link = {"prevtblname" => src["tblname"],"prevtblid" => src["tblid"],"tblname" => newsrc["tblname"],"tblid" => newsrc["tblid"]}
-       add_dvserc_link(link)
-    end  
+    	if src["tblname"] =~ /^prd/ and newsrc["tblname"] =~ /^prd/  and src["tblname"] != newsrc["tblname"] and newsrc["qty_src"].to_f > 0
+       		link = {"prevtblname" => src["tblname"],"prevtblid" => src["tblid"],"tblname" => newsrc["tblname"],"tblid" => newsrc["tblid"]}
+       		add_dvserc_link(link)
+    	end  
 	end
 
 	
@@ -338,47 +349,47 @@ module ArelCtl
 	end
 
   
-  def add_dvserc_link src  ###prevtblname:prdxxxxs,tblname:prdxxxs,prevtblid,tblid
-    ["dvs","erc"].each do |dvserc|
-      strsql = %Q&
-        select '#{dvserc}#{src["prevtblname"][3..-1]}' prevdvserctblname,id prevdvserctblid
-                             from #{dvserc}#{src["prevtblname"][3..-1]}
-                                where #{src["prevtblname"]}_id_#{dvserc}#{src["prevtblname"][3..-2]} = #{src["prevtblid"]}
-                &
-        ActiveRecord::Base.connection.select_all(strsql).each do |prevdvserc| 
-          prev = {"tblname" => prevdvserc["prevdvserctblname"],"tblid" => prevdvserc["prevdvserctblid"]}
-          strsql =%Q&                 
-            select '#{prevdvserc["prevdvserctblname"].sub(src["prevtblname"][3..-1],src["tblname"][3..-1])}' currdvserctblname,id currdvserctblid
-                             from #{prevdvserc["prevdvserctblname"].sub(src["prevtblname"][3..-1],src["tblname"][3..-1])}
-                                where #{src["tblname"]}_id_#{dvserc}#{src["tblname"][3..-2]} = #{src["tblid"]}
-                &
-            ActiveRecord::Base.connection.select_all(strsql).each do |currdvserc| 
-              curr = {"tblname" => currdvserc["currdvserctblname"],"tblid" => currdvserc["currdvserctblid"],"qty_src" => 1,"amt_src" => 0}
-              strsql = %Q&
-                      select l.id link_id,a.id alloc_id,l.trngantts_id from linktbls l
-                                    inner join alloctbls a on a.srctblname = l.tblname and a.srctblid = l.tblid and a.trngantts_id = l.trngantts_id    
-                                    where l.tblname = '#{prevdvserc["prevdvserctblname"]}' and l.tblid = #{prevdvserc["prevdvserctblid"]} 
-                                    and l.qty_src > 0 and a.qty_linkto_alloctbl > 0
-                  &
-              ActiveRecord::Base.connection.select_all(strsql).each do |link|  ###trngantts_idを求める
-                prev["trngantts_id"] = link["trngantts_id"] 
-                curr["remark"] = "class:#{self},line #{__LINE__}"
-                proc_insert_linktbls(prev,curr)
-                alloc = {"srctblname" => curr["tblname"],"srctblid" => curr["tblid"],"trngantts_id" => link["trngantts_id"],
-                      "qty_linkto_alloctbl" => 1,
-                      "remark" => "class:#{self}, line:#{__LINE__} #{Time.now}","persons_id_upd" => 0,"allocfree" =>"alloc"}  ##persons_id_upd=0;未定
-                proc_aud_alloctbls(alloc,"add")
-                strsql = %Q& update linktbls set qty_src = 0,remark = 'class:#{self}, line:#{__LINE__} #{Time.now}'||left(remark,100)
-                                     where id = #{link["link_id"]}&
-                ActiveRecord::Base.connection.update(strsql)
-                strsql = %Q& update alloctbls set qty_linkto_alloctbl = 0,remark = 'class:#{self}, line:#{__LINE__} #{Time.now}'||left(remark,100)
-                                     where id = #{link["alloc_id"]}&
-                ActiveRecord::Base.connection.update(strsql)
-              end
-            end                 
-        end
-    end
-  end
+  	def add_dvserc_link src  ###prevtblname:prdxxxxs,tblname:prdxxxs,prevtblid,tblid
+    	["dvs","erc"].each do |dvserc|
+      		strsql = %Q&
+        		select '#{dvserc}#{src["prevtblname"][3..-1]}' prevdvserctblname,id prevdvserctblid
+        		                     from #{dvserc}#{src["prevtblname"][3..-1]}
+        		                    where #{src["prevtblname"]}_id_#{dvserc}#{src["prevtblname"][3..-2]} = #{src["prevtblid"]}
+                	&
+        	ActiveRecord::Base.connection.select_all(strsql).each do |prevdvserc| 
+				prev = {"tblname" => prevdvserc["prevdvserctblname"],"tblid" => prevdvserc["prevdvserctblid"]}
+				strsql =%Q&                 
+								select '#{prevdvserc["prevdvserctblname"].sub(src["prevtblname"][3..-1],src["tblname"][3..-1])}' currdvserctblname,id currdvserctblid
+								from #{prevdvserc["prevdvserctblname"].sub(src["prevtblname"][3..-1],src["tblname"][3..-1])}
+								where #{src["tblname"]}_id_#{dvserc}#{src["tblname"][3..-2]} = #{src["tblid"]}
+                				&
+            	ActiveRecord::Base.connection.select_all(strsql).each do |currdvserc| 
+									curr = {"tblname" => currdvserc["currdvserctblname"],"tblid" => currdvserc["currdvserctblid"],"qty_src" => 1,"amt_src" => 0}
+									strsql = %Q&
+												select l.id link_id,a.id alloc_id,l.trngantts_id from linktbls l
+																	inner join alloctbls a on a.srctblname = l.tblname and a.srctblid = l.tblid and a.trngantts_id = l.trngantts_id    
+																where l.tblname = '#{prevdvserc["prevdvserctblname"]}' and l.tblid = #{prevdvserc["prevdvserctblid"]} 
+																and l.qty_src > 0 and a.qty_linkto_alloctbl > 0
+            									&
+              		ActiveRecord::Base.connection.select_all(strsql).each do |link|  ###trngantts_idを求める
+                				prev["trngantts_id"] = link["trngantts_id"] 
+                				curr["remark"] = "class:#{self},line #{__LINE__}"
+                				proc_insert_linktbls(prev,curr)
+                				alloc = {"srctblname" => curr["tblname"],"srctblid" => curr["tblid"],"trngantts_id" => link["trngantts_id"],
+                 					     "qty_linkto_alloctbl" => 1,
+                      					"remark" => "class:#{self}, line:#{__LINE__} #{Time.now}","persons_id_upd" => 0,"allocfree" =>"alloc"}  ##persons_id_upd=0;未定
+                				proc_aud_alloctbls(alloc,"add")
+                				strsql = %Q& update linktbls set qty_src = 0,remark = 'class:#{self}, line:#{__LINE__} #{Time.now}'||left(remark,100)
+                               			      where id = #{link["link_id"]}&
+                				ActiveRecord::Base.connection.update(strsql)
+                				strsql = %Q& update alloctbls set qty_linkto_alloctbl = 0,remark = 'class:#{self}, line:#{__LINE__} #{Time.now}'||left(remark,100)
+                               			      where id = #{link["alloc_id"]}&
+                				ActiveRecord::Base.connection.update(strsql)
+              		end
+            	end                 
+        	end
+    	end
+  	end
 
 	def proc_insert_linkcusts(src,base)
 		linkcust_id = proc_get_nextval("linkcusts_seq")
@@ -485,7 +496,7 @@ module ArelCtl
 									#{strwhere}  
 		      &
 		    alloctbl = ActiveRecord::Base.connection.select_one(strsql)
-		    if alloctbl
+				if alloctbl
           last_lotstk = {"tblname" => alloctbl["srctblname"],"tblid" => alloctbl["srctblid"],"lotno" => "","packno" => ""}
           if aud == "update+" or  aud == "edit+"
             last_lotstk["qty_src"] = rec_alloc["qty_linkto_alloctbl"]
@@ -502,9 +513,9 @@ module ArelCtl
 									where id = #{alloctbl["id"]}&
           end
 		      ActiveRecord::Base.connection.update(strsql)
-        else
+				else
 			    raise "alloc_id err class #{self} ,line:#{__LINE__} ,rec_alloc,#{rec_alloc}"
-        end
+				end
       else
         src = ActiveRecord::Base.connection.select_one(%Q& select * from alloctbls where id = #{rec_alloc["id"]}  &)
         if aud == "update+" or  aud == "edit+"  ###今ある数値に加算

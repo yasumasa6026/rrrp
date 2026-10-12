@@ -147,6 +147,7 @@ module Api
                     if  params[:screenCode] =~ /heads$/
                         render json: {:params=>reqparams,:outcnt =>reqparams[:count] ,:outamt =>reqparams[:amt],:outqty =>reqparams[:qty]}
                     else
+                                Rails.logger.debug"class #{self},line:#{__LINE__},\n reqparams:#{reqparams}"
                         render json: {:params=>reqparams}
                     end
                 end

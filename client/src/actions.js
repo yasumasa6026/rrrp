@@ -44,7 +44,7 @@ export const FETCH_FAILURE = 'FETCH_FAILURE'
 
 export const MKSHPORDS_SUCCESS = 'MKSHPORDS_SUCCESS'
 export const MKSHPORDS_RESULT = 'MKSHPORDS_RESULT'
-//export const MKSHPACTS_RESULT = 'MKSHPACTS_RESULT'
+// export const MKSHPACTS_RESULT = 'MKSHPACTS_RESULT'
 
 export const SECOND_REQUEST = 'SECOND_REQUEST'
 export const SECOND_SUCCESS7 = 'SECOND_SUCCESS7'
@@ -57,7 +57,6 @@ export const SECOND_CONFIRMALL_REQUEST = 'SECOND_CONFIRMALL_REQUEST'
 export const SECOND_CONFIRMALL_SUCCESS = 'SECOND_CONFIRMALL_SUCCESS'
 export const SECOND_CONFIRM7_SUCCESS = 'SECOND_CONFIRM7_SUCCESS'
 export const SECOND_SUBFORM = 'SECOND_SUBFORM'
-
 
 export const UPLOADEXCEL_INIT = 'UPLOADEXCEL_INIT'
 export const UPLOADEXCEL_REQUEST = 'UPLOADEXCEL_REQUEST'
@@ -98,9 +97,9 @@ export const SECOND_DATASET = 'SECOND_DATASET'
 
 export const RESET_REQUEST = 'RESET_REQUEST'
 
-export const SignUpRequest =  (email, password,password_confirmation) => ({
-  type:SIGNUP_REQUEST,
-  payload: { email, password ,password_confirmation}
+export const SignUpRequest = (email, password, password_confirmation) => ({
+  type: SIGNUP_REQUEST,
+  payload: { email, password, password_confirmation }
 })
 
 /*
@@ -109,19 +108,19 @@ export const SignupFormRequest =  () => ({
 })
 */
 
-export const LoginRequest  = (email, password) => ({
+export const LoginRequest = (data) => ({
   type: LOGIN_REQUEST,
-  payload: { email, password }
+  payload: { data }
 })
 
-export const LogoutRequest =  (token,client,uid) => ({
+export const LogoutRequest = (token, client, uid) => ({
   type: LOGOUT_REQUEST,
-  payload: { token,client,uid }
+  payload: { token, client, uid }
 })
 
 export const LogoutSuccess = () => ({
-  type: LOGOUT_SUCCESS,
- // payload: {token,client,uid }
+  type: LOGOUT_SUCCESS
+  // payload: {token,client,uid }
 })
 
 /*
@@ -131,133 +130,127 @@ export const ChangePasswordFormRequest =  () => ({
 })
   */
 
-export const ChangePasswordRequest =  (current_password,password,password_confirmation) => ({
+export const ChangePasswordRequest = (current_password, password, password_confirmation) => ({
   type: CHANGEPASSWORD_REQUEST,
-  payload: { current_password,password,password_confirmation }
+  payload: { current_password, password, password_confirmation }
 })
 
 export const ChangePasswordSuccess = () => ({
-  type: CHANGEPASSWORD_SUCCESS,
+  type: CHANGEPASSWORD_SUCCESS
 })
 
 export const ChangePasswordFailure = () => ({
-  type: CHANGEPASSWORD_FAILURE,
+  type: CHANGEPASSWORD_FAILURE
 })
 
-
 export const MenuRequest = (auth) => ({
-  type:  MENU_REQUEST,
-  payload: {auth}
+  type: MENU_REQUEST,
+  payload: { auth }
 })
 
 export const MenuFailure = (errors) => ({
   type: MENU_FAILURE,
-  errors: { errors }  //
+  errors: { errors } //
 })
 
-//画面変更request
+// 画面変更request
 export const ScreenInitRequest = (params) => ({
-  type:  SCREENINIT_REQUEST,
-  payload: { params}  //AuthenticatorResponse
+  type: SCREENINIT_REQUEST,
+  payload: { params } // AuthenticatorResponse
 })
 
-//画面内 check等のrequest
+// 画面内 check等のrequest
 export const ScreenRequest = (params) => ({
-  type:  SCREEN_REQUEST,
-  payload: { params}  //
+  type: SCREEN_REQUEST,
+  payload: { params } //
 })
 
-
-export const ScreenConfirm = (params,data) => ({
-  type:  SCREEN_CONFIRM7,
-  payload: { params,data}  //
+export const ScreenConfirm = (params, data) => ({
+  type: SCREEN_CONFIRM7,
+  payload: { params, data } //
 })
 
 export const ResetRequest = (params) => ({
-  type:  RESET_REQUEST,
-  payload: { params}  //
+  type: RESET_REQUEST,
+  payload: { params } //
 })
 
-export const ScreenSubForm = (toggleSubForm,params) => ({
-  type:  SCREEN_SUBFORM,
-  payload: { toggleSubForm,params}  //
+export const ScreenSubForm = (toggleSubForm, params) => ({
+  type: SCREEN_SUBFORM,
+  payload: { toggleSubForm, params } //
 })
 
-export const SecondSubForm = (toggleSubForm,params) => ({
-  type:  SECOND_SUBFORM,
-  payload: { toggleSubForm,params}  //
+export const SecondSubForm = (toggleSubForm, params) => ({
+  type: SECOND_SUBFORM,
+  payload: { toggleSubForm, params } //
 })
-
 
 export const SecondRequest = (params) => ({
-  type:  SECOND_REQUEST,
-  payload: { params}  //
+  type: SECOND_REQUEST,
+  payload: { params } //
 })
 
-
-export const SecondConfirm = (params,data) => ({
-  type:  SECOND_CONFIRM7,
-  payload: { params,data}  //
+export const SecondConfirm = (params, data) => ({
+  type: SECOND_CONFIRM7,
+  payload: { params, data } //
 })
-
 
 export const SecondConfirmAllRequest = (params) => ({
-  type:  SECOND_CONFIRMALL_REQUEST,
-  payload: { params}  //
+  type: SECOND_CONFIRMALL_REQUEST,
+  payload: { params } //
 })
-
 
 export const DropDownValueSet = (dropDownValue) => ({
-  type:  DROPDOWNVALUE_SET,
-  payload: {dropDownValue}  //
+  type: DROPDOWNVALUE_SET,
+  payload: { dropDownValue } //
 })
 
-export const ScreenFailure = (message,hosterror) => ({
+export const ScreenFailure = (message, hosterror) => ({
   type: SCREEN_FAILURE,
-  payload: { message,hosterror }  //
+  payload: { message, hosterror } //
 })
 
-export const DownloadRequest = (params,auth) => ({
+export const DownloadRequest = (params, auth) => ({
   type: DOWNLOAD_REQUEST,
-  payload: { params:params,auth:auth}
+  payload: { params: params, auth: auth }
 })
 
 export const ButtonListRequest = (auth) => ({
-  type:  BUTTONLIST_REQUEST,
-  payload:{auth} 
+  type: BUTTONLIST_REQUEST,
+  payload: { auth }
 })
 export const ButtonListSuccess = (buttonListData) => ({
-  type:  BUTTONLIST_SUCCESS,
-  payload:{buttonListData} 
+  type: BUTTONLIST_SUCCESS,
+  payload: { buttonListData }
 })
 export const ButtonListFailure = (error) => ({
-  type:  BUTTONLIST_FAILFURE,
-  payload:{error} 
+  type: BUTTONLIST_FAILFURE,
+  payload: { error }
 })
 
-export const ButtonFlgRequest = (buttonflg,params) => ({
+export const ButtonFlgRequest = (buttonCode,params) => ({
   type: BUTTONFLG_REQUEST,
-  payload: { buttonflg,params}
+  payload: { buttonCode,params }
 })
 
 export const ButtonReset = () => ({
-  type:  BUTTON_RESET,
-   //
+  type: BUTTON_RESET
+  //
 })
 
 export const FetchRequest = (params) => ({
   type: FETCH_REQUEST,
-  payload: { params}
+  payload: { params }
 })
 
 export const FetchResult = (params) => ({
   type: FETCH_RESULT,
-  payload: { params}
+  payload: { params }
 })
 
 export const FetchFailure = (params) => ({
   type: FETCH_FAILURE,
-  payload: { params}
+  payload: { params }
 })
 export const SecondFetchRequest = (params) => ({
   type: SECONDFETCH_REQUEST,
@@ -266,126 +259,119 @@ export const SecondFetchRequest = (params) => ({
 
 export const SecondFetchResult = (params) => ({
   type: SECONDFETCH_RESULT,
-  payload: {params}
+  payload: { params }
 })
 
 export const SecondFetchFailure = (params) => ({
   type: SECONDFETCH_FAILURE,
-  payload: { params}
+  payload: { params }
 })
 
-export const SecondFailure = (message,hostError) => ({
+export const SecondFailure = (message, hostError) => ({
   type: SECOND_FAILURE,
-  errors: { message,hostError }  //
+  errors: { message, hostError } //
 })
 
-export const MkShpordsResult = (data,params) => ({
+export const MkShpordsResult = (data, params) => ({
   type: MKSHPORDS_RESULT,
-  payload: { data,params}
+  payload: { data, params }
 })
 
 export const InputFieldProtectRequest = () => ({
-  type: INPUTFIELDPROTECT_REQUEST,
+  type: INPUTFIELDPROTECT_REQUEST
 })
 export const InputProtectResult = () => ({
-  type: INPUTPROTECT_RESULT,
+  type: INPUTPROTECT_RESULT
 })
 
-export const YupRequest = (params,auth) => ({
-  type:  YUP_REQUEST,
-  payload: { params,auth}  //
+export const YupRequest = (params, auth) => ({
+  type: YUP_REQUEST,
+  payload: { params, auth } //
 })
 
-export const TblfieldRequest = (params,auth) => ({
-  type:  TBLFIELD_REQUEST,
-  payload: { params,auth}  //
+export const TblfieldRequest = (params, auth) => ({
+  type: TBLFIELD_REQUEST,
+  payload: { params, auth } //
 })
-
 
 export const TblfielSuccess = (messages) => ({
-  type:  TBLFIELD_SUCCESS,
-  payload: { messages}  //
+  type: TBLFIELD_SUCCESS,
+  payload: { messages } //
 })
 
-
-export const SecondTblfieldRequest = (params,auth) => ({
-  type:  SECONDTBLFIELD_REQUEST,
-  payload: { params,auth}  //
+export const SecondTblfieldRequest = (params, auth) => ({
+  type: SECONDTBLFIELD_REQUEST,
+  payload: { params, auth } //
 })
 
 export const SecondTblfielSuccess = (messages) => ({
-  type:  SECONDTBLFIELD_SUCCESS,
-  payload: { messages}  //
+  type: SECONDTBLFIELD_SUCCESS,
+  payload: { messages } //
 })
 
-
-export const UploadExcelInit = (params,auth) => ({
-  type: UPLOADEXCEL_INIT,  // 
-  payload:{params,auth},
+export const UploadExcelInit = (params, auth) => ({
+  type: UPLOADEXCEL_INIT, //
+  payload: { params, auth }
 })
 
-export const UploadExcelRequest = ({excelfile,nameToCode,params,auth}) => ({
-  type: UPLOADEXCEL_REQUEST,  // 
-  payload: {excelfile,nameToCode,params,auth}
+export const UploadExcelRequest = ({ excelfile, nameToCode, params, auth }) => ({
+  type: UPLOADEXCEL_REQUEST, //
+  payload: { excelfile, nameToCode, params, auth }
 })
-
-
 
 export const UploadExcelSuccess = (payload) => ({
-  type:UPLOADEXCEL_SUCCESS,  // 
-  payload: {idx:payload.idx}
+  type: UPLOADEXCEL_SUCCESS, //
+  payload: { idx: payload.idx }
 })
-
 
 export const UploadExcelFailure = (payload) => ({
-  type: UPLOADEXCEL_FAILURE,  // 
-  payload: {uploadError:payload.uploadError}
+  type: UPLOADEXCEL_FAILURE, //
+  payload: { uploadError: payload.uploadError }
 })
 
-export const ScreenDataSet = (data,params) => ({
-  type: SCREEN_DATASET,  // 
-  payload: {data:data,params:params}
+export const ScreenDataSet = (data, params) => ({
+  type: SCREEN_DATASET, //
+  payload: { data: data, params: params }
 })
 
-export const SecondDataSet = (data,params) => ({
-  type: SECOND_DATASET,  // 
-  payload: {data:data,params:params}
+export const SecondDataSet = (data, params) => ({
+  type: SECOND_DATASET, //
+  payload: { data: data, params: params }
 })
 
-
-export const GanttChartRequest = (params,auth) => ({
-  type:  GANTTCHART_REQUEST,
-  payload: { params,auth}  //
+export const GanttChartRequest = (params, auth) => ({
+  type: GANTTCHART_REQUEST,
+  payload: { params, auth } //
 })
 
-export const GanttChartSuccess = (params,auth) => ({
-  type:  GANTTCHART_SUCCESS,
-  payload: { params,auth}  //
+export const GanttChartSuccess = (params, auth) => ({
+  type: GANTTCHART_SUCCESS,
+  payload: { params, auth } //
 })
 
-export const GanttChartFailure = (params,auth) => ({
-  type:  GANTTCHART_FAILURE,
-  payload: { params,auth}  //
+export const GanttChartFailure = (params, auth) => ({
+  type: GANTTCHART_FAILURE,
+  payload: { params, auth } //
 })
 
-export const AreaChartRequest = (toggleAreaChart,params) => ({
-  type:  AREACHART_REQUEST,
-  payload: { toggleAreaChart,params}  //
+export const AreaChartRequest = (toggleAreaChart, params) => ({
+  type: AREACHART_REQUEST,
+  payload: { toggleAreaChart, params } //
 })
 
-export const AreaChartSuccess = (params,auth) => ({
-  type:  AREACHART_SUCCESS,
-  payload: { params,auth}  //
+export const AreaChartSuccess = (params, auth) => ({
+  type: AREACHART_SUCCESS,
+  payload: { params, auth } //
 })
 
-export const AreaChartFailure = (params,auth) => ({
-  type:  AreaTCHART_FAILURE,
-  payload: { params,auth}  //
+export const AreaChartFailure = (params, auth) => ({
+  type: AreaTCHART_FAILURE,
+  payload: { params, auth } //
 })
 
-export const UpdateNditmSuccess = (params,auth) => ({
-  type:  UPDATENDITM_SUCCESS,
-  payload: { params,auth}  //
+export const UpdateNditmSuccess = (params, auth) => ({
+  type: UPDATENDITM_SUCCESS,
+  payload: { params, auth } //
 })
 
 // export const UpdateNditmREquest = (params,auth) => ({
@@ -393,23 +379,22 @@ export const UpdateNditmSuccess = (params,auth) => ({
 //   payload: { params}  //
 // })
 
-export const UpdateNditmFailure = (params,auth) => ({
-  type:  UPDATENDITM_FAILURE,
-  payload: { params,auth}  //
+export const UpdateNditmFailure = (params, auth) => ({
+  type: UPDATENDITM_FAILURE,
+  payload: { params, auth } //
 })
 
-export const PdfRequest = (params,auth) => ({
-  type:  PDF_REQUEST,
-  payload: { params,auth}  //
+export const PdfRequest = (params, auth) => ({
+  type: PDF_REQUEST,
+  payload: { params, auth } //
 })
 
-export const PdfSuccess = (message,hosterror) => ({
+export const PdfSuccess = (message, hosterror) => ({
   type: PDF_SUCCESS,
-  payload: { message,hosterror }  //
+  payload: { message, hosterror } //
 })
 
-export const PdfFailure = (message,hosterror) => ({
+export const PdfFailure = (message, hosterror) => ({
   type: PDF_FAILURE,
-  payload: { message,hosterror }  //
+  payload: { message, hosterror } //
 })
-

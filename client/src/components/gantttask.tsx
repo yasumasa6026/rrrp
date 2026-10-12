@@ -10,11 +10,9 @@ import  {ViewSwitcher} from "./gantttaskview"
 const GanttTask = (props:Props) => {
         const [view, setView] = useState(ViewMode.Day)
         const [tasks, setTasks] = useState(props.tasks)
-        const [tLen, setTlen] = useState(props.tasks.length)
         const [updateReq, setUpdateReq] = useState(false)
         const [ausFlow, setAusFlow] = useState(0)
-        useEffect(()=> {setTasks(props.tasks),
-                        setTlen(props.tasks.length)},[props.loading])
+        useEffect(()=> {setTasks(props.tasks)},[props.loading,props.tasks])
         const [isChecked, setIsChecked] = useState(true)
         let columnWidth 
         switch(view){
@@ -66,7 +64,6 @@ const GanttTask = (props:Props) => {
             else{if(task.id)  //ganttchart_controlへ
                     {   
                         setUpdateReq(true)
-                        setTlen(0) //ganttchartを絞る
                         let params = {}
                         switch (true){   
                         case /itm/.test(props.screenCode):
@@ -148,7 +145,7 @@ const GanttTask = (props:Props) => {
             //    onTaskDelete={onTaskDelete}
                 onClick={onClick}
             //    onDoubleClick={onDoubleClick}  //onClickと共存できない。
-                ganttHeight={updateReq?300:tLen>5?300+(tLen-5)*50:300}
+                ganttHeight={updateReq?300:tasks.length>5?300+(tasks.length-5)*50:300}
                 listCellWidth={isChecked ? "155px" : ""}
                 barBackgroundSelectedColor={"#FFFF00"}
             />
